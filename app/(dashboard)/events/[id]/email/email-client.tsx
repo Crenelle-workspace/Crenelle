@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Mail, MailOpen, MousePointerClick, CheckCircle2,
-  AlertCircle, AlertTriangle, RefreshCw, TrendingUp,
+  Mail, MailOpen, MousePointerClick,
+  AlertCircle, RefreshCw, TrendingUp,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { SectionHeader } from '@/components/section-header'
@@ -257,20 +257,17 @@ export default function EmailClient({ eventId }: { eventId: string }) {
         </div>
       )}
 
-      {/* Webhook setup notice */}
-      {stats.sent > 0 && stats.delivered === 0 && (
-        <div className="flex items-start gap-3 border border-copper/30 bg-copper/5 p-4">
-          <TrendingUp className="h-4 w-4 text-copper mt-0.5 shrink-0" aria-hidden="true" />
+      {/* Info banner — shown when emails exist but none have tracking data yet */}
+      {stats.sent > 0 && stats.delivered === 0 && stats.opened === 0 && stats.clicked === 0 && (
+        <div className="flex items-start gap-3 border border-foreground/15 bg-foreground/5 p-4">
+          <TrendingUp className="h-4 w-4 text-foreground/40 mt-0.5 shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-mono text-xs uppercase tracking-widest text-copper mb-1">
-              Tracking not yet active
+            <p className="font-mono text-xs uppercase tracking-widest text-foreground/60 mb-1">
+              Tracking active — awaiting events
             </p>
-            <p className="font-sans text-xs text-foreground/60 leading-relaxed">
-              Open and click data will appear here once you configure the Resend webhook.
-              Set <code className="font-mono text-[10px] bg-foreground/10 px-1 py-0.5">RESEND_WEBHOOK_SECRET</code> and
-              register <code className="font-mono text-[10px] bg-foreground/10 px-1 py-0.5">/api/webhooks/resend</code> in
-              your Resend dashboard with <em>email.delivered</em>, <em>email.opened</em>,
-              <em>email.clicked</em>, and <em>email.bounced</em> events.
+            <p className="font-sans text-xs text-foreground/50 leading-relaxed">
+              Emails sent before tracking was enabled won&apos;t show open or click data.
+              Send a new invitation or reminder — it will be tracked end-to-end.
             </p>
           </div>
         </div>
