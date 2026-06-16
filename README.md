@@ -322,14 +322,6 @@ Key sections:
 - [x] Live usher counter (gate total + event total)
 - [x] **Team access / co-host collaboration** — Viewer, Scanner Manager, Co-Organiser roles with RLS enforcement and invite email
 
-**Next**
-- [ ] Active tab indicator in event sub-navigation
-- [ ] Paystack payment integration (ticketed events)
-- [ ] PWA offline scanner mode
-- [ ] AI guest list parsing (paste → structured rows)
-- [ ] Recurring event series (weekly programmes)
-- [ ] WhatsApp credential delivery
-- [ ] Custom email domain per organiser (Resend custom domain)
 
 ---
 
