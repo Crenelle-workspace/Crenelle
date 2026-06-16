@@ -417,7 +417,7 @@ export async function sendInvitationEmail({
 </html>`
 
   try {
-    const { error: sendError } = await getResend().emails.send({
+    const { data: sendData, error: sendError } = await getResend().emails.send({
       from: `${organizer.name} <${SENDING_ADDRESS}>`,
       ...(organizer.email ? { replyTo: organizer.email } : {}),
       to: actualRecipientEmail,
@@ -430,12 +430,13 @@ export async function sendInvitationEmail({
       return { error: sendError.message || 'Failed to send email' }
     }
 
-    // Log the email
+    // Log the email — store Resend message ID for webhook correlation
     await supabase.from('email_logs').insert({
       event_id: eventId,
       recipient_email: actualRecipientEmail,
       email_type: 'invitation',
       subject: `You're confirmed — ${event.name}`,
+      resend_email_id: sendData?.id ?? null,
     })
 
     return { success: true }
@@ -710,12 +711,13 @@ export async function sendReminderEmailsDirect({
       } else {
         sent++
         console.log(`[email] Reminder sent to ${recipient.email}, id=${sendData?.id}`)
-        // Log the email
+        // Log the email — store Resend message ID for webhook correlation
         await supabase.from('email_logs').insert({
           event_id: eventId,
           recipient_email: recipient.email,
           email_type: 'reminder',
           subject: `Reminder — ${event.name}`,
+          resend_email_id: sendData?.id ?? null,
         })
       }
     } catch (e: any) {

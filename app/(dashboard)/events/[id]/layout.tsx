@@ -76,6 +76,7 @@ export default async function EventLayout({
     { label: 'Guests',         href: '/guests' },
     { label: 'Live Dashboard', href: '/dashboard' },
     { label: 'Scanner Links',  href: '/scanner-links' },
+    { label: 'Email',          href: '/email' },
     { label: 'Passes',         href: '/cards' },
   ]
 
