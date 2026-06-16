@@ -295,7 +295,7 @@ Create a public bucket named **`banners`** in your Supabase project:
 
 For the complete technical breakdown — data model, flowcharts, security model, AI integration plans, payment gateway analysis, navigation audit, and the strategic vision for scaling beyond events — see:
 
-**[`ARCHITECTURE.md`](./ARCHITECTURE.md)**
+
 
 Key sections:
 - §3 — High-level architecture flowchart
