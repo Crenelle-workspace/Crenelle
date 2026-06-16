@@ -110,6 +110,24 @@ export interface EmailLog {
   email_type: 'invitation' | 'reminder'
   subject: string | null
   sent_at: string
+  // Tracking (populated by Resend webhooks)
+  resend_email_id: string | null
+  opened_count: number
+  clicked_count: number
+  first_opened_at: string | null
+  first_clicked_at: string | null
+  delivered_at: string | null
+  bounced_at: string | null
+  complained_at: string | null
+}
+
+export interface EmailEvent {
+  id: string
+  email_log_id: string | null
+  resend_email_id: string
+  event_type: 'email.opened' | 'email.clicked' | 'email.delivered' | 'email.bounced' | 'email.complained'
+  click_url: string | null
+  created_at: string
 }
 
 export interface SenderProfile {

@@ -3,7 +3,7 @@ interface StatCardProps {
   label: string
   value: string | number
   sub: string
-  accent?: 'admitted' | 'signal'
+  accent?: 'admitted' | 'signal' | 'copper'
 }
 
 export function StatCard({ icon, label, value, sub, accent }: StatCardProps) {
@@ -12,6 +12,8 @@ export function StatCard({ icon, label, value, sub, accent }: StatCardProps) {
       ? 'text-admitted'
       : accent === 'signal'
       ? 'text-signal'
+      : accent === 'copper'
+      ? 'text-copper'
       : 'text-foreground'
 
   return (
