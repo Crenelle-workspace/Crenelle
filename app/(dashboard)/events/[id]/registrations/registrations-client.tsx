@@ -24,6 +24,7 @@ interface Registration {
   status: 'pending' | 'accepted' | 'rejected' | 'waitlist'
   created_at: string
   ticket_tier?: TicketTier | null
+  payment_status?: 'paid' | 'pending' | 'failed' | 'refunded' | 'abandoned' | 'unpaid' | 'free'
 }
 
 export default function RegistrationsPage() {
@@ -46,7 +47,7 @@ export default function RegistrationsPage() {
       const [{ data: attendees }, { data: ev }] = await Promise.all([
         supabase
           .from('attendees')
-          .select('*, ticket_tier:ticket_tiers(*)')
+          .select('*, ticket_tier:ticket_tiers(*), payments(*)')
           .eq('event_id', eventId)
           .eq('source', 'public_registration')
           .order('created_at', { ascending: true }),
@@ -57,16 +58,37 @@ export default function RegistrationsPage() {
           .single(),
       ])
 
-      const mappedRegs = (attendees ?? []).map((a: any) => ({
-        id: a.id,
-        event_id: a.event_id,
-        full_name: a.name,
-        email: a.email,
-        phone: a.phone,
-        status: a.registration_status,
-        created_at: a.created_at,
-        ticket_tier: a.ticket_tier ?? null,
-      }))
+      const mappedRegs = (attendees ?? []).map((a: any) => {
+        const hasPayments = a.payments && a.payments.length > 0
+        let paymentStatus: Registration['payment_status'] = 'unpaid'
+
+        if (hasPayments) {
+          if (a.payments.some((p: any) => p.status === 'paid')) {
+            paymentStatus = 'paid'
+          } else if (a.payments.some((p: any) => p.status === 'pending')) {
+            paymentStatus = 'pending'
+          } else {
+            const sortedPayments = [...a.payments].sort(
+              (x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime()
+            )
+            paymentStatus = sortedPayments[0]?.status || 'unpaid'
+          }
+        } else if (a.ticket_tier?.price === 0) {
+          paymentStatus = 'free'
+        }
+
+        return {
+          id: a.id,
+          event_id: a.event_id,
+          full_name: a.name,
+          email: a.email,
+          phone: a.phone,
+          status: a.registration_status,
+          created_at: a.created_at,
+          ticket_tier: a.ticket_tier ?? null,
+          payment_status: paymentStatus,
+        }
+      })
 
       setRegistrations(mappedRegs as any[])
       setEvent(ev)
@@ -187,6 +209,19 @@ export default function RegistrationsPage() {
     return cls[status] ?? ''
   }
 
+  const paymentStatusBadge = (status: string) => {
+    const cls: Record<string, string> = {
+      paid: 'bg-admitted/20 text-admitted border-admitted/30',
+      pending: 'bg-signal/20 text-signal border-signal/30',
+      unpaid: 'bg-foreground/10 text-foreground/45 border-foreground/15',
+      free: 'bg-foreground/5 text-foreground/50 border-foreground/10 border-dashed',
+      failed: 'bg-denied/20 text-denied border-denied/30',
+      refunded: 'bg-copper/20 text-copper border-copper/30',
+      abandoned: 'bg-foreground/10 text-foreground/40 border-foreground/20',
+    }
+    return cls[status] ?? ''
+  }
+
   return (
     <div>
       {/* Header */}
@@ -268,13 +303,13 @@ export default function RegistrationsPage() {
       {loading ? (
         <div className="border-2 border-foreground/10 overflow-hidden animate-pulse">
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] bg-secondary border-b-2 border-foreground/20 px-4 py-3 gap-4">
-            {['NAME', 'EMAIL / PHONE', 'STATUS', 'DATE', ''].map((h) => (
+          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] bg-secondary border-b-2 border-foreground/20 px-4 py-3 gap-4">
+            {['NAME', 'EMAIL / PHONE', 'PAYMENT', 'STATUS', 'DATE', ''].map((h) => (
               <span key={h} className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/60">{h}</span>
             ))}
           </div>
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center px-4 py-4 gap-4 border-b border-foreground/5">
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center px-4 py-4 gap-4 border-b border-foreground/5">
               <div className="flex flex-col gap-1.5">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-3 w-16" />
@@ -283,6 +318,7 @@ export default function RegistrationsPage() {
                 <Skeleton className="h-4 w-28" />
                 <Skeleton className="h-3 w-20" />
               </div>
+              <Skeleton className="h-6 w-16 bg-foreground/5" />
               <Skeleton className="h-6 w-16 bg-foreground/5" />
               <Skeleton className="h-4 w-12" />
               <div className="h-8" />
@@ -298,8 +334,8 @@ export default function RegistrationsPage() {
       ) : (
         <div className="border-2 border-foreground/10 overflow-hidden">
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] bg-secondary border-b-2 border-foreground/20 px-4 py-3 gap-4">
-            {['NAME', 'EMAIL / PHONE', 'STATUS', 'DATE', ''].map((h) => (
+          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] bg-secondary border-b-2 border-foreground/20 px-4 py-3 gap-4">
+            {['NAME', 'EMAIL / PHONE', 'PAYMENT', 'STATUS', 'DATE', ''].map((h) => (
               <span key={h} className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/60">{h}</span>
             ))}
           </div>
@@ -308,7 +344,7 @@ export default function RegistrationsPage() {
           {filtered.map((reg) => (
             <div
               key={reg.id}
-              className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center px-4 py-4 gap-4 border-b border-foreground/5 hover:bg-foreground/2 transition-colors group"
+              className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center px-4 py-4 gap-4 border-b border-foreground/5 hover:bg-foreground/2 transition-colors group"
             >
               <div className="flex flex-col truncate">
                 <span className="font-mono text-sm text-foreground font-medium truncate">{reg.full_name}</span>
@@ -323,7 +359,12 @@ export default function RegistrationsPage() {
                 {reg.phone && <span className="font-mono text-[10px] text-foreground/40 truncate">{reg.phone}</span>}
               </div>
               <span
-                className={`font-mono text-[9px] uppercase tracking-widest px-3 py-1 border ${statusBadge(reg.status)}`}
+                className={`font-mono text-[9px] uppercase tracking-widest px-3 py-1 border text-center ${paymentStatusBadge(reg.payment_status || 'unpaid')}`}
+              >
+                {reg.payment_status}
+              </span>
+              <span
+                className={`font-mono text-[9px] uppercase tracking-widest px-3 py-1 border text-center ${statusBadge(reg.status)}`}
               >
                 {reg.status}
               </span>

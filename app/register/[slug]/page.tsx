@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
-import { CalendarDays, MapPin, Clock, CheckCircle2, XCircle, Users } from 'lucide-react'
+import { useParams, useSearchParams } from 'next/navigation'
+import { CalendarDays, MapPin, Clock, CheckCircle2, XCircle, Users, CreditCard, AlertTriangle } from 'lucide-react'
 import { submitRegistration } from '@/app/actions/registrations'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { toast } from 'sonner'
@@ -23,6 +23,7 @@ interface EventInfo {
 
 export default function PublicRegistrationPage() {
   const { slug } = useParams<{ slug: string }>()
+  const searchParams = useSearchParams()
   const [event, setEvent] = useState<EventInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -31,7 +32,12 @@ export default function PublicRegistrationPage() {
   const [submitting, setSubmitting] = useState(false)
   const [waitlisted, setWaitlisted] = useState(false)
   const [selectedTierId, setSelectedTierId] = useState('')
+  const [redirectingToPaystack, setRedirectingToPaystack] = useState(false)
   const isSubmitting = useRef(false)
+
+  // Payment status from Paystack redirect callback
+  const paymentStatus = searchParams.get('payment')
+  const paymentRef = searchParams.get('reference')
 
   useEffect(() => {
     async function loadEvent() {
@@ -61,13 +67,58 @@ export default function PublicRegistrationPage() {
   async function handleSubmit(formData: FormData) {
     if (isSubmitting.current || !event) return
 
-    // Intercept paid tier selections
     const selectedTier = event.tiers?.find((t) => t.id === selectedTierId)
+
+    // ── Paid tier: redirect to Paystack ─────────────────────────
     if (selectedTier && selectedTier.price > 0) {
-      toast.info("Online payments are coming soon! Paid registrations are not yet enabled.", { duration: 5000 })
+      isSubmitting.current = true
+      setRedirectingToPaystack(true)
+      setError(null)
+
+      const name = (formData.get('full_name') as string)?.trim()
+      const email = (formData.get('email') as string)?.trim()
+      const phone = (formData.get('phone') as string)?.trim() || undefined
+
+      if (!name || !email) {
+        setError('Name and email are required.')
+        setRedirectingToPaystack(false)
+        isSubmitting.current = false
+        return
+      }
+
+      try {
+        const res = await fetch('/api/payments/initialize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_id: event.id,
+            ticket_tier_id: selectedTier.id,
+            payer_email: email,
+            payer_name: name,
+            payer_phone: phone,
+          }),
+        })
+
+        const json = await res.json()
+
+        if (!res.ok || json.error) {
+          setError(json.error ?? 'Could not start payment. Please try again.')
+          setRedirectingToPaystack(false)
+          isSubmitting.current = false
+          return
+        }
+
+        // Redirect to Paystack hosted checkout
+        window.location.href = json.authorization_url
+      } catch {
+        setError('Network error. Please try again.')
+        setRedirectingToPaystack(false)
+        isSubmitting.current = false
+      }
       return
     }
 
+    // ── Free tier: existing approval flow ───────────────────────
     isSubmitting.current = true
     setSubmitting(true)
     setError(null)
@@ -112,7 +163,53 @@ export default function PublicRegistrationPage() {
   // Registration full
   const isFull = event.max_registrations !== null && event.registration_count >= event.max_registrations
 
-  // Success state
+  // Paystack payment success (redirected back from Paystack)
+  if (paymentStatus === 'success' || paymentRef) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="border-2 border-admitted/30 bg-admitted/5 p-8">
+            <CheckCircle2 className="h-16 w-16 text-admitted mx-auto mb-6" />
+            <h1 className="font-display text-4xl uppercase text-foreground mb-3">PAYMENT CONFIRMED</h1>
+            <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
+              Your ticket for <span className="text-foreground font-bold">{event?.name}</span> has been paid.
+              Your QR entry pass will be sent to your email shortly.
+            </p>
+            {paymentRef && (
+              <p className="font-mono text-[9px] text-foreground/30 uppercase tracking-widest">
+                Ref: {paymentRef}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Paystack payment failed
+  if (paymentStatus === 'failed') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="border-2 border-denied/30 bg-denied/5 p-8">
+            <AlertTriangle className="h-16 w-16 text-denied mx-auto mb-6" />
+            <h1 className="font-display text-4xl uppercase text-foreground mb-3">PAYMENT FAILED</h1>
+            <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
+              Your payment was not completed. No charge has been made.
+            </p>
+            <a
+              href={`/register/${slug}`}
+              className="inline-block font-display text-xl uppercase tracking-wider bg-signal text-void px-8 py-3 hover:bg-signal/90 transition-colors"
+            >
+              TRY AGAIN →
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Free-tier registration success state
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -348,18 +445,31 @@ export default function PublicRegistrationPage() {
                 {(() => {
                   const selectedTier = event.tiers?.find((t) => t.id === selectedTierId)
                   const isPaidTier = selectedTier ? selectedTier.price > 0 : false
+                  const isProcessing = submitting || redirectingToPaystack
                   return (
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="w-full h-14 bg-signal text-void font-display text-2xl uppercase tracking-wider hover:bg-signal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                    >
-                      {submitting
-                        ? 'SUBMITTING...'
-                        : isPaidTier
-                        ? 'PAY & REGISTER →'
-                        : 'REGISTER →'}
-                    </button>
+                    <>
+                      {isPaidTier && (
+                        <div className="flex items-start gap-2 p-3 border border-foreground/10 bg-foreground/3">
+                          <CreditCard className="h-3.5 w-3.5 text-foreground/40 mt-0.5 shrink-0" />
+                          <p className="font-mono text-[9px] uppercase tracking-wide text-foreground/50 leading-relaxed">
+                            You'll be redirected to Paystack to complete payment securely via card, bank transfer, or USSD.
+                          </p>
+                        </div>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={isProcessing}
+                        className="w-full h-14 bg-signal text-void font-display text-2xl uppercase tracking-wider hover:bg-signal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                      >
+                        {redirectingToPaystack
+                          ? 'REDIRECTING TO PAYMENT...'
+                          : submitting
+                          ? 'SUBMITTING...'
+                          : isPaidTier
+                          ? `PAY ₦${((selectedTier?.price ?? 0) / 100).toLocaleString()} & REGISTER →`
+                          : 'REGISTER →'}
+                      </button>
+                    </>
                   )
                 })()}
               </form>

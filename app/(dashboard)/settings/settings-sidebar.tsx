@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Mail, User, Sliders } from 'lucide-react'
+import { Mail, User, Sliders, CreditCard } from 'lucide-react'
 
 export function SettingsSidebar() {
   const pathname = usePathname()
@@ -24,6 +24,12 @@ export function SettingsSidebar() {
       label: 'General',
       href: '/settings/general',
       icon: Sliders,
+      disabled: false,
+    },
+    {
+      label: 'Payments',
+      href: '/settings/payments',
+      icon: CreditCard,
       disabled: false,
     },
   ]

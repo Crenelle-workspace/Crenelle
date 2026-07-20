@@ -1,0 +1,322 @@
+'use client'
+
+import { useState } from 'react'
+import { Loader2, CreditCard, CheckCircle2, Building2, AlertTriangle, ChevronDown } from 'lucide-react'
+import { toast } from 'sonner'
+import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
+import type { OrganizerPaymentSettings } from '@/lib/types'
+
+interface Props {
+  settings: OrganizerPaymentSettings | null
+}
+
+interface BankOption {
+  name: string
+  code: string
+}
+
+export function PaymentSettingsForm({ settings }: Props) {
+  const isConnected = !!settings?.paystack_subaccount_code && settings.is_verified
+
+  // Form state
+  const [accountNumber, setAccountNumber] = useState('')
+  const [bankCode, setBankCode] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [resolvedAccountName, setResolvedAccountName] = useState<string | null>(null)
+  const [banks, setBanks] = useState<BankOption[]>([])
+  const [banksLoaded, setBanksLoaded] = useState(false)
+
+  // UI state
+  const [isResolvingAccount, setIsResolvingAccount] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [isLoadingBanks, setIsLoadingBanks] = useState(false)
+
+  // Load banks on dropdown open
+  async function loadBanks() {
+    if (banksLoaded) return
+    setIsLoadingBanks(true)
+    try {
+      const res = await fetch('/api/payments/banks')
+      const json = await res.json()
+      if (json.banks) {
+        setBanks(json.banks)
+        setBanksLoaded(true)
+      } else {
+        toast.error('Failed to load bank list')
+      }
+    } catch {
+      toast.error('Failed to load bank list')
+    } finally {
+      setIsLoadingBanks(false)
+    }
+  }
+
+  function handleBankChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const selected = banks.find((b) => b.code === e.target.value)
+    setBankCode(e.target.value)
+    setBankName(selected?.name ?? '')
+    // Reset resolution when bank changes
+    setResolvedAccountName(null)
+  }
+
+  async function handleResolveAccount() {
+    if (!accountNumber || accountNumber.length !== 10) {
+      toast.error('Account number must be 10 digits')
+      return
+    }
+    if (!bankCode) {
+      toast.error('Please select a bank first')
+      return
+    }
+
+    setIsResolvingAccount(true)
+    setResolvedAccountName(null)
+    try {
+      const res = await fetch('/api/payments/setup-subaccount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resolve', account_number: accountNumber, bank_code: bankCode }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) {
+        toast.error(json.error ?? 'Could not verify account. Check the details and try again.')
+      } else {
+        setResolvedAccountName(json.account_name)
+        toast.success('Account verified')
+      }
+    } catch {
+      toast.error('Network error. Please try again.')
+    } finally {
+      setIsResolvingAccount(false)
+    }
+  }
+
+  async function handleConnect() {
+    if (!resolvedAccountName) {
+      toast.error('Verify your account first')
+      return
+    }
+
+    setIsConnecting(true)
+    try {
+      const res = await fetch('/api/payments/setup-subaccount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'connect',
+          account_number: accountNumber,
+          bank_code: bankCode,
+          bank_name: bankName,
+          business_name: resolvedAccountName,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) {
+        toast.error(json.error ?? 'Failed to connect account. Please try again.')
+      } else {
+        toast.success('Bank account connected! Payouts will be settled T+1.')
+        // Reload page to show connected state
+        window.location.reload()
+      }
+    } catch {
+      toast.error('Network error. Please try again.')
+    } finally {
+      setIsConnecting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-up">
+
+      {/* ── Settlement info banner ── */}
+      <section className="border border-border bg-card">
+        <div className="px-6 py-4 border-b border-border flex items-center gap-3">
+          <CreditCard className="size-4 text-copper" aria-hidden="true" />
+          <h2 className="font-sans text-[10px] font-semibold uppercase tracking-[0.25em] text-foreground">
+            Payout Account
+          </h2>
+        </div>
+
+        {/* Connected state */}
+        {isConnected && settings ? (
+          <div className="px-6 py-6 space-y-4">
+            <div className="flex items-start gap-3 p-4 border border-green-500/20 bg-green-500/5">
+              <CheckCircle2 className="size-4 text-green-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-sans text-sm font-semibold text-foreground">Bank account connected</p>
+                <p className="font-mono text-[10px] text-muted-foreground mt-1 uppercase tracking-wide">
+                  Payouts settled T+1 (next business day)
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <span className={labelCls}>Bank</span>
+                <span className="font-sans text-sm text-foreground">{settings.bank_name ?? '—'}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className={labelCls}>Account</span>
+                <span className="font-sans text-sm text-foreground">
+                  {'*'.repeat(6)}{settings.account_number?.slice(-4) ?? ''}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className={labelCls}>Account name</span>
+                <span className="font-sans text-sm text-foreground">{settings.account_name ?? '—'}</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className={labelCls}>Your share per ticket</span>
+                <span className="font-sans text-sm font-semibold text-copper">
+                  {100 - (settings.platform_fee_percent ?? 5)}%
+                </span>
+              </div>
+            </div>
+
+            <p className={hintCls}>
+              To update your bank account, contact support. Subaccount code:{' '}
+              <code className="font-mono text-xs text-muted-foreground">
+                {settings.paystack_subaccount_code}
+              </code>
+            </p>
+          </div>
+        ) : (
+
+        /* Not connected state */
+          <div className="px-6 py-6 space-y-5">
+            {/* Warning */}
+            <div className="flex items-start gap-3 p-4 border border-amber-500/20 bg-amber-500/5">
+              <AlertTriangle className="size-4 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-sans text-sm font-semibold text-foreground">Bank account not connected</p>
+                <p className="font-mono text-[10px] text-muted-foreground mt-1 uppercase tracking-wide">
+                  You must connect a bank account before guests can pay for tickets.
+                </p>
+              </div>
+            </div>
+
+            {/* Bank selector */}
+            <div className="flex flex-col gap-2">
+              <label htmlFor="bank-select" className={labelCls}>Bank</label>
+              <div className="relative">
+                <select
+                  id="bank-select"
+                  value={bankCode}
+                  onChange={handleBankChange}
+                  onFocus={loadBanks}
+                  disabled={isLoadingBanks}
+                  className={[fieldCls, 'appearance-none pr-10'].join(' ')}
+                >
+                  <option value="">
+                    {isLoadingBanks ? 'Loading banks…' : 'Select your bank'}
+                  </option>
+                  {banks.map((bank) => (
+                    <option key={bank.code} value={bank.code}>
+                      {bank.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              </div>
+            </div>
+
+            {/* Account number + verify */}
+            <div className="flex flex-col gap-2">
+              <label htmlFor="account-number" className={labelCls}>Account number</label>
+              <div className="flex gap-2">
+                <input
+                  id="account-number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  value={accountNumber}
+                  onChange={(e) => {
+                    setAccountNumber(e.target.value.replace(/\D/g, ''))
+                    setResolvedAccountName(null)
+                  }}
+                  placeholder="0123456789"
+                  className={[fieldCls, 'flex-1 font-mono tracking-widest'].join(' ')}
+                />
+                <button
+                  type="button"
+                  onClick={handleResolveAccount}
+                  disabled={isResolvingAccount || !bankCode || accountNumber.length !== 10}
+                  className="px-4 py-2.5 bg-foreground text-background font-sans text-xs font-semibold uppercase tracking-[0.14em] hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer"
+                >
+                  {isResolvingAccount ? (
+                    <span className="flex items-center gap-1.5">
+                      <Loader2 className="size-3.5 animate-spin" /> Verifying
+                    </span>
+                  ) : (
+                    'Verify'
+                  )}
+                </button>
+              </div>
+              <p className={hintCls}>Enter your 10-digit NUBAN account number.</p>
+            </div>
+
+            {/* Resolved account name confirmation */}
+            {resolvedAccountName && (
+              <div className="flex items-center gap-3 p-4 border border-green-500/20 bg-green-500/5">
+                <CheckCircle2 className="size-4 text-green-500 shrink-0" />
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">Account name</p>
+                  <p className="font-sans text-sm font-semibold text-foreground mt-0.5">{resolvedAccountName}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Connect button */}
+            {resolvedAccountName && (
+              <button
+                type="button"
+                onClick={handleConnect}
+                disabled={isConnecting}
+                className="w-full flex items-center justify-center gap-2 bg-copper text-background font-sans text-sm font-semibold uppercase tracking-[0.14em] px-6 py-3.5 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isConnecting ? (
+                  <><Loader2 className="size-4 animate-spin" /> Connecting…</>
+                ) : (
+                  <><Building2 className="size-4" /> Connect Bank Account</>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ── How splits work ── */}
+      <section className="border border-border bg-card">
+        <div className="px-6 py-4 border-b border-border">
+          <h2 className="font-sans text-[10px] font-semibold uppercase tracking-[0.25em] text-foreground">
+            How Payouts Work
+          </h2>
+        </div>
+        <div className="px-6 py-6 space-y-4">
+          <div className="grid grid-cols-1 gap-3 font-mono text-[11px] text-muted-foreground">
+            {[
+              { step: '01', text: 'Guest pays for a ticket via card, bank transfer, or USSD.' },
+              { step: '02', text: 'Paystack deducts its processing fee (1.5% + ₦100, capped ₦2,000).' },
+              { step: '03', text: `Crenelle keeps ${settings?.platform_fee_percent ?? 5}% as a platform fee from the gross amount.` },
+              { step: '04', text: `You receive ${100 - (settings?.platform_fee_percent ?? 5)}% of the gross ticket price.` },
+              { step: '05', text: 'Paystack settles funds to your bank account on the next business day (T+1).' },
+            ].map(({ step, text }) => (
+              <div key={step} className="flex items-start gap-4">
+                <span className="text-copper shrink-0">{step}</span>
+                <span className="leading-relaxed">{text}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-3 border border-border/40 bg-muted/30">
+            <p className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-wide">
+              Example: ₦10,000 ticket → Paystack fee ₦250 → Crenelle 5% (₦500) → You receive ₦9,500
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  )
+}

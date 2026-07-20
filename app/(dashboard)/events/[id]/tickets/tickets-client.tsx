@@ -33,6 +33,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [hasSubaccount, setHasSubaccount] = useState(false)
 
   async function loadData() {
     try {
@@ -81,6 +82,17 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
       })
 
       setTiers(mappedTiers)
+
+      // 3. Fetch payment settings to see if subaccount is connected
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: paySettings } = await supabase
+          .from('organizer_payment_settings')
+          .select('paystack_subaccount_code')
+          .eq('organizer_id', user.id)
+          .maybeSingle()
+        setHasSubaccount(!!paySettings?.paystack_subaccount_code)
+      }
     } finally {
       setLoading(false)
     }
@@ -339,7 +351,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
           <DialogHeader>
             <DialogTitle className="font-display text-3xl uppercase text-foreground">Add Ticket Tier</DialogTitle>
           </DialogHeader>
-          <TierForm onSubmit={handleAdd} loading={isSaving} prefix="add" />
+          <TierForm onSubmit={handleAdd} loading={isSaving} prefix="add" hasSubaccount={hasSubaccount} />
         </DialogContent>
       </Dialog>
 
@@ -354,6 +366,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
               onSubmit={handleUpdate}
               loading={isSaving}
               prefix="edit"
+              hasSubaccount={hasSubaccount}
               defaultValues={{
                 name: editTier.name,
                 price: editTier.price / 100, // Show in NGN
@@ -387,11 +400,13 @@ function TierForm({
   onSubmit,
   loading,
   prefix,
+  hasSubaccount,
   defaultValues,
 }: {
   onSubmit: (f: FormData) => void
   loading: boolean
   prefix: string
+  hasSubaccount: boolean
   defaultValues?: {
     name: string
     price: number
@@ -401,10 +416,21 @@ function TierForm({
   }
 }) {
   const [hasCap, setHasCap] = useState(defaultValues?.has_capacity ?? false)
+  const [priceValue, setPriceValue] = useState(defaultValues?.price ?? 0)
 
   return (
     <form action={onSubmit} className="flex flex-col gap-5 mt-2">
       <input type="hidden" name="has_capacity" value={hasCap ? 'true' : 'false'} />
+
+      {priceValue > 0 && !hasSubaccount && (
+        <div className="flex items-start gap-2.5 p-3.5 border border-amber-500/20 bg-amber-500/5 text-amber-600 font-mono text-[10px] uppercase tracking-wide leading-relaxed">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+          <div>
+            <span className="font-bold">Warning:</span> You haven't connected a bank account. Guests cannot buy paid tickets until a payout account is linked in settings.
+            <a href="/settings/payments" target="_blank" rel="noopener noreferrer" className="block text-copper underline mt-1 hover:text-copper/80">Connect bank account →</a>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <label htmlFor={`${prefix}-t-name`} className={labelCls}>Tier Name *</label>
@@ -427,7 +453,8 @@ function TierForm({
             type="number"
             min="0"
             step="0.01"
-            defaultValue={defaultValues?.price ?? 0}
+            value={priceValue}
+            onChange={(e) => setPriceValue(Number(e.target.value) || 0)}
             required
             className={fieldCls}
             placeholder="0.00"

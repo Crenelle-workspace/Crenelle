@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Pencil, Trash2, Save, X, Copy, Lock, Globe, Mail, Send, Image as ImageIcon } from 'lucide-react'
+import { Pencil, Trash2, Save, X, Copy, Lock, Globe, Mail, Send, Image as ImageIcon, TrendingUp } from 'lucide-react'
 import { updateEvent, deleteEvent } from '@/app/actions/events'
 import { sendReminderEmails } from '@/app/actions/registrations'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,13 @@ export default function EventOverviewPage() {
   const [regCounts, setRegCounts] = useState({ pending: 0, accepted: 0, rejected: 0 })
   const [canEdit, setCanEdit] = useState(false)
 
+  // Revenue summary (paid tickets)
+  const [revenue, setRevenue] = useState<{
+    totalKobo: number
+    paidCount: number
+    pendingCount: number
+  } | null>(null)
+
   useEffect(() => {
     const supabase = createClient()
 
@@ -76,6 +83,24 @@ export default function EventOverviewPage() {
 
     loadEvent()
     loadRegCounts()
+
+    // Load revenue summary for paid events
+    async function loadRevenue() {
+      const { data } = await supabase
+        .from('payments')
+        .select('amount_kobo, status')
+        .eq('event_id', id)
+      if (data && data.length > 0) {
+        const paid = data.filter((p) => p.status === 'paid')
+        const pending = data.filter((p) => p.status === 'pending')
+        setRevenue({
+          totalKobo: paid.reduce((sum, p) => sum + (p.amount_kobo ?? 0), 0),
+          paidCount: paid.length,
+          pendingCount: pending.length,
+        })
+      }
+    }
+    loadRevenue()
 
     // Poll every 10s — guarantees status badge updates without Supabase Realtime
     const poll = setInterval(() => { loadEvent(); loadRegCounts() }, 10000)
@@ -549,6 +574,49 @@ export default function EventOverviewPage() {
             </div>
           )}
         </div>
+
+        {/* ── Revenue Summary Card (only when paid tickets exist) ── */}
+        {revenue && revenue.paidCount > 0 && (
+          <div className="brutalist-card">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b-2 border-foreground/10">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-copper">REVENUE_SUMMARY</p>
+              <TrendingUp className="h-3.5 w-3.5 text-copper" />
+            </div>
+
+            {/* Total collected */}
+            <div className="mb-4">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/40 mb-1">Total collected</p>
+              <p className="font-display text-4xl text-admitted">
+                ₦{(revenue.totalKobo / 100).toLocaleString('en-NG')}
+              </p>
+            </div>
+
+            {/* Ticket breakdown */}
+            <div className="grid grid-cols-2 gap-px bg-foreground/10">
+              <div className="bg-background p-3 text-center">
+                <p className="font-display text-2xl text-admitted">{revenue.paidCount}</p>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50">Paid</p>
+              </div>
+              <div className="bg-background p-3 text-center">
+                <p className="font-display text-2xl text-signal">{revenue.pendingCount}</p>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50">Pending</p>
+              </div>
+            </div>
+
+            <div className="mt-4 border-t border-foreground/10 pt-3 flex items-center justify-between">
+              <p className="font-mono text-[9px] text-foreground/30 uppercase tracking-wide">
+                Settlement T+1 via Paystack · NGN
+              </p>
+              <a
+                href={`/api/payments/export?event_id=${id}`}
+                download
+                className="font-mono text-[9px] uppercase tracking-widest text-copper hover:text-copper/85 border border-copper/20 hover:border-copper/45 px-2.5 py-1.5 transition-all hover:bg-copper/5 shrink-0"
+              >
+                EXPORT_CSV
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
