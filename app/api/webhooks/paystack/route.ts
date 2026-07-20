@@ -57,7 +57,9 @@ export async function POST(request: NextRequest) {
       return handleChargeFailed(event, supabase)
 
     case 'transfer.reversed':
-      return handleTransferReversed(event, supabase)
+      // Log the reversed transfer, but do NOT cancel guest tickets (payout failures only)
+      console.warn('[Paystack Webhook] Payout transfer reversed:', event.data.reference)
+      return NextResponse.json({ received: true }, { status: 200 })
 
     default:
       // Acknowledge all other events (Paystack retries unacknowledged ones)
@@ -100,18 +102,24 @@ async function handleChargeSuccess(
       return NextResponse.json({ received: true, skipped: 'already_processed' }, { status: 200 })
     }
 
-    // 3. Fraud check: verify amount matches what we expected
-    if (amount !== payment.amount_kobo) {
-      Sentry.captureMessage('[Paystack Webhook] Amount mismatch — possible tampering', {
+    // 3. Fraud check: verify amount and currency match what we expected
+    if (amount !== payment.amount_kobo || event.data.currency !== payment.currency) {
+      Sentry.captureMessage('[Paystack Webhook] Amount or currency mismatch — possible tampering', {
         level: 'error',
-        extra: { reference, expected: payment.amount_kobo, received: amount },
+        extra: {
+          reference,
+          expectedAmount: payment.amount_kobo,
+          receivedAmount: amount,
+          expectedCurrency: payment.currency,
+          receivedCurrency: event.data.currency,
+        },
       })
       // Mark as failed — do NOT activate the invitation
       await supabase
         .from('payments')
         .update({ status: 'failed', webhook_received_at: new Date().toISOString() })
         .eq('paystack_reference', reference)
-      return NextResponse.json({ error: 'Amount mismatch' }, { status: 200 }) // still 200 to stop retries
+      return NextResponse.json({ error: 'Amount/currency mismatch' }, { status: 200 }) // still 200 to stop retries
     }
 
     // 4. Update payment record: mark as paid
@@ -183,7 +191,28 @@ async function handleChargeSuccess(
         Sentry.captureException(invError, {
           extra: { reference, attendeeId, context: 'paystack_webhook_create_invitation' },
         })
-        return NextResponse.json({ error: 'Failed to create invitation' }, { status: 500 })
+
+        // Gracefully handle database trigger capacity block
+        // Update attendee to waitlist so we keep record of them
+        await supabase
+          .from('attendees')
+          .update({ registration_status: 'waitlist' })
+          .eq('id', attendeeId)
+
+        // Update payment metadata to indicate overcapacity
+        const currentMeta = payment.metadata as Record<string, unknown> || {}
+        await supabase
+          .from('payments')
+          .update({
+            metadata: { ...currentMeta, overcapacity: true, error: invError.message },
+          })
+          .eq('paystack_reference', reference)
+
+        // Return 200 OK to stop Paystack retry storming
+        return NextResponse.json({
+          received: true,
+          warning: 'Ticket capacity exceeded. Payer registered to waitlist.',
+        }, { status: 200 })
       }
 
       invitationId = newInvitation.id
@@ -285,42 +314,5 @@ async function handleChargeFailed(
   return NextResponse.json({ received: true }, { status: 200 })
 }
 
-// ── transfer.reversed ─────────────────────────────────────────
-
-async function handleTransferReversed(
-  event: PaystackWebhookEvent,
-  supabase: ReturnType<typeof createAdminClient>
-): Promise<NextResponse> {
-  const { reference } = event.data
-
-  try {
-    // Mark payment as refunded
-    const { data: payment } = await supabase
-      .from('payments')
-      .update({
-        status: 'refunded',
-        webhook_received_at: new Date().toISOString(),
-      })
-      .eq('paystack_reference', reference)
-      .select('id, event_id, attendee_id')
-      .maybeSingle()
-
-    // Cancel the associated invitation if one exists
-    if (payment?.attendee_id) {
-      await supabase
-        .from('invitations')
-        .update({
-          status: 'cancelled',
-          payment_status: 'refunded',
-        })
-        .eq('attendee_id', payment.attendee_id)
-        .eq('event_id', payment.event_id)
-    }
-  } catch (err) {
-    Sentry.captureException(err, {
-      extra: { reference, context: 'paystack_webhook_transfer_reversed' },
-    })
-  }
-
-  return NextResponse.json({ received: true }, { status: 200 })
-}
+// handleTransferReversed is deprecated and no longer used to avoid cancelling guest tickets on payout failure.
+// Payout reversals are instead logged/warned at the switch-case routing level.

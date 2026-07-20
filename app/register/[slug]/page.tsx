@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { CalendarDays, MapPin, Clock, CheckCircle2, XCircle, Users, CreditCard, AlertTriangle } from 'lucide-react'
+import { CalendarDays, MapPin, Clock, CheckCircle2, XCircle, Users, CreditCard, AlertTriangle, Loader2 } from 'lucide-react'
 import { submitRegistration } from '@/app/actions/registrations'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { toast } from 'sonner'
@@ -39,6 +39,9 @@ export default function PublicRegistrationPage() {
   const paymentStatus = searchParams.get('payment')
   const paymentRef = searchParams.get('reference')
 
+  const [verifyingPayment, setVerifyingPayment] = useState(false)
+  const [verifiedPaymentStatus, setVerifiedPaymentStatus] = useState<'paid' | 'pending' | 'failed' | 'not_found' | null>(null)
+
   useEffect(() => {
     async function loadEvent() {
       try {
@@ -63,6 +66,49 @@ export default function PublicRegistrationPage() {
       setSelectedTierId(event.tiers[0].id)
     }
   }, [event])
+
+  useEffect(() => {
+    if (!paymentRef) return
+
+    setVerifyingPayment(true)
+    let pollInterval: NodeJS.Timeout
+
+    async function checkStatus() {
+      try {
+        const res = await fetch(`/api/payments/status?reference=${paymentRef}`)
+        if (!res.ok) throw new Error()
+        const json = await res.json()
+
+        if (json.status === 'paid') {
+          setVerifiedPaymentStatus('paid')
+          setVerifyingPayment(false)
+          clearInterval(pollInterval)
+        } else if (json.status === 'failed' || json.status === 'abandoned') {
+          setVerifiedPaymentStatus('failed')
+          setVerifyingPayment(false)
+          clearInterval(pollInterval)
+        } else {
+          setVerifiedPaymentStatus('pending')
+        }
+      } catch {
+        // Keep polling
+      }
+    }
+
+    checkStatus()
+
+    pollInterval = setInterval(checkStatus, 3000)
+
+    const timeout = setTimeout(() => {
+      clearInterval(pollInterval)
+      setVerifyingPayment(false)
+    }, 45000)
+
+    return () => {
+      clearInterval(pollInterval)
+      clearTimeout(timeout)
+    }
+  }, [paymentRef])
 
   async function handleSubmit(formData: FormData) {
     if (isSubmitting.current || !event) return
@@ -163,8 +209,26 @@ export default function PublicRegistrationPage() {
   // Registration full
   const isFull = event.max_registrations !== null && event.registration_count >= event.max_registrations
 
-  // Paystack payment success (redirected back from Paystack)
-  if (paymentStatus === 'success' || paymentRef) {
+  // Paystack verification loader screen
+  if (paymentRef && verifyingPayment && verifiedPaymentStatus !== 'paid' && verifiedPaymentStatus !== 'failed') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="border-2 border-foreground/20 bg-secondary/5 p-8">
+            <Loader2 className="h-16 w-16 text-signal mx-auto mb-6 animate-spin" />
+            <h1 className="font-display text-4xl uppercase text-foreground mb-3">VERIFYING PAYMENT</h1>
+            <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
+              Checking transaction status for reference <span className="font-bold text-foreground">{paymentRef}</span>.
+              Please do not close this window.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Paystack payment success (redirected back from Paystack and verified)
+  if (verifiedPaymentStatus === 'paid') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="max-w-md w-full text-center">
@@ -186,8 +250,8 @@ export default function PublicRegistrationPage() {
     )
   }
 
-  // Paystack payment failed
-  if (paymentStatus === 'failed') {
+  // Paystack payment failed (redirected or verified status is failed)
+  if (paymentStatus === 'failed' || verifiedPaymentStatus === 'failed') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="max-w-md w-full text-center">

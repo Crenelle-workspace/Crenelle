@@ -175,35 +175,12 @@ CREATE POLICY "Members can read payments for co-hosted events"
 
 -- ── 7. updated_at triggers ────────────────────────────────────
 
--- Reuse the pattern if a generic updated_at trigger function exists,
--- otherwise create a local one scoped to these two tables.
-
-DO $$
-BEGIN
-  -- Create function only if it doesn't already exist (may exist from earlier migrations)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public'
-      AND p.proname = 'set_updated_at'
-  ) THEN
-    EXECUTE $func$
-      CREATE OR REPLACE FUNCTION public.set_updated_at()
-      RETURNS TRIGGER LANGUAGE plpgsql AS $$
-      BEGIN
-        NEW.updated_at = now();
-        RETURN NEW;
-      END;
-      $$;
-    $func$;
-  END IF;
-END;
-$$;
+-- Reuse the generic public.handle_updated_at() trigger function.
 
 CREATE TRIGGER payments_updated_at
   BEFORE UPDATE ON public.payments
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 CREATE TRIGGER organizer_payment_settings_updated_at
   BEFORE UPDATE ON public.organizer_payment_settings
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();

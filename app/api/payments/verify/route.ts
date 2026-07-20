@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   // 1. Check our DB first (fast path — webhook may have already processed it)
   const { data: payment, error: dbError } = await supabase
     .from('payments')
-    .select('status, event_id, attendee_id, ticket_tier_id, amount_kobo, payer_email, payer_name, metadata')
+    .select('status, event_id, attendee_id, ticket_tier_id, amount_kobo, currency, payer_email, payer_name, metadata')
     .eq('paystack_reference', reference)
     .maybeSingle()
 
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const meta = payment.metadata as Record<string, string> | null
     const slug = meta?.event_slug ?? null
     const successUrl = slug
-      ? `${appUrl}/register/${slug}/success?reference=${reference}`
+      ? `${appUrl}/register/${slug}?payment=success&reference=${reference}`
       : `${appUrl}/?payment=success`
     return NextResponse.redirect(successUrl)
   }
@@ -77,6 +77,35 @@ export async function GET(request: NextRequest) {
     // Webhook may not have fired yet — process the payment here as a fallback
     // This mirrors the webhook handler logic
     if (payment && payment.status === 'pending') {
+      // Fraud check: verify amount and currency match
+      if (txn.amount !== payment.amount_kobo || txn.currency !== payment.currency) {
+        Sentry.captureMessage('[Payment Verify] Amount or currency mismatch during verify fallback', {
+          level: 'error',
+          extra: {
+            reference,
+            expectedAmount: payment.amount_kobo,
+            receivedAmount: txn.amount,
+            expectedCurrency: payment.currency,
+            receivedCurrency: txn.currency,
+          },
+        })
+
+        await supabase
+          .from('payments')
+          .update({
+            status: 'failed',
+            webhook_received_at: new Date().toISOString(),
+          })
+          .eq('paystack_reference', reference)
+
+        const meta = payment.metadata as Record<string, string> | null
+        const slug = meta?.event_slug ?? null
+        const failUrl = slug
+          ? `${appUrl}/register/${slug}?payment=failed&reason=amount_mismatch`
+          : `${appUrl}/?payment=failed&reason=amount_mismatch`
+        return NextResponse.redirect(failUrl)
+      }
+
       try {
         // Update payment record
         await supabase
@@ -130,7 +159,7 @@ export async function GET(request: NextRequest) {
     const meta = payment?.metadata as Record<string, string> | null
     const slug = meta?.event_slug ?? null
     const successUrl = slug
-      ? `${appUrl}/register/${slug}/success?reference=${reference}`
+      ? `${appUrl}/register/${slug}?payment=success&reference=${reference}`
       : `${appUrl}/?payment=success`
     return NextResponse.redirect(successUrl)
   }
@@ -159,7 +188,7 @@ export async function GET(request: NextRequest) {
   const meta = payment?.metadata as Record<string, string> | null
   const slug = meta?.event_slug ?? null
   const pendingUrl = slug
-    ? `${appUrl}/register/${slug}/success?reference=${reference}&status=pending`
+    ? `${appUrl}/register/${slug}?payment=pending&reference=${reference}`
     : `${appUrl}/?payment=pending`
   return NextResponse.redirect(pendingUrl)
 }

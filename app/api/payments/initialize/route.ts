@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   // 1. Verify the event exists, is open, and is published/live
   const { data: event, error: eventError } = await supabase
     .from('events')
-    .select('id, organizer_id, name, event_type, status, max_registrations')
+    .select('id, organizer_id, name, event_type, status, max_registrations, slug')
     .eq('id', event_id)
     .single()
 
@@ -140,33 +140,64 @@ export async function POST(request: NextRequest) {
 
   const { platformFeeKobo, organiserAmountKobo } = calculateSplit(tier.price, platformFeePercent)
 
-  // 7. Create the attendee record (pending, will be accepted on payment success)
-  const { data: attendee, error: attendeeError } = await supabase
+  // 7. Create or reuse the attendee record (pending, will be accepted on payment success)
+  const normalizedEmail = payer_email.trim().toLowerCase()
+  const { data: existingPendingAttendee } = await supabase
     .from('attendees')
-    .insert({
-      event_id,
-      name: payer_name,
-      email: payer_email,
-      phone: payer_phone ?? null,
-      source: 'public_registration',
-      registration_status: 'pending',
-      ticket_tier_id,
-    })
     .select('id')
-    .single()
+    .eq('event_id', event_id)
+    .eq('email', normalizedEmail)
+    .eq('registration_status', 'pending')
+    .maybeSingle()
 
-  if (attendeeError) {
-    // Handle duplicate registration
-    if (attendeeError.code === '23505') {
-      return NextResponse.json(
-        { error: 'You have already registered for this event with this email' },
-        { status: 409 }
-      )
+  let attendeeId = existingPendingAttendee?.id
+
+  if (!attendeeId) {
+    const { data: attendee, error: attendeeError } = await supabase
+      .from('attendees')
+      .insert({
+        event_id,
+        name: payer_name,
+        email: normalizedEmail,
+        phone: payer_phone ?? null,
+        source: 'public_registration',
+        registration_status: 'pending',
+        ticket_tier_id,
+      })
+      .select('id')
+      .single()
+
+    if (attendeeError) {
+      // Handle duplicate registration (e.g. they are already accepted or waitlisted)
+      if (attendeeError.code === '23505') {
+        return NextResponse.json(
+          { error: 'You have already registered for this event with this email' },
+          { status: 409 }
+        )
+      }
+      Sentry.captureException(attendeeError, {
+        extra: { event_id, context: 'payment_initialize_attendee_insert' },
+      })
+      return NextResponse.json({ error: 'Failed to create registration' }, { status: 500 })
     }
-    Sentry.captureException(attendeeError, {
-      extra: { event_id, context: 'payment_initialize_attendee_insert' },
-    })
-    return NextResponse.json({ error: 'Failed to create registration' }, { status: 500 })
+    attendeeId = attendee.id
+  } else {
+    // Update existing pending attendee with potentially new details
+    const { error: attendeeUpdateError } = await supabase
+      .from('attendees')
+      .update({
+        name: payer_name,
+        phone: payer_phone ?? null,
+        ticket_tier_id,
+      })
+      .eq('id', attendeeId)
+
+    if (attendeeUpdateError) {
+      Sentry.captureException(attendeeUpdateError, {
+        extra: { event_id, attendeeId, context: 'payment_initialize_attendee_update' },
+      })
+      return NextResponse.json({ error: 'Failed to update registration' }, { status: 500 })
+    }
   }
 
   // 8. Generate a unique payment reference
@@ -177,7 +208,7 @@ export async function POST(request: NextRequest) {
     .from('payments')
     .insert({
       event_id,
-      attendee_id: attendee.id,
+      attendee_id: attendeeId,
       ticket_tier_id,
       paystack_reference: reference,
       amount_kobo: tier.price,
@@ -189,6 +220,7 @@ export async function POST(request: NextRequest) {
       payer_name,
       metadata: {
         event_name: event.name,
+        event_slug: event.slug,
         tier_name: tier.name,
         organiser_id: event.organizer_id,
       },
@@ -199,7 +231,7 @@ export async function POST(request: NextRequest) {
       extra: { event_id, reference, context: 'payment_initialize_insert' },
     })
     // Clean up the attendee record we just created
-    await supabase.from('attendees').delete().eq('id', attendee.id)
+    await supabase.from('attendees').delete().eq('id', attendeeId)
     return NextResponse.json({ error: 'Failed to create payment record' }, { status: 500 })
   }
 
@@ -218,7 +250,7 @@ export async function POST(request: NextRequest) {
       event_name: event.name,
       tier_id: ticket_tier_id,
       tier_name: tier.name,
-      attendee_id: attendee.id,
+      attendee_id: attendeeId,
       payer_name,
     },
   })
@@ -229,7 +261,7 @@ export async function POST(request: NextRequest) {
       .from('payments')
       .update({ status: 'failed' })
       .eq('paystack_reference', reference)
-    await supabase.from('attendees').delete().eq('id', attendee.id)
+    await supabase.from('attendees').delete().eq('id', attendeeId)
 
     Sentry.captureMessage('[Paystack Init] Failed to initialize Paystack transaction', {
       level: 'error',
