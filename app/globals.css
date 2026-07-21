@@ -106,32 +106,32 @@
 
 /* ── Light mode ── */
 .light {
-  --background:            #F4F1EC;
+  --background:            #FAFAFA;
   --foreground:            #0C0B09;
   --card:                  #FFFFFF;
   --card-foreground:       #0C0B09;
   --popover:               #FFFFFF;
   --popover-foreground:    #0C0B09;
   --primary:               #0C0B09;
-  --primary-foreground:    #F4F1EC;
-  --secondary:             #EAE6DF;
+  --primary-foreground:    #FAFAFA;
+  --secondary:             #F2F2F2;
   --secondary-foreground:  #2F2B25;
-  --muted:                 #EAE6DF;
+  --muted:                 #F2F2F2;
   --muted-foreground:      #5C5850;
   --accent:                #BF8430;
   --accent-foreground:     #0C0B09;
   --destructive:           #7A2E18;
-  --border:                rgba(12,11,9,0.14);
-  --input:                 #EAE6DF;
+  --border:                rgba(12,11,9,0.08);
+  --input:                 #F2F2F2;
   --ring:                  #BF8430;
 
   --sidebar:                     #FFFFFF;
   --sidebar-foreground:          #0C0B09;
   --sidebar-primary:             #0C0B09;
-  --sidebar-primary-foreground:  #F4F1EC;
-  --sidebar-accent:              #EAE6DF;
+  --sidebar-primary-foreground:  #FAFAFA;
+  --sidebar-accent:              #F2F2F2;
   --sidebar-accent-foreground:   #0C0B09;
-  --sidebar-border:              rgba(12,11,9,0.12);
+  --sidebar-border:              rgba(12,11,9,0.06);
   --sidebar-ring:                #BF8430;
 
   --scrollbar-thumb:       rgba(191,132,48,0.20);
