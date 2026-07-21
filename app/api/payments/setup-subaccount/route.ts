@@ -53,8 +53,9 @@ export async function POST(request: NextRequest) {
     const { data, error } = await resolveAccountNumber(account_number, bank_code)
 
     if (error || !data) {
+      console.error('[Setup Subaccount] Account resolution failed:', error)
       return NextResponse.json(
-        { error: 'Could not verify account. Please check the account number and bank.' },
+        { error: error ?? 'Could not verify account. Please check the account number and bank.' },
         { status: 422 }
       )
     }
