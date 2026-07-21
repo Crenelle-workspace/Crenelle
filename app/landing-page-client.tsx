@@ -24,37 +24,6 @@ interface LandingPageClientProps {
   user: any
 }
 
-// ── Showcase events featuring high-fidelity photography ──
-const EVENT_SAMPLES = {
-  salon: {
-    title: 'Aesthetics & The Human Form',
-    date: 'Friday, Oct 12 · 7:00 PM',
-    price: '$50',
-    type: 'Art Exhibition',
-    bgClass: 'bg-stone-105 dark:bg-[#181614] border-stone-200 dark:border-stone-850 text-stone-900 dark:text-stone-100',
-    accentClass: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/15',
-    imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=400&q=80',
-  },
-  dinner: {
-    title: 'The Founders’ Roundtable',
-    date: 'Thursday, Sep 28 · 6:30 PM',
-    price: '$120',
-    type: 'Private Dinner',
-    bgClass: 'bg-amber-50/70 dark:bg-[#191714] border-amber-900/10 dark:border-amber-900/30 text-amber-950 dark:text-amber-100/90',
-    accentClass: 'text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/15',
-    imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=400&q=80',
-  },
-  rave: {
-    title: 'CYBERNETIC WAREHOUSE 09',
-    date: 'Saturday, Nov 03 · 11:00 PM',
-    price: '$25',
-    type: 'Music Gathering',
-    bgClass: 'bg-zinc-100 dark:bg-[#111111] border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100',
-    accentClass: 'text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/15',
-    imageUrl: 'https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?auto=format&fit=crop&w=400&q=80',
-  },
-}
-
 // ── Motion Variants for Staggered Load-Ins ──
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -80,8 +49,8 @@ const itemVariants = {
   },
 }
 
-// ── 3D Card Proximity Tilt and Glare Wrapper ──
-function TiltEventCard({ children, className, bgClass }: { children: React.ReactNode; className?: string; bgClass?: string }) {
+// ── 3D Card Proximity Tilt and Glare Wrapper (Event Showcase cards) ──
+function TiltEventCard({ children, imageUrl, className, bgClass }: { children: React.ReactNode; imageUrl: string; className?: string; bgClass?: string }) {
   const [rotateX, setRotateX] = useState(0)
   const [rotateY, setRotateY] = useState(0)
   const [glareX, setGlareX] = useState(50)
@@ -96,15 +65,12 @@ function TiltEventCard({ children, className, bgClass }: { children: React.React
     const mouseX = e.clientX - rect.left
     const mouseY = e.clientY - rect.top
 
-    // Percentages relative to center (-0.5 to 0.5)
     const percentX = (mouseX / width) - 0.5
     const percentY = (mouseY / height) - 0.5
 
-    // Slight 3D rotation angles
-    setRotateX(-percentY * 10)
-    setRotateY(percentX * 10)
+    setRotateX(-percentY * 8)
+    setRotateY(percentX * 8)
 
-    // Glare coordinates
     setGlareX((mouseX / width) * 100)
     setGlareY((mouseY / height) * 100)
   }
@@ -126,31 +92,46 @@ function TiltEventCard({ children, className, bgClass }: { children: React.React
         animate={{
           rotateX: isHovered ? rotateX : 0,
           rotateY: isHovered ? rotateY : 0,
-          scale: isHovered ? 1.015 : 1,
+          scale: isHovered ? 1.01 : 1,
         }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         className={cn(
-          "relative rounded-3xl border p-5 select-none shadow-[0_8px_30px_rgba(0,0,0,0.015)] dark:shadow-none transition-colors duration-300 w-full overflow-hidden",
+          "relative rounded-3xl border border-border/40 dark:border-border/10 overflow-hidden min-h-[320px] flex flex-col justify-end p-6 select-none shadow-[0_8px_30px_rgba(0,0,0,0.015)] dark:shadow-none transition-colors duration-300 w-full group",
           bgClass,
           className
         )}
       >
-        {/* Glossy Sheen Overlay */}
+        {/* Background Event Image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src={imageUrl}
+            alt="Event cover banner"
+            className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-102 transition-all duration-700"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/50 to-black/10 z-10" />
+        </div>
+
+        {/* Glare sheen */}
         {isHovered && (
           <div
             className="pointer-events-none absolute inset-0 z-30 transition-opacity duration-300"
             style={{
-              background: `radial-gradient(circle 140px at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.08), transparent 85%)`,
+              background: `radial-gradient(circle 200px at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.08), transparent 85%)`,
             }}
           />
         )}
-        {children}
+
+        {/* Dynamic Card Content Overlaid on Dark Gradient */}
+        <div className="relative z-20 text-stone-100 space-y-2 text-left">
+          {children}
+        </div>
       </motion.div>
     </div>
   )
 }
 
-// ── Bento Border Spotlight Glow Card ──
+// ── Bento Border Spotlight Glow Card (Features Cards) ──
 function SpotlightCard({ children, className, bgClass }: { children: React.ReactNode; className?: string; bgClass?: string }) {
   const [mouseX, setMouseX] = useState(0)
   const [mouseY, setMouseY] = useState(0)
@@ -219,7 +200,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
 
           <div className="hidden md:flex items-center gap-8 font-semibold text-xs">
             {[
-              ['#hero', 'Overview'],
+              ['#showcase', 'Showcase'],
               ['#features', 'Features'],
               ['#process', 'Process'],
             ].map(([href, label]) => (
@@ -246,195 +227,151 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
         </div>
       </nav>
 
-      {/* ── BENTO GRID HERO SECTION ── */}
-      <section id="hero" className="min-h-screen pt-32 pb-24 px-6 md:px-12 flex flex-col justify-center relative z-10 max-w-7xl mx-auto w-full">
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full"
-        >
+      {/* ── IMMERSIVE SPACIOUS HERO SECTION ── */}
+      <section id="hero" className="min-h-[85vh] pt-32 pb-20 px-6 md:px-12 flex flex-col items-center justify-center text-center relative z-10 max-w-5xl mx-auto w-full">
+        <div className="space-y-8">
+          <motion.h1
+            initial={{ opacity: 0, y: 25 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-5xl sm:text-7xl lg:text-8xl font-black leading-[1.02] tracking-tight text-foreground"
+          >
+            Gathering is an art.<br />
+            Host it flawlessly.
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+          >
+            Crenelle is the elegant toolkit for premium event hosting. Design custom ticket pages, collect payouts via Paystack, broadcast branded email invites, and manage door check-ins with ease.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-4"
+          >
+            <Link
+              href={user ? '/events' : '/login'}
+              className="inline-flex items-center gap-2.5 bg-foreground text-background text-xs font-bold px-8 py-3.5 rounded-full hover:bg-copper hover:text-white transition-all duration-300 shadow-lg shadow-black/5"
+            >
+              Create Your Event
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="#showcase"
+              className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground px-5 py-3 transition-colors duration-300"
+            >
+              Explore formats
+            </a>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── EVENT FORMAT BENTO GRID SHOWCASE ── */}
+      <section id="showcase" className="py-24 px-6 md:px-12 relative border-t border-border/40">
+        <div className="max-w-7xl mx-auto space-y-16">
           
-          {/* Cell 1: Headline Box */}
-          <motion.div variants={itemVariants} className="md:col-span-2 md:row-span-2">
-            <SpotlightCard className="h-full min-h-[380px] md:min-h-full p-8 flex flex-col justify-between">
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1 border border-copper/20 bg-copper/5 rounded-full font-mono text-[9px] uppercase tracking-wider text-copper">
-                  <Sparkles className="w-3.5 h-3.5 text-copper" />
-                  <span>The canvas for creative hosts</span>
-                </div>
-                
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight text-foreground">
-                  Gathering is an art.<br />
-                  Host it flawlessly.
-                </h1>
-                
-                <p className="text-sm text-muted-foreground max-w-lg leading-relaxed">
-                  Crenelle is the elegant toolkit for memorable event hosting. Design custom ticket tiers, collect payments via Paystack, send customized email invitations, and manage door check-ins with ease.
+          <div className="max-w-xl space-y-4">
+            <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground">
+              Designed for every format.
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              From creative salons to keynote summits, Crenelle adapts to how you bring people together.
+            </p>
+          </div>
+
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-100px" }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full"
+          >
+            {/* Cell 1: Salons (Spans 2 columns) */}
+            <motion.div variants={itemVariants} className="md:col-span-2">
+              <TiltEventCard imageUrl="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&w=800&q=80">
+                <span className="text-[9px] uppercase font-bold tracking-wider text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-full inline-block">
+                  Art & Culture
+                </span>
+                <h3 className="text-xl font-bold font-sans text-stone-100">Creative Salons & Exhibitions</h3>
+                <p className="text-xs text-stone-300/80 leading-relaxed max-w-md">
+                  Design clean event cards that act as a canvas, framing your exhibition details with clean spacing.
                 </p>
-              </div>
+              </TiltEventCard>
+            </motion.div>
 
-              <div className="flex flex-wrap gap-4 mt-8 relative z-20">
-                <Link
-                  href={user ? '/events' : '/login'}
-                  className="inline-flex items-center gap-2 bg-foreground text-background text-xs font-bold px-6 py-3 rounded-full hover:bg-copper hover:text-white transition-colors duration-300 shadow-md"
-                >
-                  Create Your Event
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <a
-                  href="#features"
-                  className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground px-5 py-3 transition-colors duration-300"
-                >
-                  Explore features
-                </a>
-              </div>
-            </SpotlightCard>
-          </motion.div>
-
-          {/* Cell 2: Salon Card */}
-          <motion.div variants={itemVariants}>
-            <TiltEventCard bgClass={EVENT_SAMPLES.salon.bgClass}>
-              <div className="space-y-3">
-                <div className="w-full h-24 rounded-2xl bg-stone-900/5 dark:bg-stone-900/50 relative overflow-hidden">
-                  <img 
-                    src={EVENT_SAMPLES.salon.imageUrl} 
-                    alt={EVENT_SAMPLES.salon.title} 
-                    className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105" 
-                  />
-                  <span className={cn("absolute bottom-2 left-2 text-[8px] font-bold px-2 py-0.5 rounded-full", EVENT_SAMPLES.salon.accentClass)}>
-                    {EVENT_SAMPLES.salon.type}
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold tracking-tight leading-snug">{EVENT_SAMPLES.salon.title}</h3>
-              </div>
-              <div className="flex justify-between items-center text-[10px] text-muted-foreground pt-3 mt-2 border-t border-border/20 dark:border-border/10">
-                <span>{EVENT_SAMPLES.salon.date.split(' · ')[0]}</span>
-                <strong className="text-foreground">{EVENT_SAMPLES.salon.price}</strong>
-              </div>
-            </TiltEventCard>
-          </motion.div>
-
-          {/* Cell 3: Midnight Rave Card */}
-          <motion.div variants={itemVariants}>
-            <TiltEventCard bgClass={EVENT_SAMPLES.rave.bgClass}>
-              <div className="space-y-3">
-                <div className="w-full h-24 rounded-2xl bg-zinc-900/5 dark:bg-zinc-900/50 relative overflow-hidden">
-                  <img 
-                    src={EVENT_SAMPLES.rave.imageUrl} 
-                    alt={EVENT_SAMPLES.rave.title} 
-                    className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105" 
-                  />
-                  <span className={cn("absolute bottom-2 left-2 text-[8px] font-bold px-2 py-0.5 rounded-full", EVENT_SAMPLES.rave.accentClass)}>
-                    {EVENT_SAMPLES.rave.type}
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold tracking-tight leading-snug font-mono">{EVENT_SAMPLES.rave.title}</h3>
-              </div>
-              <div className="flex justify-between items-center text-[10px] text-muted-foreground pt-3 mt-2 border-t border-border/20 dark:border-border/10 font-mono">
-                <span>{EVENT_SAMPLES.rave.date.split(' · ')[0]}</span>
-                <strong className="text-foreground">{EVENT_SAMPLES.rave.price}</strong>
-              </div>
-            </TiltEventCard>
-          </motion.div>
-
-          {/* Cell 4: Founders Dinner Card */}
-          <motion.div variants={itemVariants}>
-            <TiltEventCard bgClass={EVENT_SAMPLES.dinner.bgClass}>
-              <div className="space-y-3">
-                <div className="w-full h-24 rounded-2xl bg-amber-900/5 dark:bg-amber-900/50 relative overflow-hidden">
-                  <img 
-                    src={EVENT_SAMPLES.dinner.imageUrl} 
-                    alt={EVENT_SAMPLES.dinner.title} 
-                    className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105" 
-                  />
-                  <span className={cn("absolute bottom-2 left-2 text-[8px] font-bold px-2 py-0.5 rounded-full", EVENT_SAMPLES.dinner.accentClass)}>
-                    {EVENT_SAMPLES.dinner.type}
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold tracking-tight leading-snug">{EVENT_SAMPLES.dinner.title}</h3>
-              </div>
-              <div className="flex justify-between items-center text-[10px] text-muted-foreground pt-3 mt-2 border-t border-border/20 dark:border-border/10">
-                <span>{EVENT_SAMPLES.dinner.date.split(' · ')[0]}</span>
-                <strong className="text-foreground">{EVENT_SAMPLES.dinner.price}</strong>
-              </div>
-            </TiltEventCard>
-          </motion.div>
-
-          {/* Cell 5: Gate Access Status */}
-          <motion.div variants={itemVariants}>
-            <SpotlightCard className="h-full min-h-[240px]">
-              <div className="space-y-2">
-                <span className="text-[8px] font-mono text-muted-foreground tracking-wider uppercase block">Door Coordinator Client</span>
-                <div className="bg-background rounded-2xl p-3 border border-border/40 dark:border-border/10 flex items-center justify-between text-[11px] font-mono shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="font-bold text-foreground">Verified ticket</span>
-                  </div>
-                  <span className="text-emerald-500">ADMIT</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground leading-snug pt-1">
-                  Scanner links sync instantly with your organizer roster. No credentials or app setup required for staff.
+            {/* Cell 2: Raves (Spans 1 column) */}
+            <motion.div variants={itemVariants} className="md:col-span-1">
+              <TiltEventCard imageUrl="https://images.unsplash.com/photo-1574391884720-bbc3740c59d1?auto=format&fit=crop&w=800&q=80">
+                <span className="text-[9px] uppercase font-bold tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full inline-block">
+                  Late Night
+                </span>
+                <h3 className="text-xl font-bold font-sans text-stone-100">Warehouse Raves & Concerts</h3>
+                <p className="text-xs text-stone-300/80 leading-relaxed font-mono">
+                  Secure ticketing with strict double-scan protection.
                 </p>
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground pt-3 mt-2 border-t border-border/20 dark:border-border/10 font-mono">
-                <span>Door 1 Sync</span>
-                <strong className="text-foreground">142 / 150 Admitted</strong>
-              </div>
-            </SpotlightCard>
-          </motion.div>
+              </TiltEventCard>
+            </motion.div>
 
-          {/* Cell 6: Waitlist Cap Status */}
-          <motion.div variants={itemVariants}>
-            <SpotlightCard className="h-full min-h-[240px]">
-              <div className="space-y-2">
-                <span className="text-[8px] font-mono text-amber-500 tracking-wider uppercase block">Capacity limits</span>
-                <div className="space-y-1.5 font-sans">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span>Grand Gala Cap</span>
-                    <span className="text-amber-500 font-mono">LOCKED</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-900 rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-500 w-full" />
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground leading-snug pt-1">
-                  Enforce active capacity limits. Queue excess registrants into a waitlist and promote them as spots open.
+            {/* Cell 3: Dinners (Spans 1 column) */}
+            <motion.div variants={itemVariants} className="md:col-span-1">
+              <TiltEventCard imageUrl="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80">
+                <span className="text-[9px] uppercase font-bold tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full inline-block">
+                  Banquets
+                </span>
+                <h3 className="text-xl font-bold font-sans text-stone-100">Founders' Dinners & Feasts</h3>
+                <p className="text-xs text-stone-300/80 leading-relaxed">
+                  Broadcast personalized invitations directly to your guest list.
                 </p>
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground pt-3 mt-2 border-t border-border/20 dark:border-border/10 font-mono">
-                <span>Waitlist Queue</span>
-                <strong className="text-amber-500 font-sans">14 pending spots</strong>
-              </div>
-            </SpotlightCard>
-          </motion.div>
+              </TiltEventCard>
+            </motion.div>
 
-          {/* Cell 7: Paystack Gateway Cell */}
-          <motion.div variants={itemVariants}>
-            <SpotlightCard className="h-full min-h-[240px]">
-              <div className="space-y-2">
-                <span className="text-[8px] font-mono text-emerald-500 tracking-wider uppercase block">Payment gateway</span>
-                <div className="flex items-center gap-3 pt-2">
-                  <div className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-500">
-                    <CreditCard className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold leading-tight">Paystack Infrastructure</h4>
-                    <span className="text-[9px] text-muted-foreground uppercase">NGN & USD Ticket payouts</span>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground leading-snug pt-1">
-                  Collect payments globally. Funds are automatically transferred directly to your bank account.
+            {/* Cell 4: Workshops (Spans 2 columns) */}
+            <motion.div variants={itemVariants} className="md:col-span-2">
+              <TiltEventCard imageUrl="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80">
+                <span className="text-[9px] uppercase font-bold tracking-wider text-copper bg-copper/10 border border-copper/20 px-2.5 py-0.5 rounded-full inline-block">
+                  Classes
+                </span>
+                <h3 className="text-xl font-bold font-sans text-stone-100">Workshops & Panels</h3>
+                <p className="text-xs text-stone-300/80 leading-relaxed max-w-md">
+                  Collect registration fees in NGN or USD with automatic checkout validation settlements.
                 </p>
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground pt-3 mt-2 border-t border-border/20 dark:border-border/10 font-mono">
-                <span>Transfers</span>
-                <strong className="text-emerald-500 font-sans">Direct payout</strong>
-              </div>
-            </SpotlightCard>
-          </motion.div>
+              </TiltEventCard>
+            </motion.div>
 
-        </motion.div>
+            {/* Cell 5: Keynotes (Spans 2 columns) */}
+            <motion.div variants={itemVariants} className="md:col-span-2">
+              <TiltEventCard imageUrl="https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=800&q=80">
+                <span className="text-[9px] uppercase font-bold tracking-wider text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2.5 py-0.5 rounded-full inline-block">
+                  Conferences
+                </span>
+                <h3 className="text-xl font-bold font-sans text-stone-100">Technology Summits & Keynotes</h3>
+                <p className="text-xs text-stone-300/80 leading-relaxed max-w-xl">
+                  Coordinate large-scale registrations and automatically manage active capacity limits with waitlist triggers.
+                </p>
+              </TiltEventCard>
+            </motion.div>
+
+            {/* Cell 6: Brunches (Spans 1 column) */}
+            <motion.div variants={itemVariants} className="md:col-span-1">
+              <TiltEventCard imageUrl="https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80">
+                <span className="text-[9px] uppercase font-bold tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full inline-block">
+                  Socials
+                </span>
+                <h3 className="text-xl font-bold font-sans text-stone-100">Private Brunches & Meetups</h3>
+                <p className="text-xs text-stone-300/80 leading-relaxed">
+                  Design stylish weekend tables and social registration pages for your guests.
+                </p>
+              </TiltEventCard>
+            </motion.div>
+          </motion.div>
+          
+        </div>
       </section>
 
       {/* ── CAPABILITIES BENTO SHOWCASE ── */}
@@ -442,9 +379,6 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
         <div className="max-w-7xl mx-auto space-y-16">
           
           <div className="max-w-xl space-y-4">
-            <span className="font-mono text-[9px] font-bold text-copper uppercase tracking-widest">
-              Core Capabilities
-            </span>
             <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground">
               Highlights of the Crenelle suite.
             </h2>
@@ -590,11 +524,6 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center relative z-10">
           
           <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-copper/20 bg-copper/5 rounded-full font-mono text-[10px] uppercase tracking-wider text-copper">
-              <Shield className="w-3.5 h-3.5" />
-              <span>Door Management Security</span>
-            </div>
-
             <h2 className="text-3xl sm:text-5xl font-black leading-tight tracking-tight text-foreground">
               One-click usher scan clients.<br />
               <span className="text-copper">No passwords required.</span>
@@ -726,9 +655,6 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
         </div>
 
         <div className="relative z-10 max-w-3xl mx-auto space-y-8">
-          <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-copper">
-            Join Creative Creators Everywhere
-          </span>
           <h2 className="text-4xl sm:text-6xl font-black leading-[0.95] tracking-tight text-foreground">
             Focus on gathering.<br />
             We’ll manage the door.
@@ -772,6 +698,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
           <div className="flex flex-wrap gap-8 font-semibold text-xs">
             {[
               ['#hero', 'Overview'],
+              ['#showcase', 'Showcase'],
               ['#features', 'Features Grid'],
               ['#process', 'Operational Pipeline'],
             ].map(([href, label]) => (
