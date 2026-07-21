@@ -10,17 +10,21 @@ import {
   Users,
   CreditCard,
   Sparkles,
-  CheckCircle2,
   Calendar,
   MapPin,
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  Smartphone,
+  ShieldCheck,
+  Activity
 } from 'lucide-react'
 import { ModeToggle } from '@/components/mode-toggle'
 import { cn } from '@/lib/utils'
 import { TiltEventCard } from '@/components/landing/tilt-event-card'
 import { SpotlightCard } from '@/components/landing/spotlight-card'
 import { InteractiveTicketStack } from '@/components/landing/interactive-ticket-stack'
+import { FeaturesGrid } from '@/components/landing/features-grid'
+import { ProcessTimeline } from '@/components/landing/process-timeline'
 
 interface LandingPageClientProps {
   user: any
@@ -289,217 +293,101 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             </p>
           </div>
 
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-100px" }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            
-            {/* Bento 1: Ticketing & Payments */}
-            <motion.div variants={itemVariants}>
-              <SpotlightCard className="min-h-80">
-                <div className="space-y-4">
-                  <div className="w-10 h-10 rounded-xl bg-copper/10 flex items-center justify-center text-copper">
-                    <CreditCard className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-bold text-lg">Paystack Infrastructure</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Sell tickets in NGN or USD depending on your event needs. Manage ticket tier pricing and verify checkout transactions automatically.
-                    </p>
-                  </div>
-                </div>
-
-                {/* High Fidelity Mock */}
-                <div className="mt-6 border border-border/40 dark:border-border/10 rounded-xl p-4 bg-background/80 dark:bg-[#0A0908] space-y-3.5 shadow-xs">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-muted-foreground font-semibold">TICKET PRICING</span>
-                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 rounded-full font-bold">SECURED</span>
-                  </div>
-                  <div className="space-y-1.5 font-sans">
-                    <div className="flex justify-between text-xs">
-                      <span>VIP Member Tier</span>
-                      <strong className="text-foreground">₦150,000 / $120.00</strong>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span>General Admission</span>
-                      <strong className="text-foreground">₦50,000 / $50.00</strong>
-                    </div>
-                  </div>
-                  <div className="h-px bg-border/20 dark:bg-border/10" />
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Real-time billing checkout verification system</span>
-                  </div>
-                </div>
-              </SpotlightCard>
-            </motion.div>
-
-            {/* Bento 2: Branded Communications */}
-            <motion.div variants={itemVariants}>
-              <SpotlightCard className="min-h-80">
-                <div className="space-y-4">
-                  <div className="w-10 h-10 rounded-xl bg-copper/10 flex items-center justify-center text-copper">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-bold text-lg">Branded Outbox</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Set up custom sender display profiles and Reply-To parameters per event. Deliver invitations and verify delivery events via webhook metrics.
-                    </p>
-                  </div>
-                </div>
-
-                {/* High Fidelity Mock */}
-                <div className="mt-6 border border-border/40 dark:border-border/10 rounded-xl p-4 bg-background/80 dark:bg-[#0A0908] space-y-3 font-sans shadow-xs">
-                  <div className="space-y-1 text-[10px] border-b border-border/20 dark:border-border/10 pb-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">From Display Name:</span>
-                      <strong className="text-foreground">"Grand Meridian"</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Reply-To Address:</span>
-                      <strong className="text-foreground">organizer@gala.com</strong>
-                    </div>
-                  </div>
-                  <div className="bg-zinc-950 p-2 rounded-lg text-[9px] font-mono text-zinc-400 leading-normal border border-zinc-900">
-                    <span className="text-emerald-400">email.delivered</span> webhook dispatched to app database. 100% bounce-free audit logged.
-                  </div>
-                </div>
-              </SpotlightCard>
-            </motion.div>
-
-            {/* Bento 3: Waitlists & Registration Caps */}
-            <motion.div variants={itemVariants}>
-              <SpotlightCard className="min-h-80">
-                <div className="space-y-4">
-                  <div className="w-10 h-10 rounded-xl bg-copper/10 flex items-center justify-center text-copper">
-                    <Users className="w-5 h-5" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-bold text-lg">Capacity Waitlists</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Enforce strict registration limits automatically. Automatically move waitlisted guests to active seats when space becomes available.
-                    </p>
-                  </div>
-                </div>
-
-                {/* High Fidelity Mock */}
-                <div className="mt-6 border border-border/40 dark:border-border/10 rounded-xl p-4 bg-background/80 dark:bg-[#0A0908] space-y-3 font-sans shadow-xs">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-muted-foreground">REGISTRATION LOCK</span>
-                    <span className="text-[9px] text-amber-600 dark:text-amber-400 border border-amber-500/20 bg-amber-500/5 px-2 py-0.5 rounded-full font-bold">CAP REACHED</span>
-                  </div>
-                  
-                  {/* Visual meter */}
-                  <div className="space-y-2">
-                    <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-900 rounded-full overflow-hidden">
-                      <div className="h-full bg-amber-500 w-full" />
-                    </div>
-                    <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-                      <span>120 / 120 Attendees</span>
-                      <span className="text-amber-500 dark:text-amber-400 font-bold">14 on Waitlist</span>
-                    </div>
-                  </div>
-                </div>
-              </SpotlightCard>
-            </motion.div>
-
-          </motion.div>
+          <FeaturesGrid />
         </div>
       </section>
 
       {/* ── ACCESS SCANNER INFO ── */}
-      <section id="process" className="py-32 px-6 md:px-12 relative border-b border-border/40 bg-card/20 dark:bg-[#0A0908]/40 overflow-hidden">
+      <section id="process" className="py-32 px-6 md:px-12 relative border-b border-border/40 bg-card/10 dark:bg-[#0A0908]/20 overflow-hidden">
         
-        {/* Subtle concert background photo overlay */}
-        <div className="absolute inset-0 z-0 opacity-[0.015] dark:opacity-[0.03]">
-          <img
-            src="https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80"
-            alt="Concert background"
-            className="w-full h-full object-cover filter grayscale"
-          />
-        </div>
+        {/* Subtle grid backdrop */}
+        <div className="absolute inset-0 bg-[radial-gradient(var(--border)_1px,transparent_1px)] bg-size-[2rem_2rem] opacity-30 dark:opacity-10 pointer-events-none z-0" />
 
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-16 items-center relative z-10">
+        <div className="max-w-7xl mx-auto space-y-16 relative z-10 text-center">
           
-          <div className="space-y-8">
-            <h2 className="text-3xl sm:text-5xl font-black leading-tight tracking-tight text-foreground">
+          {/* Centered Heading */}
+          <div className="max-w-3xl mx-auto space-y-4">
+            <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground">
               One-click usher scan clients.<br />
               <span className="text-copper">No passwords required.</span>
             </h2>
-
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">
+            <p className="text-sm text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               Empower your door staff without password configurations. Generate temporary, secure links that load scanner cameras inside standard web browsers on any mobile device.
             </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 pt-4 text-xs font-semibold text-muted-foreground/80">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-4 h-4 text-copper shrink-0" />
-                <span>Usher scan links load instantly on any mobile browser</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-4 h-4 text-copper shrink-0" />
-                <span>Prevent duplicate entry passes automatically</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-4 h-4 text-copper shrink-0" />
-                <span>Monitor live attendance on a shared dashboard</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-4 h-4 text-copper shrink-0" />
-                <span>Secure check-in scanner links expire automatically</span>
-              </div>
-            </div>
           </div>
 
-          {/* Mobile phone mockup preview */}
-          <div className="flex justify-center">
-            <SpotlightCard className="w-full max-w-85 p-5 shadow-2xl relative">
-              <div className="flex justify-between items-center text-[9px] font-mono text-muted-foreground/60 border-b border-border/40 pb-3 mb-4">
-                <span>GATE_CLIENT // TERMINAL_01</span>
-                <span>STATE: ACTIVE</span>
-              </div>
-
-              {/* Scan viewport mockup */}
-              <div className="bg-[#070605] border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between min-h-80 relative overflow-hidden">
-                <div className="absolute inset-0 z-0 opacity-40">
-                  <img
-                    src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=400&q=80"
-                    alt="Scan interface background"
-                    className="w-full h-full object-cover blur-[2px]"
-                  />
-                </div>
-                <div className="absolute inset-0 bg-[#070605]/85 z-0" />
-                
-                {/* Verified Screen Overlay */}
-                <div className="absolute inset-0 bg-emerald-950/95 flex flex-col items-center justify-center text-emerald-400 z-10 border border-emerald-500/20">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-400 mb-2" />
-                  <span className="text-xs font-bold tracking-wider">TICKET VERIFIED</span>
-                  <span className="font-mono text-[10px] text-foreground font-bold mt-1">Alexandra Harris</span>
-                  <span className="font-mono text-[8px] opacity-75 mt-0.5">VIP Admissions · Table 7</span>
-                </div>
-              </div>
-
-              {/* Scan Logs */}
-              <div className="mt-4 pt-3 border-t border-border/20 relative z-10">
-                <span className="text-[8px] font-mono text-muted-foreground uppercase block mb-2">Gate Scan Log (Live)</span>
-                <div className="space-y-1.5">
-                  <div className="text-[9px] font-mono flex justify-between border-b border-border/10 dark:border-border/5 pb-1">
-                    <span className="text-muted-foreground">22:15:30</span>
-                    <strong className="text-foreground">Elena Rostova</strong>
-                    <span className="text-emerald-500">ADMITTED</span>
+          {/* Staggered grid of Masked Image Cards representing features */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full pt-4">
+            {[
+              {
+                icon: Smartphone,
+                title: 'Zero Configuration',
+                desc: 'Usher scan links load instantly in any mobile browser.',
+                image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80',
+                maskClass: 'rounded-3xl rounded-bl-[4rem]',
+                hoverOffset: -8
+              },
+              {
+                icon: ShieldCheck,
+                title: 'Double-Entry Shield',
+                desc: 'Automatically prevent duplicate or re-scanned tickets.',
+                image: 'https://images.unsplash.com/photo-1590608897129-79da98d15969?auto=format&fit=crop&w=600&q=80',
+                maskClass: 'rounded-3xl rounded-tr-[4.5rem]',
+                hoverOffset: -12
+              },
+              {
+                icon: Activity,
+                title: 'Live Coordinator Hub',
+                desc: 'Sync check-in statuses in real-time across multiple gates.',
+                image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
+                maskClass: 'rounded-3xl rounded-br-[4.5rem]',
+                hoverOffset: -8
+              },
+              {
+                icon: Clock,
+                title: 'Dynamic Expiry',
+                desc: 'Scan links invalidate automatically when gates close.',
+                image: 'https://images.unsplash.com/photo-1508962914676-134849a727f0?auto=format&fit=crop&w=600&q=80',
+                maskClass: 'rounded-3xl rounded-tl-[4rem]',
+                hoverOffset: -12
+              }
+            ].map((feat, index) => {
+              const Icon = feat.icon
+              return (
+                <motion.div
+                  key={index}
+                  whileHover={{ y: feat.hoverOffset, scale: 1.02 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  className={cn(
+                    "overflow-hidden border border-border/40 dark:border-border/10 bg-stone-900 shadow-2xl relative h-76 flex flex-col justify-end p-5 select-none transition-colors duration-300 group cursor-pointer",
+                    feat.maskClass
+                  )}
+                >
+                  {/* Masked Backdrop Image */}
+                  <div className="absolute inset-0 z-0">
+                    <img
+                      src={feat.image}
+                      alt={feat.title}
+                      className="w-full h-full object-cover opacity-65 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700 filter grayscale group-hover:grayscale-0"
+                      loading="lazy"
+                    />
+                    {/* Bottom gradient fade */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/40 to-stone-950/15 z-10" />
                   </div>
-                  <div className="text-[9px] font-mono flex justify-between border-b border-border/10 dark:border-border/5 pb-1">
-                    <span className="text-muted-foreground">22:14:02</span>
-                    <strong className="text-foreground">Marcus Sterling</strong>
-                    <span className="text-emerald-500">ADMITTED</span>
+
+                  {/* Feature Content Overlay */}
+                  <div className="relative z-20 text-left space-y-3">
+                    <div className="w-8 h-8 rounded-lg bg-copper/10 border border-copper/20 flex items-center justify-center text-copper shadow-xs">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-sm text-foreground tracking-tight">{feat.title}</h3>
+                      <p className="text-[10.5px] text-muted-foreground leading-relaxed">{feat.desc}</p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </SpotlightCard>
+                </motion.div>
+              )
+            })}
           </div>
 
         </div>
@@ -515,36 +403,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             <span className="font-mono text-[9px] text-muted-foreground/60 tracking-wider">STAGES 01 - 04</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                num: '01',
-                title: 'Set Tiers & Limits',
-                desc: 'Configure pricing structures and capacity limits. Define USD or NGN payment parameters.'
-              },
-              {
-                num: '02',
-                title: 'Broadcast Invites',
-                desc: 'Send personalized HTML emails containing secure access codes and unsubscribe links.'
-              },
-              {
-                num: '03',
-                title: 'Door Scanning',
-                desc: 'Provision direct check-in links to doors. Validate attendee signatures in real-time.'
-              },
-              {
-                num: '04',
-                title: 'Inspect Statistics',
-                desc: 'Audit gate check-in speeds and attendee metrics directly on your co-host dashboard.'
-              },
-            ].map((step, idx) => (
-              <div key={idx} className="border border-border/40 dark:border-border/10 bg-card/30 p-6 rounded-2xl space-y-4 hover:border-copper/20 transition-colors duration-300">
-                <span className="font-mono text-xs font-bold text-copper block">{step.num}</span>
-                <h3 className="font-bold text-lg">{step.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
-          </div>
+          <ProcessTimeline />
         </div>
       </section>
 
