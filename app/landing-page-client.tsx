@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
@@ -19,6 +18,9 @@ import {
 } from 'lucide-react'
 import { ModeToggle } from '@/components/mode-toggle'
 import { cn } from '@/lib/utils'
+import { TiltEventCard } from '@/components/landing/tilt-event-card'
+import { SpotlightCard } from '@/components/landing/spotlight-card'
+import { InteractiveTicketStack } from '@/components/landing/interactive-ticket-stack'
 
 interface LandingPageClientProps {
   user: any
@@ -42,141 +44,21 @@ const itemVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      type: 'spring',
+      type: 'spring' as const,
       stiffness: 90,
       damping: 15,
     },
   },
 }
 
-// ── 3D Card Proximity Tilt and Glare Wrapper (Event Showcase cards) ──
-function TiltEventCard({ children, imageUrl, className, bgClass }: { children: React.ReactNode; imageUrl: string; className?: string; bgClass?: string }) {
-  const [rotateX, setRotateX] = useState(0)
-  const [rotateY, setRotateY] = useState(0)
-  const [glareX, setGlareX] = useState(50)
-  const [glareY, setGlareY] = useState(50)
-  const [isHovered, setIsHovered] = useState(false)
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const card = e.currentTarget
-    const rect = card.getBoundingClientRect()
-    const width = rect.width
-    const height = rect.height
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-
-    const percentX = (mouseX / width) - 0.5
-    const percentY = (mouseY / height) - 0.5
-
-    setRotateX(-percentY * 8)
-    setRotateY(percentX * 8)
-
-    setGlareX((mouseX / width) * 100)
-    setGlareY((mouseY / height) * 100)
-  }
-
-  const handleMouseLeave = () => {
-    setIsHovered(false)
-    setRotateX(0)
-    setRotateY(0)
-  }
-
-  return (
-    <div
-      className="perspective-1000 w-full"
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
-    >
-      <motion.div
-        animate={{
-          rotateX: isHovered ? rotateX : 0,
-          rotateY: isHovered ? rotateY : 0,
-          scale: isHovered ? 1.01 : 1,
-        }}
-        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-        className={cn(
-          "relative rounded-3xl border border-border/40 dark:border-border/10 overflow-hidden min-h-[320px] flex flex-col justify-end p-6 select-none shadow-[0_8px_30px_rgba(0,0,0,0.015)] dark:shadow-none transition-colors duration-300 w-full group",
-          bgClass,
-          className
-        )}
-      >
-        {/* Background Event Image */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src={imageUrl}
-            alt="Event cover banner"
-            className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-102 transition-all duration-700"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/50 to-black/10 z-10" />
-        </div>
-
-        {/* Glare sheen */}
-        {isHovered && (
-          <div
-            className="pointer-events-none absolute inset-0 z-30 transition-opacity duration-300"
-            style={{
-              background: `radial-gradient(circle 200px at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.08), transparent 85%)`,
-            }}
-          />
-        )}
-
-        {/* Dynamic Card Content Overlaid on Dark Gradient */}
-        <div className="relative z-20 text-stone-100 space-y-2 text-left">
-          {children}
-        </div>
-      </motion.div>
-    </div>
-  )
-}
-
-// ── Bento Border Spotlight Glow Card (Features Cards) ──
-function SpotlightCard({ children, className, bgClass }: { children: React.ReactNode; className?: string; bgClass?: string }) {
-  const [mouseX, setMouseX] = useState(0)
-  const [mouseY, setMouseY] = useState(0)
-  const [isHovered, setIsHovered] = useState(false)
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const card = e.currentTarget
-    const rect = card.getBoundingClientRect()
-    setMouseX(e.clientX - rect.left)
-    setMouseY(e.clientY - rect.top)
-  }
-
-  return (
-    <div
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={cn(
-        "relative rounded-3xl border border-border/40 dark:border-border/10 p-6 flex flex-col justify-between overflow-hidden bg-card hover:border-copper/30 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.015)] dark:shadow-none",
-        bgClass,
-        className
-      )}
-    >
-      {/* Moving Border Spotlight Glow */}
-      {isHovered && (
-        <div
-          className="pointer-events-none absolute -inset-px rounded-3xl border border-transparent z-10 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(140px circle at ${mouseX}px ${mouseY}px, rgba(191, 132, 48, 0.12), transparent 80%)`,
-          }}
-        />
-      )}
-      {children}
-    </div>
-  )
-}
-
 export function LandingPageClient({ user }: LandingPageClientProps) {
   return (
-    <div className="bg-background text-foreground min-h-screen overflow-x-hidden relative selection:bg-copper/30 selection:text-white font-['Inter',_ui-sans-serif,_system-ui,_sans-serif]">
+    <div className="bg-background text-foreground min-h-screen overflow-x-hidden relative selection:bg-copper/30 selection:text-white font-['Inter',ui-sans-serif,system-ui,sans-serif]">
       
       {/* Immersive background mesh glows */}
-      <div className="absolute top-[-10%] left-[-15%] w-[60vw] h-[60vw] rounded-full bg-copper/[0.08] dark:bg-copper/5 blur-[140px] pointer-events-none z-0" />
-      <div className="absolute top-[25%] right-[-15%] w-[50vw] h-[50vw] rounded-full bg-amber-500/[0.06] dark:bg-amber-50/5 blur-[120px] pointer-events-none z-0" />
-      <div className="absolute bottom-[10%] left-[20%] w-[60vw] h-[60vw] rounded-full bg-copper-light/[0.05] dark:bg-copper-light/3 blur-[160px] pointer-events-none z-0" />
+      <div className="absolute top-[-10%] left-[-15%] w-[60vw] h-[60vw] rounded-full bg-copper/8 dark:bg-copper/5 blur-[140px] pointer-events-none z-0" />
+      <div className="absolute top-[25%] right-[-15%] w-[50vw] h-[50vw] rounded-full bg-amber-500/6 dark:bg-amber-50/5 blur-[120px] pointer-events-none z-0" />
+      <div className="absolute bottom-[10%] left-[20%] w-[60vw] h-[60vw] rounded-full bg-copper-light/5 dark:bg-copper-light/3 blur-[160px] pointer-events-none z-0" />
 
       {/* Grid structure overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[6rem_6rem] opacity-35 dark:opacity-10 pointer-events-none z-0" />
@@ -210,7 +92,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 className="text-muted-foreground hover:text-foreground transition-colors relative group py-1"
               >
                 {label}
-                <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-copper group-hover:w-full transition-all duration-300" />
+                <span className="absolute bottom-0 left-0 w-0 h-px bg-copper group-hover:w-full transition-all duration-300" />
               </a>
             ))}
           </div>
@@ -227,48 +109,68 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
         </div>
       </nav>
 
-      {/* ── IMMERSIVE SPACIOUS HERO SECTION ── */}
-      <section id="hero" className="min-h-[85vh] pt-32 pb-20 px-6 md:px-12 flex flex-col items-center justify-center text-center relative z-10 max-w-5xl mx-auto w-full">
-        <div className="space-y-8">
-          <motion.h1
-            initial={{ opacity: 0, y: 25 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-5xl sm:text-7xl lg:text-8xl font-black leading-[1.02] tracking-tight text-foreground"
-          >
-            Gathering is an art.<br />
-            Host it flawlessly.
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-            className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed"
-          >
-            Crenelle is the elegant toolkit for premium event hosting. Design custom ticket pages, collect payouts via Paystack, broadcast branded email invites, and manage door check-ins with ease.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-4"
-          >
-            <Link
-              href={user ? '/events' : '/login'}
-              className="inline-flex items-center gap-2.5 bg-foreground text-background text-xs font-bold px-8 py-3.5 rounded-full hover:bg-copper hover:text-white transition-all duration-300 shadow-lg shadow-black/5"
+      {/* ── IMMERSIVE SPACIOUS SPLIT HERO SECTION ── */}
+      <section 
+        id="hero" 
+        className="min-h-screen pt-36 pb-20 px-6 md:px-12 flex flex-col justify-center relative z-10 max-w-7xl mx-auto w-full overflow-hidden"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full text-center lg:text-left">
+          
+          {/* Left Column: Heading copy */}
+          <div className="lg:col-span-7 space-y-8 flex flex-col justify-center items-center lg:items-start max-w-2xl mx-auto lg:mx-0">
+            <motion.h1
+              initial={{ opacity: 0, y: 25 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="text-5xl sm:text-6xl lg:text-7xl  font-black leading-[1.02] tracking-tight text-foreground"
             >
-              Create Your Event
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <a
-              href="#showcase"
-              className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground px-5 py-3 transition-colors duration-300"
+              Gathering is an art.<br />
+              Host it flawlessly.
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.1 }}
+              className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed"
             >
-              Explore formats
-            </a>
-          </motion.div>
+              Crenelle is the elegant toolkit for premium event hosting. Design custom ticket pages, collect payouts via Paystack, broadcast branded email invites, and manage door check-ins with ease.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="flex flex-col sm:flex-row gap-4 items-center justify-center lg:justify-start w-full sm:w-auto pt-2"
+            >
+              <Link
+                href={user ? '/events' : '/login'}
+                className="inline-flex items-center gap-2.5 bg-foreground text-background text-xs font-bold px-8 py-3.5 rounded-full hover:bg-copper hover:text-white transition-all duration-300 shadow-lg shadow-black/5"
+              >
+                Create Your Event
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <a
+                href="#showcase"
+                className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground px-5 py-3 transition-colors duration-300"
+              >
+                Explore formats
+              </a>
+            </motion.div>
+          </div>
+
+          {/* Right Column: Fanning VIP & Regular passes */}
+          <div className="lg:col-span-5 flex justify-center items-center relative min-h-90 lg:min-h-full">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.3, type: 'spring' }}
+              className="w-full flex justify-center"
+            >
+              <InteractiveTicketStack />
+            </motion.div>
+          </div>
+
         </div>
       </section>
 
@@ -397,7 +299,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             
             {/* Bento 1: Ticketing & Payments */}
             <motion.div variants={itemVariants}>
-              <SpotlightCard className="min-h-[320px]">
+              <SpotlightCard className="min-h-80">
                 <div className="space-y-4">
                   <div className="w-10 h-10 rounded-xl bg-copper/10 flex items-center justify-center text-copper">
                     <CreditCard className="w-5 h-5" />
@@ -428,7 +330,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                   </div>
                   <div className="h-px bg-border/20 dark:bg-border/10" />
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>Real-time billing checkout verification system</span>
                   </div>
                 </div>
@@ -437,7 +339,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
 
             {/* Bento 2: Branded Communications */}
             <motion.div variants={itemVariants}>
-              <SpotlightCard className="min-h-[320px]">
+              <SpotlightCard className="min-h-80">
                 <div className="space-y-4">
                   <div className="w-10 h-10 rounded-xl bg-copper/10 flex items-center justify-center text-copper">
                     <Mail className="w-5 h-5" />
@@ -471,7 +373,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
 
             {/* Bento 3: Waitlists & Registration Caps */}
             <motion.div variants={itemVariants}>
-              <SpotlightCard className="min-h-[320px]">
+              <SpotlightCard className="min-h-80">
                 <div className="space-y-4">
                   <div className="w-10 h-10 rounded-xl bg-copper/10 flex items-center justify-center text-copper">
                     <Users className="w-5 h-5" />
@@ -555,14 +457,14 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
 
           {/* Mobile phone mockup preview */}
           <div className="flex justify-center">
-            <SpotlightCard className="w-full max-w-[340px] p-5 shadow-2xl relative">
+            <SpotlightCard className="w-full max-w-85 p-5 shadow-2xl relative">
               <div className="flex justify-between items-center text-[9px] font-mono text-muted-foreground/60 border-b border-border/40 pb-3 mb-4">
                 <span>GATE_CLIENT // TERMINAL_01</span>
                 <span>STATE: ACTIVE</span>
               </div>
 
               {/* Scan viewport mockup */}
-              <div className="bg-[#070605] border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between min-h-[320px] relative overflow-hidden">
+              <div className="bg-[#070605] border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between min-h-80 relative overflow-hidden">
                 <div className="absolute inset-0 z-0 opacity-40">
                   <img
                     src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=400&q=80"
