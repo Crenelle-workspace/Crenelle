@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { listBanks } from '@/lib/paystack'
 
+export const dynamic = 'force-dynamic'
+
 // Cache the bank list for 1 hour — rarely changes
 let bankCache: { data: Awaited<ReturnType<typeof listBanks>>['data']; cachedAt: number } | null =
   null

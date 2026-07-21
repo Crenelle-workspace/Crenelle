@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyTransaction } from '@/lib/paystack'
 import * as Sentry from '@sentry/nextjs'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/payments/verify?reference={ref}
  *

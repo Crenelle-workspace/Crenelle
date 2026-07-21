@@ -8,38 +8,42 @@
  * All functions throw on network errors; return { error } on Paystack API errors.
  */
 
-import crypto from 'crypto'
+import crypto from "crypto";
 
-const BASE_URL = 'https://api.paystack.co'
+const BASE_URL = "https://api.paystack.co";
 
 // ── Helpers ────────────────────────────────────────────────────
 
 function getSecretKey(): string {
-  const key = process.env.PAYSTACK_SECRET_KEY
-  if (!key) throw new Error('PAYSTACK_SECRET_KEY is not configured')
-  return key
+  const key = process.env.PAYSTACK_SECRET_KEY;
+  if (!key) throw new Error("PAYSTACK_SECRET_KEY is not configured");
+  return key;
 }
 
 async function paystackFetch<T>(
   path: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<{ data: T; error: null } | { data: null; error: string }> {
   const response = await fetch(`${BASE_URL}${path}`, {
+    cache: "no-store",
     ...options,
     headers: {
       Authorization: `Bearer ${getSecretKey()}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
-  })
+  });
 
-  const json = await response.json()
+  const json = await response.json();
 
   if (!response.ok || !json.status) {
-    return { data: null, error: json.message ?? `Paystack API error: ${response.status}` }
+    return {
+      data: null,
+      error: json.message ?? `Paystack API error: ${response.status}`,
+    };
   }
 
-  return { data: json.data as T, error: null }
+  return { data: json.data as T, error: null };
 }
 
 // ── Reference Generator ────────────────────────────────────────
@@ -49,10 +53,10 @@ async function paystackFetch<T>(
  * Format: CRN-{8 chars of eventId}-{timestamp}-{4 random chars}
  */
 export function generatePaystackReference(eventId: string): string {
-  const eventSlice = eventId.replace(/-/g, '').slice(0, 8).toUpperCase()
-  const timestamp = Date.now()
-  const random = crypto.randomBytes(2).toString('hex').toUpperCase()
-  return `CRN-${eventSlice}-${timestamp}-${random}`
+  const eventSlice = eventId.replace(/-/g, "").slice(0, 8).toUpperCase();
+  const timestamp = Date.now();
+  const random = crypto.randomBytes(2).toString("hex").toUpperCase();
+  return `CRN-${eventSlice}-${timestamp}-${random}`;
 }
 
 // ── HMAC Signature Verification ───────────────────────────────
@@ -64,103 +68,105 @@ export function generatePaystackReference(eventId: string): string {
  */
 export function verifyPaystackSignature(
   rawBody: string | Buffer,
-  signature: string | null
+  signature: string | null,
 ): boolean {
-  if (!signature) return false
-  const secret = process.env.PAYSTACK_WEBHOOK_SECRET ?? process.env.PAYSTACK_SECRET_KEY
-  if (!secret) throw new Error('PAYSTACK_WEBHOOK_SECRET is not configured')
+  if (!signature) return false;
+  const secret =
+    process.env.PAYSTACK_WEBHOOK_SECRET ?? process.env.PAYSTACK_SECRET_KEY;
+  if (!secret) throw new Error("PAYSTACK_WEBHOOK_SECRET is not configured");
 
   const hash = crypto
-    .createHmac('sha512', secret)
+    .createHmac("sha512", secret)
     .update(rawBody)
-    .digest('hex')
+    .digest("hex");
 
-  return hash === signature
+  return hash === signature;
 }
 
 // ── Types ──────────────────────────────────────────────────────
 
 export interface PaystackInitializeParams {
-  email: string
-  amount: number              // in kobo
-  reference: string
-  subaccount?: string         // organiser's subaccount code (e.g. ACCT_xxxx)
-  bearer?: 'account' | 'subaccount' // who bears Paystack's processing fee
-  callback_url?: string
-  metadata?: Record<string, unknown>
-  channels?: Array<'card' | 'bank' | 'ussd' | 'bank_transfer' | 'qr'>
+  email: string;
+  amount: number; // in kobo
+  reference: string;
+  subaccount?: string; // organiser's subaccount code (e.g. ACCT_xxxx)
+  bearer?: "account" | "subaccount"; // who bears Paystack's processing fee
+  callback_url?: string;
+  metadata?: Record<string, unknown>;
+  channels?: Array<"card" | "bank" | "ussd" | "bank_transfer" | "qr">;
 }
 
 export interface PaystackInitializeResponse {
-  authorization_url: string
-  access_code: string
-  reference: string
+  authorization_url: string;
+  access_code: string;
+  reference: string;
 }
 
 export interface PaystackVerifyResponse {
-  id: number
-  domain: 'live' | 'test'
-  status: 'success' | 'failed' | 'abandoned'
-  reference: string
-  amount: number              // in kobo
-  fees: number                // Paystack fee in kobo
-  gateway_response: string
-  paid_at: string | null
-  channel: string
-  currency: string
+  id: number;
+  domain: "live" | "test";
+  status: "success" | "failed" | "abandoned";
+  reference: string;
+  amount: number; // in kobo
+  fees: number; // Paystack fee in kobo
+  gateway_response: string;
+  paid_at: string | null;
+  channel: string;
+  currency: string;
   customer: {
-    id: number
-    email: string
-    first_name: string | null
-    last_name: string | null
-  }
+    id: number;
+    email: string;
+    first_name: string | null;
+    last_name: string | null;
+  };
   subaccount?: {
-    id: number
-    amount: number
-    account_code: string
-  }
-  metadata?: Record<string, unknown>
+    id: number;
+    amount: number;
+    account_code: string;
+  };
+  metadata?: Record<string, unknown>;
 }
 
 export interface PaystackSubaccountParams {
-  business_name: string
-  settlement_bank: string   // bank code, e.g. '058'
-  account_number: string
-  percentage_charge: number // Paystack routes this % to the subaccount
-  description?: string
-  primary_contact_email?: string
-  primary_contact_name?: string
-  primary_contact_phone?: string
+  business_name: string;
+  settlement_bank: string; // bank code, e.g. '058'
+  account_number: string;
+  percentage_charge: number; // Paystack routes this % to the subaccount
+  description?: string;
+  primary_contact_email?: string;
+  primary_contact_name?: string;
+  primary_contact_phone?: string;
 }
 
 export interface PaystackSubaccountResponse {
-  id: number
-  subaccount_code: string   // e.g. ACCT_xxxxxxxxxxxxxxxx
-  business_name: string
-  description: string | null
-  primary_contact_name: string | null
-  primary_contact_email: string | null
-  primary_contact_phone: string | null
-  percentage_charge: number
-  settlement_bank: string
-  account_number: string
+  id: number;
+  subaccount_code: string; // e.g. ACCT_xxxxxxxxxxxxxxxx
+  business_name: string;
+  description: string | null;
+  primary_contact_name: string | null;
+  primary_contact_email: string | null;
+  primary_contact_phone: string | null;
+  percentage_charge: number;
+  settlement_bank: string;
+  account_number: string;
 }
 
 export interface PaystackBank {
-  name: string
-  slug: string
-  code: string             // used as settlement_bank in subaccount creation
-  longcode: string
-  active: boolean
-  country: string
-  currency: string
-  type: 'nuban' | 'mobile_money' | 'basa'
+  id: number;
+  name: string;
+  slug: string;
+  code: string; // used as settlement_bank in subaccount creation
+  longcode: string;
+  active: boolean;
+  country: string;
+  currency: string;
+  type: "nuban" | "mobile_money" | "basa";
 }
 
 export interface PaystackResolveAccountResponse {
-  account_number: string
-  account_name: string
-  bank_id: number
+  account_number: string;
+  account_name: string;
+  bank_id: number;
 }
 
 // ── API Functions ──────────────────────────────────────────────
@@ -170,12 +176,15 @@ export interface PaystackResolveAccountResponse {
  * Returns the authorization_url to redirect the guest to.
  */
 export async function initializeTransaction(
-  params: PaystackInitializeParams
-): Promise<{ data: PaystackInitializeResponse; error: null } | { data: null; error: string }> {
-  return paystackFetch<PaystackInitializeResponse>('/transaction/initialize', {
-    method: 'POST',
+  params: PaystackInitializeParams,
+): Promise<
+  | { data: PaystackInitializeResponse; error: null }
+  | { data: null; error: string }
+> {
+  return paystackFetch<PaystackInitializeResponse>("/transaction/initialize", {
+    method: "POST",
     body: JSON.stringify(params),
-  })
+  });
 }
 
 /**
@@ -183,11 +192,13 @@ export async function initializeTransaction(
  * Use as a fallback after redirect (in case webhook hasn't fired yet).
  */
 export async function verifyTransaction(
-  reference: string
-): Promise<{ data: PaystackVerifyResponse; error: null } | { data: null; error: string }> {
+  reference: string,
+): Promise<
+  { data: PaystackVerifyResponse; error: null } | { data: null; error: string }
+> {
   return paystackFetch<PaystackVerifyResponse>(
-    `/transaction/verify/${encodeURIComponent(reference)}`
-  )
+    `/transaction/verify/${encodeURIComponent(reference)}`,
+  );
 }
 
 /**
@@ -195,12 +206,15 @@ export async function verifyTransaction(
  * Called once when the organiser connects their bank account.
  */
 export async function createSubaccount(
-  params: PaystackSubaccountParams
-): Promise<{ data: PaystackSubaccountResponse; error: null } | { data: null; error: string }> {
-  return paystackFetch<PaystackSubaccountResponse>('/subaccount', {
-    method: 'POST',
+  params: PaystackSubaccountParams,
+): Promise<
+  | { data: PaystackSubaccountResponse; error: null }
+  | { data: null; error: string }
+> {
+  return paystackFetch<PaystackSubaccountResponse>("/subaccount", {
+    method: "POST",
     body: JSON.stringify(params),
-  })
+  });
 }
 
 /**
@@ -208,11 +222,14 @@ export async function createSubaccount(
  * Useful for displaying current bank details in Settings.
  */
 export async function fetchSubaccount(
-  subaccountCode: string
-): Promise<{ data: PaystackSubaccountResponse; error: null } | { data: null; error: string }> {
+  subaccountCode: string,
+): Promise<
+  | { data: PaystackSubaccountResponse; error: null }
+  | { data: null; error: string }
+> {
   return paystackFetch<PaystackSubaccountResponse>(
-    `/subaccount/${encodeURIComponent(subaccountCode)}`
-  )
+    `/subaccount/${encodeURIComponent(subaccountCode)}`,
+  );
 }
 
 /**
@@ -220,12 +237,14 @@ export async function fetchSubaccount(
  * Cache this response — it rarely changes.
  */
 export async function listBanks(
-  country: string = 'nigeria',
-  currency: string = 'NGN'
-): Promise<{ data: PaystackBank[]; error: null } | { data: null; error: string }> {
+  country: string = "nigeria",
+  currency: string = "NGN",
+): Promise<
+  { data: PaystackBank[]; error: null } | { data: null; error: string }
+> {
   return paystackFetch<PaystackBank[]>(
-    `/bank?country=${country}&currency=${currency}&use_cursor=false&perPage=100`
-  )
+    `/bank?country=${country}&currency=${currency}&use_cursor=false&perPage=100`,
+  );
 }
 
 /**
@@ -234,11 +253,14 @@ export async function listBanks(
  */
 export async function resolveAccountNumber(
   accountNumber: string,
-  bankCode: string
-): Promise<{ data: PaystackResolveAccountResponse; error: null } | { data: null; error: string }> {
+  bankCode: string,
+): Promise<
+  | { data: PaystackResolveAccountResponse; error: null }
+  | { data: null; error: string }
+> {
   return paystackFetch<PaystackResolveAccountResponse>(
-    `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`
-  )
+    `/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
+  );
 }
 
 /**
@@ -250,17 +272,17 @@ export async function resolveAccountNumber(
  */
 export function calculateSplit(
   amountKobo: number,
-  platformFeePercent: number
+  platformFeePercent: number,
 ): {
-  platformFeeKobo: number
-  organiserAmountKobo: number
+  platformFeeKobo: number;
+  organiserAmountKobo: number;
 } {
   // Platform fee (Crenelle's cut) is a percentage of the gross amount
-  const platformFeeKobo = Math.round((amountKobo * platformFeePercent) / 100)
+  const platformFeeKobo = Math.round((amountKobo * platformFeePercent) / 100);
   // Organiser gets the remainder
-  const organiserAmountKobo = amountKobo - platformFeeKobo
+  const organiserAmountKobo = amountKobo - platformFeeKobo;
 
-  return { platformFeeKobo, organiserAmountKobo }
+  return { platformFeeKobo, organiserAmountKobo };
 }
 
 /**
@@ -268,11 +290,11 @@ export function calculateSplit(
  * e.g. 1000000 → "₦10,000.00"
  */
 export function formatKoboAsNGN(kobo: number): string {
-  const naira = kobo / 100
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
+  const naira = kobo / 100;
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(naira)
+  }).format(naira);
 }

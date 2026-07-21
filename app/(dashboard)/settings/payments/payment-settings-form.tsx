@@ -11,6 +11,7 @@ interface Props {
 }
 
 interface BankOption {
+  id: number
   name: string
   code: string
 }
@@ -211,7 +212,7 @@ export function PaymentSettingsForm({ settings }: Props) {
                     {isLoadingBanks ? 'Loading banks…' : 'Select your bank'}
                   </option>
                   {banks.map((bank) => (
-                    <option key={bank.code} value={bank.code}>
+                    <option key={bank.id} value={bank.code}>
                       {bank.name}
                     </option>
                   ))}
