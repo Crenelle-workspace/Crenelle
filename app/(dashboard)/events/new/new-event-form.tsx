@@ -58,67 +58,72 @@ export function NewEventForm({ profiles }: NewEventFormProps) {
       </Link>
 
       <div className="mb-8">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-signal mb-2">INITIALIZE_NEW_EVENT</p>
+        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-2.5 py-1 rounded-full inline-block mb-3">
+          Event Setup Wizard
+        </span>
         <h1 className="font-display text-5xl uppercase text-foreground leading-none">Create Event</h1>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/50 mt-3 leading-relaxed border-l-2 border-signal/40 pl-3">
+        <p className="font-sans text-xs text-muted-foreground mt-2 leading-relaxed max-w-xl">
           {eventType === 'closed' ? (
             <>
-              New events start as <span className="text-foreground/80">DRAFT</span>.
-              Set to <span className="text-foreground/80">PUBLISHED</span> when your guest list is ready,
-              then <span className="text-signal">LIVE</span> on event day to open scanning for ushers.
+              New events start as <span className="font-bold text-foreground">Draft</span>.
+              Set to <span className="font-bold text-foreground">Published</span> when your guest list is ready,
+              then <span className="font-bold text-copper">Live</span> on event day to open usher camera scanning.
             </>
           ) : (
             <>
-              <span className="text-foreground/80">OPEN</span> events generate a public registration link.
-              Users sign up, you review and accept who you want.
-              Accepted guests receive their QR entry pass via email.
+              <span className="font-bold text-foreground">Open</span> events generate a public registration page.
+              Guests sign up online, you review applications, and approved guests receive QR pass cards.
             </>
           )}
         </p>
       </div>
 
-      <form action={handleSubmit} className="brutalist-card flex flex-col gap-6">
+      <form action={handleSubmit} className="bg-card/40 backdrop-blur-xl border border-border/40 rounded-3xl p-8 sm:p-10 shadow-2xl flex flex-col gap-6 select-none">
         {error && (
-          <div role="alert" aria-live="assertive" className="border-2 border-denied bg-denied/10 p-4 font-mono text-sm text-denied uppercase tracking-wide">
-            ⚠ {error}
+          <div role="alert" aria-live="assertive" className="border-l-2 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-xl font-sans text-xs text-red-400 leading-relaxed">
+            {error}
           </div>
         )}
 
         {/* Event Type Selector */}
         <div className="flex flex-col gap-2">
-          <span className={labelCls}>Event Type *</span>
+          <span className={labelCls}>Event Access Type *</span>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setEventType('closed')}
-              className={`flex items-center gap-3 p-4 border-2 transition-all ${
+              className={`flex items-start gap-3 p-4 rounded-2xl border transition-all duration-300 cursor-pointer ${
                 eventType === 'closed'
-                  ? 'border-signal bg-signal/10 text-foreground'
-                  : 'border-foreground/20 text-foreground/60 hover:border-foreground/40'
+                  ? 'border-copper bg-copper/10 text-foreground shadow-xs'
+                  : 'border-border/40 bg-stone-900/30 text-foreground/60 hover:border-border/70 hover:text-foreground'
               }`}
             >
-              <Lock className={`h-5 w-5 shrink-0 ${eventType === 'closed' ? 'text-signal' : ''}`} />
+              <div className={`p-2 rounded-xl shrink-0 ${eventType === 'closed' ? 'bg-copper/20 text-copper' : 'bg-stone-500/10 text-muted-foreground'}`}>
+                <Lock className="h-4 w-4" />
+              </div>
               <div className="text-left">
-                <p className="font-display text-lg uppercase leading-none">Closed</p>
-                <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50 mt-1">
-                  You build the guest list
+                <p className="font-display text-xl uppercase leading-none">Closed</p>
+                <p className="font-sans text-[10.5px] text-muted-foreground mt-1 leading-normal">
+                  You manage and upload guest lists directly.
                 </p>
               </div>
             </button>
             <button
               type="button"
               onClick={() => setEventType('open')}
-              className={`flex items-center gap-3 p-4 border-2 transition-all ${
+              className={`flex items-start gap-3 p-4 rounded-2xl border transition-all duration-300 cursor-pointer ${
                 eventType === 'open'
-                  ? 'border-signal bg-signal/10 text-foreground'
-                  : 'border-foreground/20 text-foreground/60 hover:border-foreground/40'
+                  ? 'border-copper bg-copper/10 text-foreground shadow-xs'
+                  : 'border-border/40 bg-stone-900/30 text-foreground/60 hover:border-border/70 hover:text-foreground'
               }`}
             >
-              <Globe className={`h-5 w-5 shrink-0 ${eventType === 'open' ? 'text-signal' : ''}`} />
+              <div className={`p-2 rounded-xl shrink-0 ${eventType === 'open' ? 'bg-copper/20 text-copper' : 'bg-stone-500/10 text-muted-foreground'}`}>
+                <Globe className="h-4 w-4" />
+              </div>
               <div className="text-left">
-                <p className="font-display text-lg uppercase leading-none">Open</p>
-                <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50 mt-1">
-                  Public sign-up link
+                <p className="font-display text-xl uppercase leading-none">Open</p>
+                <p className="font-sans text-[10.5px] text-muted-foreground mt-1 leading-normal">
+                  Generates public registration & checkout link.
                 </p>
               </div>
             </button>
@@ -126,7 +131,7 @@ export function NewEventForm({ profiles }: NewEventFormProps) {
           <input type="hidden" name="event_type" value={eventType} />
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <label htmlFor="new-ev-name" className={labelCls}>Event Name *</label>
           <input
             id="new-ev-name"
@@ -284,13 +289,13 @@ export function NewEventForm({ profiles }: NewEventFormProps) {
           />
         </div>
 
-        <div className="flex gap-3 pt-2 border-t-2 border-foreground/20">
-          <Button type="submit" variant="signal" disabled={loading} className="flex-1 h-12 text-sm">
-            {loading ? 'CREATING...' : 'CREATE EVENT →'}
+        <div className="flex gap-3 pt-4 border-t border-border/30">
+          <Button type="submit" variant="copper" disabled={loading} className="flex-1 h-11 text-xs font-bold rounded-full">
+            {loading ? 'Creating...' : 'Create Event →'}
           </Button>
           <Link href="/events">
-            <Button type="button" variant="ghost" className="h-12 px-6 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50">
-              CANCEL
+            <Button type="button" variant="outline" className="h-11 px-6 font-sans text-xs font-bold rounded-full">
+              Cancel
             </Button>
           </Link>
         </div>

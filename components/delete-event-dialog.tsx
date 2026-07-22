@@ -21,12 +21,12 @@ export function DeleteEventDialog({
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="CONFIRM_DELETE"
-      description="THIS_ACTION_IS_IRREVERSIBLE"
+      title="Delete Event"
+      description="This action is permanent and cannot be undone."
       subject={eventName}
-      subjectLabel="TARGET_EVENT"
+      subjectLabel="Target Event"
       body="Deleting this event will permanently remove all associated data including invitations and entry logs. This cannot be undone."
-      confirmLabel="CONFIRM_DELETE"
+      confirmLabel="Delete Event"
       isPending={isPending}
       onConfirm={onConfirm}
     />

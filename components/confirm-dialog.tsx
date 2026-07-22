@@ -46,40 +46,40 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="border-2 border-foreground rounded-none bg-background max-w-md p-0 gap-0"
+        className="border border-border/50 rounded-2xl bg-card/95 backdrop-blur-xl max-w-md p-0 gap-0 overflow-hidden shadow-2xl"
       >
-        {/* Red accent strip */}
-        <div className="h-2 bg-denied w-full" />
+        {/* Accent strip */}
+        <div className="h-1.5 bg-red-500 w-full" />
 
-        <div className="p-8">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="font-display text-3xl uppercase text-foreground leading-none">
+        <div className="p-6">
+          <DialogHeader className="mb-5 text-left">
+            <DialogTitle className="font-sans text-2xl font-bold tracking-tight text-foreground">
               {title}
             </DialogTitle>
-            <DialogDescription className="font-mono text-sm uppercase text-foreground/60 tracking-widest mt-3">
+            <DialogDescription className="font-sans text-xs text-muted-foreground leading-relaxed mt-1">
               {description}
             </DialogDescription>
           </DialogHeader>
 
           {subject && (
-            <div className="border-2 border-foreground/20 p-4 mb-6 bg-secondary">
-              <p className="font-mono text-xs uppercase text-foreground/50 mb-1 tracking-widest">
+            <div className="border border-border/40 p-4 mb-5 bg-stone-900/40 rounded-xl">
+              <p className="font-mono text-[9px] uppercase font-bold text-muted-foreground/75 mb-1 tracking-wider">
                 {subjectLabel}
               </p>
-              <p className="font-display text-2xl uppercase text-foreground leading-tight">
+              <p className="font-sans text-lg font-bold text-foreground leading-tight">
                 {subject}
               </p>
             </div>
           )}
 
-          <p className="font-mono text-xs text-foreground/60 uppercase mb-8 leading-relaxed">
+          <p className="font-sans text-xs text-muted-foreground mb-6 leading-relaxed">
             {body}
           </p>
 
-          <DialogFooter className="flex-row gap-3 sm:flex-row justify-end">
+          <DialogFooter className="flex flex-row gap-3 justify-end">
             <DialogClose asChild>
-              <Button variant="ghost" size="default" className="flex-1">
-                CANCEL
+              <Button variant="outline" size="default" className="flex-1">
+                Cancel
               </Button>
             </DialogClose>
             <Button
@@ -89,7 +89,7 @@ export function ConfirmDialog({
               className="flex-1"
               onClick={onConfirm}
             >
-              {isPending ? 'PROCESSING...' : confirmLabel}
+              {isPending ? 'Processing...' : confirmLabel}
             </Button>
           </DialogFooter>
         </div>

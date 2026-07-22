@@ -230,19 +230,19 @@ export default function PublicRegistrationPage() {
   // Paystack payment success (redirected back from Paystack and verified)
   if (verifiedPaymentStatus === 'paid') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 select-none">
         <div className="max-w-md w-full text-center">
-          <div className="border-2 border-admitted/30 bg-admitted/5 p-8">
-            <CheckCircle2 className="h-16 w-16 text-admitted mx-auto mb-6" />
+          <div className="border border-emerald-500/30 bg-card/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl">
+            <CheckCircle2 className="h-16 w-16 text-emerald-400 mx-auto mb-5" />
             <h1 className="font-display text-4xl uppercase text-foreground mb-3">PAYMENT CONFIRMED</h1>
-            <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
-              Your ticket for <span className="text-foreground font-bold">{event?.name}</span> has been paid.
-              Your QR entry pass will be sent to your email shortly.
+            <p className="font-sans text-xs text-muted-foreground leading-relaxed mb-6">
+              Your ticket for <span className="text-foreground font-bold">{event?.name}</span> has been confirmed.
+              Your QR entry pass card will be delivered to your email inbox shortly.
             </p>
             {paymentRef && (
-              <p className="font-mono text-[9px] text-foreground/30 uppercase tracking-widest">
+              <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-widest bg-stone-500/10 border border-border/30 px-3 py-1 rounded-full inline-block">
                 Ref: {paymentRef}
-              </p>
+              </span>
             )}
           </div>
         </div>

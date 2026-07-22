@@ -15,40 +15,44 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* ── Navigation ── */}
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm px-6 md:px-10 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl px-6 md:px-10 py-3.5 flex items-center justify-between transition-colors">
         <Link
           href="/events"
           className="flex items-center gap-3 group"
           aria-label="Crenelle — go to events dashboard"
         >
-          <div className="w-7 h-7 border border-copper/60 flex items-center justify-center group-hover:border-copper transition-colors shrink-0">
-            <QrCode className="w-3.5 h-3.5 text-copper" />
+          <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center text-background group-hover:rotate-12 transition-transform duration-500 shadow-sm shrink-0">
+            <QrCode className="w-4 h-4" />
           </div>
-          <span className="font-display font-light tracking-[0.2em] uppercase text-foreground text-xl group-hover:text-copper transition-colors">
-            Crenelle
-          </span>
+          <div className="flex flex-col">
+            <span className="font-sans text-lg font-bold tracking-tight text-foreground leading-none group-hover:text-copper transition-colors">
+              crenelle
+            </span>
+            <span className="font-mono text-[8px] text-muted-foreground/60 tracking-wider mt-0.5 uppercase hidden sm:block">
+              Event Management
+            </span>
+          </div>
         </Link>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <span
-            className="font-sans text-[11px] text-muted-foreground hidden sm:block truncate max-w-52"
+            className="font-mono text-[10px] font-bold text-muted-foreground/75 hidden sm:block truncate max-w-52 bg-stone-500/10 border border-border/30 px-3 py-1 rounded-full"
             aria-label={`Signed in as ${user.email}`}
           >
             {user.email}
           </span>
-          <div className="w-px h-4 bg-border hidden sm:block" />
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Link
               href="/events/new"
-              className="items-center gap-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 hover:text-foreground border border-border hover:border-foreground/30 bg-transparent hover:bg-foreground/4 transition-all h-8 px-3 hidden sm:inline-flex"
+              className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-white bg-copper hover:bg-copper-dark px-4 py-2 rounded-full transition-all duration-300 shadow-md shadow-copper/20 hidden sm:inline-flex"
               aria-label="New Event"
             >
-              <Plus className="h-3.5 w-3.5 text-copper" aria-hidden="true" />
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               <span>New Event</span>
             </Link>
             <Link
               href="/settings/sender-profiles"
-              className="inline-flex items-center gap-1.5 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 hover:text-foreground border border-border hover:border-foreground/30 bg-transparent hover:bg-foreground/4 transition-all h-8 px-3"
+              className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-foreground border border-border/40 hover:border-border hover:bg-stone-500/10 px-3.5 py-2 rounded-full transition-all"
               aria-label="Settings"
             >
               <Settings className="h-3.5 w-3.5" aria-hidden="true" />
@@ -58,7 +62,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <form action={logout}>
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 hover:text-foreground border border-border hover:border-foreground/30 bg-transparent hover:bg-foreground/4 transition-all h-8 px-3 cursor-pointer"
+                className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-muted-foreground hover:text-foreground border border-border/40 hover:border-border hover:bg-stone-500/10 px-3.5 py-2 rounded-full transition-all cursor-pointer"
                 aria-label="Sign out"
               >
                 <LogOut className="h-3.5 w-3.5" aria-hidden="true" />

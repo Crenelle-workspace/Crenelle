@@ -48,24 +48,24 @@ export function StatusChangeDialog({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-ink/85"
+        className="absolute inset-0 bg-black/70 backdrop-blur-md"
         onClick={() => onOpenChange(false)}
       />
 
       {/* Panel */}
-      <div className="relative z-10 bg-background border border-border w-full max-w-md shadow-2xl">
+      <div className="relative z-10 bg-card/95 backdrop-blur-xl border border-border/50 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="px-6 pt-6 pb-5 border-b border-border">
-          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.28em] text-copper mb-2">
-            Change status
+        <div className="px-6 pt-6 pb-4 border-b border-border/40">
+          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper mb-1">
+            Change Event Status
           </p>
-          <h2 id="status-dialog-title" className="font-display text-2xl font-semibold text-foreground tracking-tight">
+          <h2 id="status-dialog-title" className="font-sans text-xl font-bold text-foreground tracking-tight">
             {eventName}
           </h2>
         </div>
 
         {/* Status options */}
-        <div className="p-6 flex flex-col gap-2">
+        <div className="p-6 flex flex-col gap-2.5">
           {statuses.map(s => {
             const isActive = selected === s.value
             const isCurrent = currentStatus === s.value
@@ -73,26 +73,26 @@ export function StatusChangeDialog({
               <button
                 key={s.value}
                 onClick={() => setSelected(s.value)}
-                className={`w-full text-left px-4 py-3.5 border transition-all ${
+                className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-300 cursor-pointer ${
                   isActive
-                    ? 'border-copper bg-copper/8 text-foreground'
-                    : 'border-border hover:border-foreground/30 text-foreground'
+                    ? 'border-copper bg-copper/10 text-foreground shadow-xs'
+                    : 'border-border/30 hover:border-border/60 bg-stone-900/30 text-foreground'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-sans text-sm font-semibold">{s.label}</span>
+                  <span className="font-sans text-sm font-bold">{s.label}</span>
                   <div className="flex items-center gap-2">
                     {isCurrent && (
-                      <span className="font-sans text-[9px] uppercase tracking-widest text-muted-foreground border border-border px-2 py-0.5">
+                      <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-muted-foreground border border-border/40 px-2 py-0.5 rounded-full bg-stone-500/10">
                         Current
                       </span>
                     )}
                     {isActive && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-copper" />
+                      <div className="w-2 h-2 rounded-full bg-copper shadow-[0_0_8px_#BF8430]" />
                     )}
                   </div>
                 </div>
-                <p className="font-sans text-xs text-muted-foreground mt-0.5">{s.desc}</p>
+                <p className="font-sans text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.desc}</p>
               </button>
             )
           })}
@@ -103,13 +103,13 @@ export function StatusChangeDialog({
           <button
             onClick={handleConfirm}
             disabled={isPending || selected === currentStatus}
-            className="flex-1 bg-foreground text-background font-sans text-sm font-semibold uppercase tracking-[0.12em] py-3 hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 bg-copper hover:bg-copper-dark text-white font-sans text-xs font-bold px-5 py-3 rounded-full transition-all duration-300 shadow-md shadow-copper/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             {isPending ? 'Updating...' : `Set to ${statuses.find(s => s.value === selected)?.label}`}
           </button>
           <button
             onClick={() => onOpenChange(false)}
-            className="px-5 py-3 font-sans text-sm text-muted-foreground border border-border hover:border-foreground/30 hover:text-foreground transition-all"
+            className="px-5 py-3 font-sans text-xs font-bold text-muted-foreground border border-border/40 hover:border-border hover:text-foreground rounded-full transition-all cursor-pointer"
           >
             Cancel
           </button>

@@ -135,19 +135,19 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="bg-card border border-border p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between"
+              className="bg-card/20 border border-border/40 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between"
             >
               <div className="flex-1 space-y-2.5">
                 <div className="flex items-center gap-3">
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-5 w-16" />
+                  <Skeleton className="h-6 w-32 rounded-lg" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
                 </div>
-                <Skeleton className="h-3.5 w-64" />
+                <Skeleton className="h-3.5 w-64 rounded-md" />
               </div>
               <div className="flex gap-2 shrink-0">
-                <Skeleton className="h-9 w-16" />
-                <Skeleton className="h-9 w-24" />
-                <Skeleton className="h-9 w-10" />
+                <Skeleton className="h-9 w-16 rounded-full" />
+                <Skeleton className="h-9 w-24 rounded-full" />
+                <Skeleton className="h-9 w-10 rounded-full" />
               </div>
             </div>
           ))}
@@ -155,51 +155,55 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       ) : links.length === 0 ? (
         <EmptyState
           icon={<Link2 className="h-10 w-10" />}
-          title="NO_LINKS_YET"
-          subtitle="Create a scanner link and share it with your ushers on event day"
+          title="NO SCANNER LINKS YET"
+          subtitle="Create a scanner link and share it with your door ushers on event day."
           action={
             canManage ? (
               <button
                 onClick={() => setAddOpen(true)}
-                className="inline-flex items-center gap-2 bg-foreground text-background font-mono text-xs font-semibold uppercase tracking-widest px-5 py-3 hover:opacity-80 transition-opacity cursor-pointer"
+                className="inline-flex items-center gap-2 bg-copper hover:bg-copper-dark text-white font-sans text-xs font-bold px-6 py-3.5 rounded-full transition-all duration-300 shadow-md shadow-copper/20 cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
-                CREATE_YOUR_FIRST_LINK
+                Create First Link
               </button>
             ) : null
           }
         />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 select-none">
           {links.map((link) => (
             <div
               key={link.id}
-              className="bg-card border border-border p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-copper/30 transition-colors"
+              className="bg-card/40 backdrop-blur-md border border-border/40 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-copper/40 transition-all duration-300 shadow-sm"
             >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="font-display text-xl font-semibold text-foreground">{link.label}</span>
+                <div className="flex items-center gap-3 mb-1.5">
+                  <span className="font-display text-xl font-semibold text-foreground uppercase">{link.label}</span>
                   <span
-                    className={`font-mono text-[9px] uppercase tracking-widest px-2 py-1 ${link.is_active ? 'status-admitted' : 'bg-foreground/10 text-foreground/40'}`}
+                    className={`font-mono text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                      link.is_active
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                        : 'bg-stone-500/10 border-border/30 text-muted-foreground'
+                    }`}
                     aria-label={`Status: ${link.is_active ? 'Active' : 'Inactive'}`}
                   >
                     {link.is_active ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </div>
-                <p className="font-sans text-[10px] text-muted-foreground truncate">
+                <p className="font-mono text-xs text-muted-foreground/80 truncate">
                   {scanUrl(link.token)}
                 </p>
               </div>
 
-              <div className="flex gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 {/* Copy — always available */}
                 <button
                   onClick={() => copyLink(link.token)}
                   aria-label={`Copy link for ${link.label}`}
-                  className="inline-flex items-center gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground border border-border hover:border-foreground/30 hover:text-foreground px-3 h-9 transition-all"
+                  className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-foreground border border-border/40 hover:border-copper/40 hover:text-copper px-4 py-2 rounded-full transition-all cursor-pointer"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  Copy
+                  Copy Link
                 </button>
 
                 {/* Toggle + Delete — only for scanner_manager / owner */}

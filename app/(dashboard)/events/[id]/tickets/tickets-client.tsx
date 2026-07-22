@@ -200,21 +200,21 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b border-border/40 pb-6">
         <SectionHeader
-          eyebrow="TICKET_MANAGEMENT"
+          eyebrow="TICKET MANAGEMENT"
           title="Ticket Tiers"
-          subtitle={loading ? "Loading ticket tiers..." : `${tiers.length} active admission tier${tiers.length !== 1 ? 's' : ''}`}
+          subtitle={loading ? "Loading admission tiers..." : `${tiers.length} active admission tier${tiers.length !== 1 ? 's' : ''}`}
         />
 
         {canEdit && (
           <Button
-            variant="signal"
-            className="gap-2 h-12 px-6 text-sm shrink-0"
+            variant="copper"
+            className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full"
             onClick={() => setAddOpen(true)}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            ADD_TIER
+            Add Tier
           </Button>
         )}
       </div>
@@ -225,22 +225,22 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="border-2 border-foreground/10 bg-secondary/10 p-6 flex flex-col justify-between h-48"
+              className="border border-border/40 bg-card/20 rounded-2xl p-6 flex flex-col justify-between h-48"
             >
               <div>
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
-                    <Skeleton className="h-4 w-14 mb-2" />
-                    <Skeleton className="h-7 w-36" />
+                    <Skeleton className="h-4 w-14 mb-2 rounded-full" />
+                    <Skeleton className="h-7 w-36 rounded-lg" />
                   </div>
-                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
                 </div>
                 <div className="mt-6 space-y-2">
                   <div className="flex justify-between">
-                    <Skeleton className="h-3 w-28" />
-                    <Skeleton className="h-3 w-10" />
+                    <Skeleton className="h-3 w-28 rounded-md" />
+                    <Skeleton className="h-3 w-10 rounded-md" />
                   </div>
-                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-full rounded-full" />
                 </div>
               </div>
             </div>
@@ -249,23 +249,23 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
       ) : tiers.length === 0 ? (
         <EmptyState
           icon={<Ticket className="h-10 w-10" />}
-          title="NO_TICKET_TIERS"
+          title="NO TICKET TIERS YET"
           subtitle="Configure admissions tiers to start offering tickets or public registration options."
           action={
             canEdit ? (
               <Button
-                variant="signal"
+                variant="copper"
                 onClick={() => setAddOpen(true)}
-                className="gap-2 h-11 px-5 text-xs font-mono tracking-widest uppercase"
+                className="gap-2 h-10 px-5 text-xs font-bold rounded-full"
               >
                 <Plus className="h-3.5 w-3.5" />
-                CREATE_YOUR_FIRST_TIER
+                Create First Tier
               </Button>
             ) : null
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-none">
           {tiers.map((tier) => {
             const hasLimit = tier.capacity !== null
             const capValue = tier.capacity ?? 0
@@ -274,44 +274,41 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
             return (
               <div
                 key={tier.id}
-                className="border-2 border-foreground/10 bg-secondary/10 hover:bg-secondary/20 p-6 flex flex-col justify-between transition-colors relative group"
+                className="border border-border/40 bg-card/40 backdrop-blur-md rounded-2xl p-6 flex flex-col justify-between hover:border-copper/40 transition-all duration-300 relative group shadow-sm"
               >
                 <div>
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
-                      <span className="font-mono text-[9px] uppercase tracking-widest bg-foreground/10 text-foreground px-2 py-0.5 font-bold inline-block mb-2">
+                      <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-stone-500/10 border border-border/30 text-muted-foreground px-2.5 py-0.5 rounded-full inline-block mb-2">
                         {tier.is_public ? 'PUBLIC' : 'PRIVATE'}
                       </span>
                       <h3 className="font-display text-2xl uppercase text-foreground leading-tight">{tier.name}</h3>
                     </div>
 
-                    <p className="font-mono text-xl font-bold text-copper whitespace-nowrap">
+                    <p className="font-mono text-xl font-black text-copper whitespace-nowrap">
                       {tier.price === 0 ? 'FREE' : `₦${(tier.price / 100).toLocaleString()}`}
                     </p>
                   </div>
 
                   {/* Allocation statistics */}
                   <div className="mt-6">
-                    <div className="flex justify-between font-mono text-[10px] uppercase text-foreground/50 mb-1.5 tracking-wider">
+                    <div className="flex justify-between font-mono text-[10px] uppercase font-bold text-muted-foreground/75 mb-1.5 tracking-wider">
                       <span>ALLOCATED TICKETS</span>
                       <span>
                         {tier.allocatedCount} / {hasLimit ? capValue : '∞'}
                       </span>
                     </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-3 border border-foreground/20 bg-background overflow-hidden relative">
-                      <div
-                        className="h-full bg-copper transition-all duration-300"
-                        style={{ width: `${hasLimit ? percentFilled : 15}%`, opacity: hasLimit ? 1 : 0.4 }}
-                      />
-                    </div>
-
-                    {hasLimit && percentFilled >= 90 && (
-                      <p className="font-mono text-[9px] text-denied uppercase tracking-wider mt-1.5 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        TIER IS ALMOST FULL ({percentFilled}%)
-                      </p>
+                    {hasLimit ? (
+                      <div className="w-full h-1.5 bg-stone-200/50 dark:bg-stone-900 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-copper rounded-full transition-all duration-500"
+                          style={{ width: `${percentFilled}%` }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full h-1.5 bg-emerald-500/20 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 w-full rounded-full" />
+                      </div>
                     )}
                   </div>
                 </div>

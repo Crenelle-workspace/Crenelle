@@ -104,31 +104,28 @@ export default async function EventLayout({
       </div>
 
       {/* Event heading */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 pb-6 border-b border-border">
-        <div>
-          <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.28em] text-copper mb-3">
-            Event
-          </p>
-          <h1
-            className="font-display font-semibold text-foreground leading-[0.95] tracking-tight"
-            style={{ fontSize: 'clamp(28px, 5vw, 52px)' }}
-          >
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 pb-6 border-b border-border/40">
+        <div className="space-y-1.5">
+          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-2.5 py-1 rounded-full inline-block">
+            Event Workspace
+          </span>
+          <h1 className="font-display font-semibold text-foreground leading-[0.95] tracking-tight text-4xl sm:text-6xl">
             {event.name}
           </h1>
-          <div className="flex items-center gap-3 mt-2">
-            <p className="font-sans text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <p className="font-sans text-xs font-semibold text-muted-foreground">
               {new Date(event.date).toLocaleDateString('en-GB', {
                 weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
               })}
             </p>
             {event.event_type === 'open' && (
-              <span className="font-sans text-[9px] font-semibold uppercase tracking-widest px-2 py-0.5 border border-copper/40 text-copper">
-                Open event
+              <span className="font-mono text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 border border-copper/30 bg-copper/10 text-copper rounded-full">
+                Open Event
               </span>
             )}
             {/* Co-host role badge — only shown to non-owners */}
             {!access.isOwner && access.role && (
-              <span className="inline-flex items-center gap-1.5 font-sans text-[9px] font-semibold uppercase tracking-widest px-2 py-0.5 border border-signal/40 text-signal">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 border border-copper/30 bg-copper/10 text-copper rounded-full">
                 <Users className="h-2.5 w-2.5" aria-hidden="true" />
                 {roleLabels[access.role] ?? 'CO-HOST'}
               </span>

@@ -18,19 +18,22 @@ export function SectionHeader({
 }: SectionHeaderProps) {
   return (
     <div className={cn(className)}>
-      <div className="flex items-center gap-3 mb-1">
+      <div className="flex items-center gap-2 mb-1.5">
         {live && (
-          <div className="size-2 bg-admitted animate-blink" aria-hidden="true" />
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
         )}
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-signal">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-copper">
           {eyebrow}
         </p>
       </div>
-      <h2 className="font-display text-4xl uppercase text-foreground leading-none">
+      <h2 className="font-sans text-3xl font-black tracking-tight text-foreground leading-tight">
         {title}
       </h2>
       {subtitle && (
-        <p className="font-mono text-xs text-foreground/70 uppercase tracking-widest mt-2">
+        <p className="font-sans text-xs text-muted-foreground leading-relaxed mt-1.5 max-w-xl">
           {subtitle}
         </p>
       )}

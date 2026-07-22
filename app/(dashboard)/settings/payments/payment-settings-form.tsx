@@ -127,50 +127,44 @@ export function PaymentSettingsForm({ settings }: Props) {
   }
 
   return (
-    <div className="space-y-6 animate-fade-up">
+    <div className="space-y-6 select-none">
 
       {/* ── Settlement info banner ── */}
-      <section className="border border-border bg-card">
-        <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-          <CreditCard className="size-4 text-copper" aria-hidden="true" />
-          <h2 className="font-sans text-[10px] font-semibold uppercase tracking-[0.25em] text-foreground">
-            Payout Account
+      <section className="bg-card/40 backdrop-blur-xl border border-border/40 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="px-6 sm:px-8 py-5 border-b border-border/40 flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-copper/10 text-copper">
+            <CreditCard className="size-4" aria-hidden="true" />
+          </div>
+          <h2 className="font-sans text-base font-bold text-foreground tracking-tight">
+            Payout Bank Account
           </h2>
         </div>
 
         {/* Connected state */}
         {isConnected && settings ? (
-          <div className="px-6 py-6 space-y-4">
-            <div className="flex items-start gap-3 p-4 border border-green-500/20 bg-green-500/5">
-              <CheckCircle2 className="size-4 text-green-500 mt-0.5 shrink-0" />
+          <div className="px-6 sm:px-8 py-6 space-y-4">
+            <div className="flex items-start gap-3 p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10">
+              <CheckCircle2 className="size-4 text-emerald-400 mt-0.5 shrink-0" />
               <div>
-                <p className="font-sans text-sm font-semibold text-foreground">Bank account connected</p>
-                <p className="font-mono text-[10px] text-muted-foreground mt-1 uppercase tracking-wide">
+                <p className="font-sans text-sm font-bold text-foreground">Bank account verified & connected</p>
+                <p className="font-mono text-[10px] text-emerald-400/80 mt-0.5 uppercase tracking-wider font-bold">
                   Payouts settled T+1 (next business day)
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <span className={labelCls}>Bank</span>
-                <span className="font-sans text-sm text-foreground">{settings.bank_name ?? '—'}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="p-4 rounded-2xl bg-stone-900/40 border border-border/40 space-y-1">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground/75 block">ACCOUNT NAME</span>
+                <p className="font-sans text-sm font-bold text-foreground">{settings.account_name ?? '—'}</p>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className={labelCls}>Account</span>
-                <span className="font-sans text-sm text-foreground">
-                  {'*'.repeat(6)}{settings.account_number?.slice(-4) ?? ''}
-                </span>
+              <div className="p-4 rounded-2xl bg-stone-900/40 border border-border/40 space-y-1">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground/75 block">BANK NAME</span>
+                <p className="font-sans text-sm font-bold text-foreground">{settings.bank_name ?? '—'}</p>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className={labelCls}>Account name</span>
-                <span className="font-sans text-sm text-foreground">{settings.account_name ?? '—'}</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className={labelCls}>Your share per ticket</span>
-                <span className="font-sans text-sm font-semibold text-copper">
-                  {100 - (settings.platform_fee_percent ?? 5)}%
-                </span>
+              <div className="p-4 rounded-2xl bg-stone-900/40 border border-border/40 space-y-1">
+                <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground/75 block">ACCOUNT NUMBER</span>
+                <p className="font-mono text-sm font-bold text-foreground">{settings.account_number ? `••••${settings.account_number.slice(-4)}` : '—'}</p>
               </div>
             </div>
 
