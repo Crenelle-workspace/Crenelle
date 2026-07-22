@@ -322,7 +322,7 @@ Key sections:
 - [x] Live usher counter (gate total + event total)
 - [x] **Team access / co-host collaboration** — Viewer, Scanner Manager, Co-Organiser roles with RLS enforcement and invite email
 
-
+$$$
 ---
 
 *Built on Next.js 16 · Supabase · Resend · Tailwind CSS*
