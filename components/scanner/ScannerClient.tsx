@@ -523,7 +523,7 @@ export default function ScannerClient({
       )}
 
       {/* ── Status Panel Flood ───────────────────────────────────── */}
-      <footer className="shrink-0 min-h-[140px] flex items-stretch border-t-2 border-ink">
+      <footer className="shrink-0 min-h-35 flex items-stretch border-t-2 border-ink">
         {processing ? (
           <div className="w-full bg-ink flex items-center justify-center animate-pulse">
             <h2 className="font-display text-4xl text-paper/40 tracking-widest uppercase">PROCESSING...</h2>

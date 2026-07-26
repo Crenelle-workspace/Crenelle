@@ -21,7 +21,13 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(request: NextRequest) {
   const reference = request.nextUrl.searchParams.get('reference')
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  // Use request origin as the authoritative base URL — NEXT_PUBLIC_APP_URL is a
+  // client-side env var and may be undefined / empty string in an API route,
+  // which would cause NextResponse.redirect() to receive a relative path and fail.
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.APP_URL ?? '') ||
+    request.nextUrl.origin
 
   if (!reference) {
     return NextResponse.redirect(`${appUrl}/?payment=error&reason=missing_reference`)
@@ -80,7 +86,8 @@ export async function GET(request: NextRequest) {
     // This mirrors the webhook handler logic
     if (payment && payment.status === 'pending') {
       // Fraud check: verify amount and currency match
-      if (txn.amount !== payment.amount_kobo || txn.currency !== payment.currency) {
+      // Normalize currency to uppercase to avoid false mismatches (e.g. 'ngn' vs 'NGN')
+      if (txn.amount !== payment.amount_kobo || txn.currency.toUpperCase() !== payment.currency.toUpperCase()) {
         Sentry.captureMessage('[Payment Verify] Amount or currency mismatch during verify fallback', {
           level: 'error',
           extra: {

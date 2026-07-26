@@ -236,7 +236,12 @@ export async function POST(request: NextRequest) {
   }
 
   // 10. Initialize the transaction with Paystack
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  // Derive the base URL from the request origin — NEXT_PUBLIC_APP_URL is a client-side
+  // env var and may be undefined in an API route. An empty appUrl produces a relative
+  // callback_url that Paystack cannot redirect back to.
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.APP_URL || request.nextUrl.origin)
   const { data: paystackData, error: paystackError } = await initializeTransaction({
     email: payer_email,
     amount: tier.price,

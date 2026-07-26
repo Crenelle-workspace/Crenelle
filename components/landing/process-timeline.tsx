@@ -59,7 +59,7 @@ export function ProcessTimeline() {
         {/* Dynamic Vertical Progress Track */}
         <div className="absolute left-7 top-6 bottom-6 w-0.5 bg-stone-200/50 dark:bg-stone-900/60 -z-10 rounded-full" />
         <motion.div
-          className="absolute left-7 top-6 w-0.5 bg-gradient-to-b from-copper to-amber-500 -z-10 rounded-full origin-top"
+          className="absolute left-7 top-6 w-0.5 bg-linear-to-b from-copper to-amber-500 -z-10 rounded-full origin-top"
           animate={{
             height: `${(activeStep / (steps.length - 1)) * 90}%`
           }}
@@ -79,7 +79,7 @@ export function ProcessTimeline() {
                 "group flex items-start gap-6 p-5 rounded-2xl cursor-pointer transition-all duration-500 select-none border border-transparent",
                 isActive 
                   ? "bg-stone-500/5 dark:bg-stone-900/40 border-border/40 dark:border-border/10 shadow-[0_8px_30px_rgba(0,0,0,0.015)] dark:shadow-none" 
-                  : "hover:bg-stone-500/[0.02] dark:hover:bg-stone-900/10"
+                  : "hover:bg-stone-500/2 dark:hover:bg-stone-900/10"
               )}
             >
               {/* Stepper badge indicator */}
@@ -134,8 +134,8 @@ export function ProcessTimeline() {
       </div>
 
       {/* Right Column: Dynamic Presentation Canvas */}
-      <div className="lg:col-span-6 flex justify-center items-center min-h-[380px] lg:min-h-full">
-        <div className="border border-border/40 dark:border-border/10 bg-stone-500/5 dark:bg-[#060504]/50 backdrop-blur-md rounded-3xl p-6 shadow-2xl w-full max-w-[480px] min-h-[380px] flex flex-col justify-between overflow-hidden relative">
+      <div className="lg:col-span-6 flex justify-center items-center min-h-95 lg:min-h-full">
+        <div className="border border-border/40 dark:border-border/10 bg-stone-500/5 dark:bg-[#060504]/50 backdrop-blur-md rounded-3xl p-6 shadow-2xl w-full max-w-120 min-h-95 flex flex-col justify-between overflow-hidden relative">
           
           {/* Subtle glowing mesh behind the canvas */}
           <div className="absolute top-[-10%] right-[-10%] w-40 h-40 rounded-full bg-copper/10 blur-3xl pointer-events-none z-0" />
@@ -223,7 +223,7 @@ export function ProcessTimeline() {
                         </div>
                         <div className="space-y-1">
                           <h4 className="font-bold text-sm text-foreground">You are Invited.</h4>
-                          <p className="text-[10px] text-muted-foreground max-w-[220px] mx-auto leading-normal">
+                          <p className="text-[10px] text-muted-foreground max-w-55 mx-auto leading-normal">
                             Your reservation is verified. Scan this QR code at the door for VIP check-in.
                           </p>
                         </div>

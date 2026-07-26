@@ -18,7 +18,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'relative border border-border/40 bg-card/20 backdrop-blur-md rounded-2xl py-16 px-6 flex flex-col items-center justify-center text-center overflow-hidden min-h-[350px] group/empty select-none',
+        'relative border border-border/40 bg-card/20 backdrop-blur-md rounded-2xl py-16 px-6 flex flex-col items-center justify-center text-center overflow-hidden min-h-87.5 group/empty select-none',
         className
       )}
     >

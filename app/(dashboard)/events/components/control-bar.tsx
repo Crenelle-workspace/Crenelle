@@ -45,7 +45,7 @@ export function ControlBar({ filter, setFilter, sortBy, setSortBy }: ControlBarP
       </div>
 
       {/* Sort select */}
-      <div className="flex flex-col gap-2 min-w-[160px]">
+      <div className="flex flex-col gap-2 min-w-40">
         <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-muted-foreground/75">
           Sort Order
         </span>

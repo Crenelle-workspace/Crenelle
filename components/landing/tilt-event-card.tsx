@@ -57,7 +57,7 @@ export function TiltEventCard({ children, imageUrl, className, bgClass }: TiltEv
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         className={cn(
-          "relative rounded-3xl border border-border/40 dark:border-border/10 overflow-hidden min-h-[320px] flex flex-col justify-end p-6 select-none shadow-[0_8px_30px_rgba(0,0,0,0.015)] dark:shadow-none transition-colors duration-300 w-full group",
+          "relative rounded-3xl border border-border/40 dark:border-border/10 overflow-hidden min-h-80 flex flex-col justify-end p-6 select-none shadow-[0_8px_30px_rgba(0,0,0,0.015)] dark:shadow-none transition-colors duration-300 w-full group",
           bgClass,
           className
         )}

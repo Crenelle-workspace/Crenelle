@@ -132,7 +132,7 @@ export function EventCard({
         </div>
 
         {/* Fine print */}
-        <div className="px-6 py-2.5 border-t border-border/20 flex justify-between bg-stone-500/[0.02]">
+        <div className="px-6 py-2.5 border-t border-border/20 flex justify-between bg-stone-500/2">
           <span className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50">
             CRENELLE SECURITY PASS
           </span>
