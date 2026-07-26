@@ -84,9 +84,12 @@ export async function GET(request: NextRequest) {
     // Webhook may not have fired yet — process the payment here as a fallback
     // This mirrors the webhook handler logic
     if (payment && payment.status === 'pending') {
-      // Fraud check: verify amount and currency match
-      // Normalize currency to uppercase to avoid false mismatches (e.g. 'ngn' vs 'NGN')
-      if (txn.amount !== payment.amount_kobo || txn.currency.toUpperCase() !== payment.currency.toUpperCase()) {
+      // Fraud check: verify the customer paid at least the expected amount and currency matches.
+      // We use >= (not ===) because Paystack may adjust the gross amount slightly when applying
+      // subaccount splits or processing-fee rounding. Blocking underpayments is the correct guard;
+      // overpayments are fine and should not be rejected.
+      // Normalize currency to uppercase to avoid false mismatches (e.g. 'ngn' vs 'NGN').
+      if (txn.amount < payment.amount_kobo || txn.currency.toUpperCase() !== payment.currency.toUpperCase()) {
         Sentry.captureMessage('[Payment Verify] Amount or currency mismatch during verify fallback', {
           level: 'error',
           extra: {
