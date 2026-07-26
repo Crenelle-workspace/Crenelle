@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   // 1. Verify the event exists, is open, and is published/live
   const { data: event, error: eventError } = await supabase
     .from('events')
-    .select('id, organizer_id, name, event_type, status, max_registrations, slug')
+    .select('id, organizer_id, name, event_type, status, max_registrations, registration_slug')
     .eq('id', event_id)
     .single()
 
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
       payer_name,
       metadata: {
         event_name: event.name,
-        event_slug: event.slug,
+        event_slug: event.registration_slug,
         tier_name: tier.name,
         organiser_id: event.organizer_id,
       },
