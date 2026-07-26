@@ -102,8 +102,10 @@ async function handleChargeSuccess(
       return NextResponse.json({ received: true, skipped: 'already_processed' }, { status: 200 })
     }
 
-    // 3. Fraud check: verify amount and currency match what we expected
-    if (amount !== payment.amount_kobo || event.data.currency !== payment.currency) {
+    // 3. Fraud check: verify the customer paid at least the expected amount and currency matches.
+    // Use < (not !==) — Paystack may round the gross amount slightly when splitting with a subaccount.
+    // Blocking underpayments is the correct guard; overpayments are not fraud.
+    if (amount < payment.amount_kobo || event.data.currency !== payment.currency) {
       Sentry.captureMessage('[Paystack Webhook] Amount or currency mismatch — possible tampering', {
         level: 'error',
         extra: {

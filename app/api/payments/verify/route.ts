@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyTransaction } from '@/lib/paystack'
+import { sendInvitationEmail } from '@/lib/email'
+import { sendInvitationWhatsApp } from '@/lib/whatsapp'
 import * as Sentry from '@sentry/nextjs'
 
 export const dynamic = 'force-dynamic'
@@ -146,7 +148,7 @@ export async function GET(request: NextRequest) {
             .maybeSingle()
 
           if (!existing) {
-            await supabase.from('invitations').insert({
+            const { data: newInvitation } = await supabase.from('invitations').insert({
               event_id: payment.event_id,
               attendee_id: payment.attendee_id,
               party_size: 1,
@@ -156,7 +158,52 @@ export async function GET(request: NextRequest) {
               payment_status: 'paid',
               amount_paid_kobo: txn.amount,
               paid_at: txn.paid_at ?? new Date().toISOString(),
-            })
+            }).select('id').single()
+
+            // Send confirmation email + WhatsApp now that the invitation exists
+            const invitationId = newInvitation?.id ?? null
+            if (invitationId) {
+              const { data: eventData } = await supabase
+                .from('events')
+                .select('name, date, time, venue, description, banner_url')
+                .eq('id', payment.event_id)
+                .single()
+
+              const { data: attendee } = await supabase
+                .from('attendees')
+                .select('name, email, phone')
+                .eq('id', payment.attendee_id)
+                .single()
+
+              if (attendee?.email && eventData) {
+                // Non-fatal: log errors but don't block the redirect
+                sendInvitationEmail({
+                  eventId: payment.event_id,
+                  recipientEmail: attendee.email,
+                  recipientName: attendee.name,
+                  invitationId,
+                  event: eventData,
+                }).catch((e) =>
+                  Sentry.captureException(e, {
+                    extra: { reference, context: 'payment_verify_fallback_send_email' },
+                  })
+                )
+              }
+
+              if (attendee?.phone && eventData) {
+                sendInvitationWhatsApp({
+                  eventId: payment.event_id,
+                  recipientPhone: attendee.phone,
+                  recipientName: attendee.name,
+                  invitationId,
+                  event: eventData,
+                }).catch((e) =>
+                  Sentry.captureException(e, {
+                    extra: { reference, context: 'payment_verify_fallback_send_whatsapp' },
+                  })
+                )
+              }
+            }
           }
         }
       } catch (err) {
