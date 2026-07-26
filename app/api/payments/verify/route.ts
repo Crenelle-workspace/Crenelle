@@ -26,8 +26,7 @@ export async function GET(request: NextRequest) {
   // which would cause NextResponse.redirect() to receive a relative path and fail.
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.APP_URL ?? '') ||
-    request.nextUrl.origin
+    (process.env.APP_URL || request.nextUrl.origin)
 
   if (!reference) {
     return NextResponse.redirect(`${appUrl}/?payment=error&reason=missing_reference`)
