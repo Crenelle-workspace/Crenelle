@@ -174,9 +174,9 @@ export interface OrganizerSettings {
 
 // ── Payment types ──────────────────────────────────────────────
 
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'abandoned'
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'abandoned' | 'disputed'
 export type PaymentChannel = 'card' | 'bank' | 'ussd' | 'bank_transfer' | 'qr'
-export type InvitationPaymentStatus = 'unpaid' | 'paid' | 'refunded' | 'failed'
+export type InvitationPaymentStatus = 'unpaid' | 'paid' | 'refunded' | 'failed' | 'disputed'
 
 export interface Payment {
   id: string
@@ -215,9 +215,16 @@ export interface OrganizerPaymentSettings {
   updated_at: string
 }
 
-// Paystack webhook payload shapes (charge.success / charge.failed)
+// Paystack webhook payload shapes
 export interface PaystackWebhookEvent {
-  event: 'charge.success' | 'charge.failed' | 'transfer.reversed' | string
+  event:
+    | 'charge.success'
+    | 'charge.failed'
+    | 'refund.processed'
+    | 'charge.dispute.create'
+    | 'charge.dispute.resolve'
+    | 'transfer.reversed'
+    | string
   data: {
     id: number
     domain: 'live' | 'test'

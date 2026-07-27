@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/payments/pending-check",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/settlements/reconcile",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

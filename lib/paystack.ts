@@ -298,3 +298,75 @@ export function formatKoboAsNGN(kobo: number): string {
     maximumFractionDigits: 0,
   }).format(naira);
 }
+
+// ── Settlement Types & API ─────────────────────────────────────
+
+export interface PaystackSettlement {
+  id: number;
+  domain: "live" | "test";
+  status: "success" | "processing" | "failed";
+  currency: string;
+  integration: number;
+  subaccount: {
+    id: number;
+    account_code: string;
+    business_name: string;
+  };
+  total_amount: number;       // in kobo
+  total_fees: number;         // Paystack fees in kobo
+  net_amount: number;         // total_amount - total_fees, in kobo
+  settled_by: string | null;
+  settlement_date: string;    // ISO date string
+  transfer_reference: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaystackSettlementTransaction {
+  id: number;
+  reference: string;
+  amount: number;       // gross amount in kobo
+  fees: number;         // Paystack fee in kobo
+  currency: string;
+  channel: string;
+  paid_at: string;
+  customer: {
+    id: number;
+    email: string;
+  };
+}
+
+/**
+ * List settlements for a subaccount.
+ * Use for the hourly reconciliation job: GET /settlement?subaccount={code}
+ */
+export async function listSettlements(
+  subaccountCode: string,
+  perPage: number = 50,
+  page: number = 1,
+): Promise<
+  | { data: PaystackSettlement[]; error: null }
+  | { data: null; error: string }
+> {
+  return paystackFetch<PaystackSettlement[]>(
+    `/settlement?subaccount=${encodeURIComponent(subaccountCode)}&perPage=${perPage}&page=${page}`,
+  );
+}
+
+/**
+ * Fetch the individual transactions that make up a settlement batch.
+ * Use to populate settlement_transactions: GET /settlement/:id/transactions
+ */
+export async function getSettlementTransactions(
+  settlementId: number,
+  perPage: number = 250,
+  page: number = 1,
+): Promise<
+  | { data: PaystackSettlementTransaction[]; error: null }
+  | { data: null; error: string }
+> {
+  return paystackFetch<PaystackSettlementTransaction[]>(
+    `/settlement/${settlementId}/transactions?perPage=${perPage}&page=${page}`,
+  );
+}
+

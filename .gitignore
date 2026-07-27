@@ -1,8 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# ── Dependencies ─────────────────────────────────────────────────
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,34 +8,110 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# ── Build Outputs ────────────────────────────────────────────────
+.next/
+out/
+build/
+dist/
+.turbo/
 
-# next.js
-/.next/
-/out/
+# ── Environment & Secrets ─────────────────────────────────────────
+# Never commit secrets. Use .env.example for documentation.
+.env
+.env.*
+!.env.*.example
+!.env.example
 
-# production
-/build
+# ── TypeScript ────────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts
 
-# misc
-.DS_Store
-*.pem
+# ── Testing & Coverage ────────────────────────────────────────────
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
 
-# debug
+# ── Debug & Logs ─────────────────────────────────────────────────
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
+# ── OS Artifacts ─────────────────────────────────────────────────
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
 
-# vercel
-.vercel
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Linux
+*~
 
+# ── Editors & IDEs ───────────────────────────────────────────────
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# JetBrains (WebStorm, IntelliJ)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim / Neovim
+*.swp
+*.swo
+*.swn
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.#*
+
+# ── Deployment Platforms ─────────────────────────────────────────
+.vercel/
+
+# ── Supabase Local Dev ────────────────────────────────────────────
+.supabase/
+supabase/.temp/
+supabase/config.toml.local
+
+# ── Sentry ───────────────────────────────────────────────────────
+.sentryclirc
+sentry.properties
+
+# ── Security ─────────────────────────────────────────────────────
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+
+# ── Misc ─────────────────────────────────────────────────────────
+# Internal architecture / design docs — keep local only
 ARCHITECTURE.md
+*.pdf
