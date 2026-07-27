@@ -21,11 +21,16 @@ const syne = Syne({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://crenelle.app'),
   title: 'Crenelle — Event Access Management',
   description: 'Issue QR-coded entry passes, scan guests in real-time, and take full control of every door.',
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: [
+      { url: '/Brand Logos/CRENELLE FAVICON W.png', media: '(prefers-color-scheme: dark)' },
+      { url: '/Brand Logos/CRENELLE FAVICON B.png', media: '(prefers-color-scheme: light)' },
+    ],
+    shortcut: '/Brand Logos/CRENELLE FAVICON W.png',
+    apple: '/Brand Logos/CRENELLE FAVICON W.png',
   },
   openGraph: {
     title: 'Crenelle — Event Access Management',

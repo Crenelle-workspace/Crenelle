@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { QrCode } from 'lucide-react'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -26,17 +27,22 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Logo */}
         <Link href="/" className="relative z-10 flex items-center gap-3 pl-6 group">
-          <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center text-background group-hover:rotate-12 transition-transform duration-500 shadow-sm">
-            <QrCode className="w-4 h-4" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-sans text-xl font-bold tracking-tight text-foreground leading-none">
-              crenelle
-            </span>
-            <span className="font-mono text-[8px] text-muted-foreground/60 tracking-wider mt-0.5 uppercase">
-              Creative Event Suite
-            </span>
-          </div>
+          <Image
+            src="/Brand Logos/CRENELLE FULLH W.png"
+            alt="Crenelle"
+            width={160}
+            height={36}
+            className="h-8 w-auto hidden dark:block object-contain"
+            priority
+          />
+          <Image
+            src="/Brand Logos/CRENELLE FULLH B.png"
+            alt="Crenelle"
+            width={160}
+            height={36}
+            className="h-8 w-auto block dark:hidden object-contain"
+            priority
+          />
         </Link>
 
         {/* Hero statement */}
@@ -80,17 +86,22 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Mobile logo */}
         <Link href="/" className="lg:hidden mb-10 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center text-background shadow-sm">
-            <QrCode className="w-4 h-4" />
-          </div>
-          <div className="flex flex-col text-left">
-            <span className="font-sans text-xl font-bold tracking-tight text-foreground leading-none">
-              crenelle
-            </span>
-            <span className="font-mono text-[8px] text-muted-foreground/60 tracking-wider mt-0.5 uppercase">
-              Creative Event Suite
-            </span>
-          </div>
+          <Image
+            src="/Brand Logos/CRENELLE FULLH W.png"
+            alt="Crenelle"
+            width={160}
+            height={36}
+            className="h-8 w-auto hidden dark:block object-contain"
+            priority
+          />
+          <Image
+            src="/Brand Logos/CRENELLE FULLH B.png"
+            alt="Crenelle"
+            width={160}
+            height={36}
+            className="h-8 w-auto block dark:hidden object-contain"
+            priority
+          />
         </Link>
 
         <div className="w-full max-w-sm">

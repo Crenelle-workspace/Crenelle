@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { ShieldCheck, QrCode, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
@@ -59,12 +60,22 @@ export default async function AdminLayout({
           className="flex items-center gap-3 group"
           aria-label="Crenelle Admin — go to admin dashboard"
         >
-          <div className="w-7 h-7 border border-copper/60 flex items-center justify-center group-hover:border-copper transition-colors shrink-0">
-            <QrCode className="w-3.5 h-3.5 text-copper" />
-          </div>
-          <span className="font-display font-light tracking-[0.2em] uppercase text-foreground text-xl group-hover:text-copper transition-colors">
-            Crenelle
-          </span>
+          <Image
+            src="/Brand Logos/CRENELLE FULLH W.png"
+            alt="Crenelle"
+            width={140}
+            height={32}
+            className="h-7 w-auto hidden dark:block object-contain"
+            priority
+          />
+          <Image
+            src="/Brand Logos/CRENELLE FULLH B.png"
+            alt="Crenelle"
+            width={140}
+            height={32}
+            className="h-7 w-auto block dark:hidden object-contain"
+            priority
+          />
           {/* Admin badge */}
           <span
             className="ml-1 inline-flex items-center gap-1 font-sans text-[9px] font-semibold uppercase tracking-[0.18em] bg-copper/15 text-copper border border-copper/30 px-2 py-0.5"

@@ -1,6 +1,7 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
-import { LogOut, QrCode, Settings, Plus } from 'lucide-react'
+import { LogOut, Settings, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/actions/auth'
 import { ModeToggle } from '@/components/mode-toggle'
@@ -21,17 +22,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
           className="flex items-center gap-3 group"
           aria-label="Crenelle — go to events dashboard"
         >
-          <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center text-background group-hover:rotate-12 transition-transform duration-500 shadow-sm shrink-0">
-            <QrCode className="w-4 h-4" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-sans text-lg font-bold tracking-tight text-foreground leading-none group-hover:text-copper transition-colors">
-              crenelle
-            </span>
-            <span className="font-mono text-[8px] text-muted-foreground/60 tracking-wider mt-0.5 uppercase hidden sm:block">
-              Event Management
-            </span>
-          </div>
+          <Image
+            src="/Brand Logos/CRENELLE WORDMARK W.png"
+            alt="Crenelle"
+            width={150}
+            height={34}
+            className="h-5 w-auto hidden dark:block object-contain"
+            priority
+          />
+          <Image
+            src="/Brand Logos/CRENELLE WORDMARK B.png"
+            alt="Crenelle"
+            width={150}
+            height={34}
+            className="h-5 w-auto block dark:hidden object-contain"
+            priority
+          />
         </Link>
 
         <div className="flex items-center gap-3">

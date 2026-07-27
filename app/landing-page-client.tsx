@@ -1,25 +1,25 @@
-'use client'
+"use client";
 
-import Image from 'next/image'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
+import Image from "next/image";
+import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   QrCode,
   ArrowRight,
   Clock,
   Smartphone,
   ShieldCheck,
-  Activity
-} from 'lucide-react'
-import { ModeToggle } from '@/components/mode-toggle'
-import { cn } from '@/lib/utils'
-import { TiltEventCard } from '@/components/landing/tilt-event-card'
-import { InteractiveTicketStack } from '@/components/landing/interactive-ticket-stack'
-import { FeaturesGrid } from '@/components/landing/features-grid'
-import { ProcessTimeline } from '@/components/landing/process-timeline'
+  Activity,
+} from "lucide-react";
+import { ModeToggle } from "@/components/mode-toggle";
+import { cn } from "@/lib/utils";
+import { TiltEventCard } from "@/components/landing/tilt-event-card";
+import { InteractiveTicketStack } from "@/components/landing/interactive-ticket-stack";
+import { FeaturesGrid } from "@/components/landing/features-grid";
+import { ProcessTimeline } from "@/components/landing/process-timeline";
 
 interface LandingPageClientProps {
-  user: unknown
+  user: unknown;
 }
 
 // ── Motion Variants for Staggered Load-Ins ──
@@ -32,7 +32,7 @@ const containerVariants = {
       delayChildren: 0.05,
     },
   },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -40,17 +40,16 @@ const itemVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      type: 'spring' as const,
+      type: "spring" as const,
       stiffness: 90,
       damping: 15,
     },
   },
-}
+};
 
 export function LandingPageClient({ user }: LandingPageClientProps) {
   return (
     <div className="bg-background text-foreground min-h-screen overflow-x-hidden relative selection:bg-copper/30 selection:text-white font-['Inter',ui-sans-serif,system-ui,sans-serif]">
-      
       {/* Immersive background mesh glows */}
       <div className="absolute top-[-10%] left-[-15%] w-[60vw] h-[60vw] rounded-full bg-copper/8 dark:bg-copper/5 blur-[140px] pointer-events-none z-0" />
       <div className="absolute top-[25%] right-[-15%] w-[50vw] h-[50vw] rounded-full bg-amber-500/6 dark:bg-amber-50/5 blur-[120px] pointer-events-none z-0" />
@@ -63,24 +62,29 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
       <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 py-5 border-b border-border/45 bg-background/60 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center text-background group-hover:rotate-12 transition-transform duration-500">
-              <QrCode className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-sans text-xl font-bold tracking-tight leading-none text-foreground">
-                crenelle
-              </span>
-              <span className="font-mono text-[8px] text-muted-foreground/60 tracking-wider mt-0.5">
-                CREATIVE EVENT SUITE
-              </span>
-            </div>
+            <Image
+              src="/Brand Logos/CRENELLE FULLH W.png"
+              alt="Crenelle"
+              width={160}
+              height={36}
+              className="h-8 w-auto hidden dark:block object-contain"
+              priority
+            />
+            <Image
+              src="/Brand Logos/CRENELLE FULLH B.png"
+              alt="Crenelle"
+              width={160}
+              height={36}
+              className="h-8 w-auto block dark:hidden object-contain"
+              priority
+            />
           </Link>
 
           <div className="hidden md:flex items-center gap-8 font-semibold text-xs">
             {[
-              ['#showcase', 'Showcase'],
-              ['#features', 'Features'],
-              ['#process', 'Process'],
+              ["#showcase", "Showcase"],
+              ["#features", "Features"],
+              ["#process", "Process"],
             ].map(([href, label]) => (
               <a
                 key={href}
@@ -96,22 +100,21 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
           <div className="flex items-center gap-4">
             <ModeToggle />
             <Link
-              href={user ? '/events' : '/login'}
+              href={user ? "/events" : "/login"}
               className="inline-flex items-center justify-center rounded-full bg-foreground text-background font-sans text-xs font-bold px-6 py-2.5 hover:bg-copper hover:text-white transition-colors duration-300"
             >
-              {user ? 'Go to Dashboard' : 'Sign In'}
+              {user ? "Go to Dashboard" : "Sign In"}
             </Link>
           </div>
         </div>
       </nav>
 
       {/* ── IMMERSIVE SPACIOUS SPLIT HERO SECTION ── */}
-      <section 
-        id="hero" 
+      <section
+        id="hero"
         className="min-h-screen pt-36 pb-20 px-6 md:px-12 flex flex-col justify-center relative z-10 max-w-7xl mx-auto w-full overflow-hidden"
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full text-center lg:text-left">
-          
           {/* Left Column: Heading copy */}
           <div className="lg:col-span-7 space-y-8 flex flex-col justify-center items-center lg:items-start max-w-2xl mx-auto lg:mx-0">
             <motion.h1
@@ -120,7 +123,8 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
               transition={{ duration: 0.8 }}
               className="text-5xl sm:text-6xl lg:text-7xl  font-black leading-[1.02] tracking-tight text-foreground"
             >
-              Gathering is an art.<br />
+              Gathering is an art.
+              <br />
               Host it flawlessly.
             </motion.h1>
 
@@ -130,7 +134,9 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
               transition={{ duration: 0.8, delay: 0.1 }}
               className="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed"
             >
-              Crenelle is the elegant toolkit for premium event hosting. Design custom ticket pages, collect payouts via Paystack, broadcast branded email invites, and manage door check-ins with ease.
+              Crenelle is the elegant toolkit for premium event hosting. Design
+              custom ticket pages, collect payouts via Paystack, broadcast
+              branded email invites, and manage door check-ins with ease.
             </motion.p>
 
             <motion.div
@@ -140,7 +146,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
               className="flex flex-col sm:flex-row gap-4 items-center justify-center lg:justify-start w-full sm:w-auto pt-2"
             >
               <Link
-                href={user ? '/events' : '/login'}
+                href={user ? "/events" : "/login"}
                 className="inline-flex items-center gap-2.5 bg-foreground text-background text-xs font-bold px-8 py-3.5 rounded-full hover:bg-copper hover:text-white transition-all duration-300 shadow-lg shadow-black/5"
               >
                 Create Your Event
@@ -160,30 +166,32 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.3, type: 'spring' }}
+              transition={{ duration: 0.8, delay: 0.3, type: "spring" }}
               className="w-full flex justify-center"
             >
               <InteractiveTicketStack />
             </motion.div>
           </div>
-
         </div>
       </section>
 
       {/* ── EVENT FORMAT BENTO GRID SHOWCASE ── */}
-      <section id="showcase" className="py-24 px-6 md:px-12 relative border-t border-border/40">
+      <section
+        id="showcase"
+        className="py-24 px-6 md:px-12 relative border-t border-border/40"
+      >
         <div className="max-w-7xl mx-auto space-y-16">
-          
           <div className="max-w-xl space-y-4">
             <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground">
               Designed for every format.
             </h2>
             <p className="text-sm text-muted-foreground">
-              From creative salons to keynote summits, Crenelle adapts to how you bring people together.
+              From creative salons to keynote summits, Crenelle adapts to how
+              you bring people together.
             </p>
           </div>
 
-          <motion.div 
+          <motion.div
             variants={containerVariants}
             initial="hidden"
             whileInView="show"
@@ -196,9 +204,12 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 <span className="text-[9px] uppercase font-bold tracking-wider text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 rounded-full inline-block">
                   Art & Culture
                 </span>
-                <h3 className="text-xl font-bold font-sans text-stone-100">Creative Salons & Exhibitions</h3>
+                <h3 className="text-xl font-bold font-sans text-stone-100">
+                  Creative Salons & Exhibitions
+                </h3>
                 <p className="text-xs text-stone-300/80 leading-relaxed max-w-md">
-                  Design clean event cards that act as a canvas, framing your exhibition details with clean spacing.
+                  Design clean event cards that act as a canvas, framing your
+                  exhibition details with clean spacing.
                 </p>
               </TiltEventCard>
             </motion.div>
@@ -209,7 +220,9 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 <span className="text-[9px] uppercase font-bold tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full inline-block">
                   Late Night
                 </span>
-                <h3 className="text-xl font-bold font-sans text-stone-100">Warehouse Raves & Concerts</h3>
+                <h3 className="text-xl font-bold font-sans text-stone-100">
+                  Warehouse Raves & Concerts
+                </h3>
                 <p className="text-xs text-stone-300/80 leading-relaxed font-mono">
                   Secure ticketing with strict double-scan protection.
                 </p>
@@ -222,9 +235,12 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 <span className="text-[9px] uppercase font-bold tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full inline-block">
                   Banquets
                 </span>
-                <h3 className="text-xl font-bold font-sans text-stone-100">Founders&apos; Dinners &amp; Feasts</h3>
+                <h3 className="text-xl font-bold font-sans text-stone-100">
+                  Founders&apos; Dinners &amp; Feasts
+                </h3>
                 <p className="text-xs text-stone-300/80 leading-relaxed">
-                  Broadcast personalized invitations directly to your guest list.
+                  Broadcast personalized invitations directly to your guest
+                  list.
                 </p>
               </TiltEventCard>
             </motion.div>
@@ -235,9 +251,12 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 <span className="text-[9px] uppercase font-bold tracking-wider text-copper bg-copper/10 border border-copper/20 px-2.5 py-0.5 rounded-full inline-block">
                   Classes
                 </span>
-                <h3 className="text-xl font-bold font-sans text-stone-100">Workshops & Panels</h3>
+                <h3 className="text-xl font-bold font-sans text-stone-100">
+                  Workshops & Panels
+                </h3>
                 <p className="text-xs text-stone-300/80 leading-relaxed max-w-md">
-                  Collect registration fees in NGN or USD with automatic checkout validation settlements.
+                  Collect registration fees in NGN or USD with automatic
+                  checkout validation settlements.
                 </p>
               </TiltEventCard>
             </motion.div>
@@ -248,9 +267,12 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 <span className="text-[9px] uppercase font-bold tracking-wider text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2.5 py-0.5 rounded-full inline-block">
                   Conferences
                 </span>
-                <h3 className="text-xl font-bold font-sans text-stone-100">Technology Summits & Keynotes</h3>
+                <h3 className="text-xl font-bold font-sans text-stone-100">
+                  Technology Summits & Keynotes
+                </h3>
                 <p className="text-xs text-stone-300/80 leading-relaxed max-w-xl">
-                  Coordinate large-scale registrations and automatically manage active capacity limits with waitlist triggers.
+                  Coordinate large-scale registrations and automatically manage
+                  active capacity limits with waitlist triggers.
                 </p>
               </TiltEventCard>
             </motion.div>
@@ -261,27 +283,32 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 <span className="text-[9px] uppercase font-bold tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full inline-block">
                   Socials
                 </span>
-                <h3 className="text-xl font-bold font-sans text-stone-100">Private Brunches & Meetups</h3>
+                <h3 className="text-xl font-bold font-sans text-stone-100">
+                  Private Brunches & Meetups
+                </h3>
                 <p className="text-xs text-stone-300/80 leading-relaxed">
-                  Design stylish weekend tables and social registration pages for your guests.
+                  Design stylish weekend tables and social registration pages
+                  for your guests.
                 </p>
               </TiltEventCard>
             </motion.div>
           </motion.div>
-          
         </div>
       </section>
 
       {/* ── CAPABILITIES BENTO SHOWCASE ── */}
-      <section id="features" className="py-32 px-6 md:px-12 relative border-t border-border/4">
+      <section
+        id="features"
+        className="py-32 px-6 md:px-12 relative border-t border-border/4"
+      >
         <div className="max-w-7xl mx-auto space-y-16">
-          
           <div className="max-w-xl space-y-4">
             <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground">
               Highlights of the Crenelle suite.
             </h2>
             <p className="text-sm text-muted-foreground">
-              A carefully crafted toolkit to configure event forms, secure tickets, collect globally, and authorize door access.
+              A carefully crafted toolkit to configure event forms, secure
+              tickets, collect globally, and authorize door access.
             </p>
           </div>
 
@@ -290,21 +317,25 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
       </section>
 
       {/* ── ACCESS SCANNER INFO ── */}
-      <section id="process" className="py-32 px-6 md:px-12 relative border-b border-border/40 bg-card/10 dark:bg-[#0A0908]/20 overflow-hidden">
-        
+      <section
+        id="process"
+        className="py-32 px-6 md:px-12 relative border-b border-border/40 bg-card/10 dark:bg-[#0A0908]/20 overflow-hidden"
+      >
         {/* Subtle grid backdrop */}
         <div className="absolute inset-0 bg-[radial-gradient(var(--border)_1px,transparent_1px)] bg-size-[2rem_2rem] opacity-30 dark:opacity-10 pointer-events-none z-0" />
 
         <div className="max-w-7xl mx-auto space-y-16 relative z-10 text-center">
-          
           {/* Centered Heading */}
           <div className="max-w-3xl mx-auto space-y-4">
             <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground">
-              One-click usher scan clients.<br />
+              One-click usher scan clients.
+              <br />
               <span className="text-copper">No passwords required.</span>
             </h2>
             <p className="text-sm text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Empower your door staff without password configurations. Generate temporary, secure links that load scanner cameras inside standard web browsers on any mobile device.
+              Empower your door staff without password configurations. Generate
+              temporary, secure links that load scanner cameras inside standard
+              web browsers on any mobile device.
             </p>
           </div>
 
@@ -313,46 +344,50 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             {[
               {
                 icon: Smartphone,
-                title: 'Zero Configuration',
-                desc: 'Usher scan links load instantly in any mobile browser.',
-                image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80',
-                maskClass: 'rounded-3xl rounded-bl-[4rem]',
-                hoverOffset: -8
+                title: "Zero Configuration",
+                desc: "Usher scan links load instantly in any mobile browser.",
+                image:
+                  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80",
+                maskClass: "rounded-3xl rounded-bl-[4rem]",
+                hoverOffset: -8,
               },
               {
                 icon: ShieldCheck,
-                title: 'Double-Entry Shield',
-                desc: 'Automatically prevent duplicate or re-scanned tickets.',
-                image: 'https://images.unsplash.com/photo-1590608897129-79da98d15969?auto=format&fit=crop&w=600&q=80',
-                maskClass: 'rounded-3xl rounded-tr-[4.5rem]',
-                hoverOffset: -12
+                title: "Double-Entry Shield",
+                desc: "Automatically prevent duplicate or re-scanned tickets.",
+                image:
+                  "https://images.unsplash.com/photo-1590608897129-79da98d15969?auto=format&fit=crop&w=600&q=80",
+                maskClass: "rounded-3xl rounded-tr-[4.5rem]",
+                hoverOffset: -12,
               },
               {
                 icon: Activity,
-                title: 'Live Coordinator Hub',
-                desc: 'Sync check-in statuses in real-time across multiple gates.',
-                image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-                maskClass: 'rounded-3xl rounded-br-[4.5rem]',
-                hoverOffset: -8
+                title: "Live Coordinator Hub",
+                desc: "Sync check-in statuses in real-time across multiple gates.",
+                image:
+                  "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80",
+                maskClass: "rounded-3xl rounded-br-[4.5rem]",
+                hoverOffset: -8,
               },
               {
                 icon: Clock,
-                title: 'Dynamic Expiry',
-                desc: 'Scan links invalidate automatically when gates close.',
-                image: 'https://images.unsplash.com/photo-1508962914676-134849a727f0?auto=format&fit=crop&w=600&q=80',
-                maskClass: 'rounded-3xl rounded-tl-[4rem]',
-                hoverOffset: -12
-              }
+                title: "Dynamic Expiry",
+                desc: "Scan links invalidate automatically when gates close.",
+                image:
+                  "https://images.unsplash.com/photo-1508962914676-134849a727f0?auto=format&fit=crop&w=600&q=80",
+                maskClass: "rounded-3xl rounded-tl-[4rem]",
+                hoverOffset: -12,
+              },
             ].map((feat, index) => {
-              const Icon = feat.icon
+              const Icon = feat.icon;
               return (
                 <motion.div
                   key={index}
                   whileHover={{ y: feat.hoverOffset, scale: 1.02 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   className={cn(
                     "overflow-hidden border border-border/40 dark:border-border/10 bg-stone-900 shadow-2xl relative h-76 flex flex-col justify-end p-5 select-none transition-colors duration-300 group cursor-pointer",
-                    feat.maskClass
+                    feat.maskClass,
                   )}
                 >
                   {/* Masked Backdrop Image */}
@@ -374,15 +409,18 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="space-y-1">
-                      <h3 className="font-bold text-sm text-foreground tracking-tight">{feat.title}</h3>
-                      <p className="text-[10.5px] text-muted-foreground leading-relaxed">{feat.desc}</p>
+                      <h3 className="font-bold text-sm text-foreground tracking-tight">
+                        {feat.title}
+                      </h3>
+                      <p className="text-[10.5px] text-muted-foreground leading-relaxed">
+                        {feat.desc}
+                      </p>
                     </div>
                   </div>
                 </motion.div>
-              )
+              );
             })}
           </div>
-
         </div>
       </section>
 
@@ -393,7 +431,9 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground">
               The hosting lifecycle.
             </h2>
-            <span className="font-mono text-[9px] text-muted-foreground/60 tracking-wider">STAGES 01 - 04</span>
+            <span className="font-mono text-[9px] text-muted-foreground/60 tracking-wider">
+              STAGES 01 - 04
+            </span>
           </div>
 
           <ProcessTimeline />
@@ -402,7 +442,6 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
 
       {/* ── CTA SECTION ── */}
       <section className="py-36 px-6 md:px-12 relative overflow-hidden text-center bg-background border-t border-border/40">
-        
         {/* Ambient lighting overlay */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
           <div className="w-[75vw] h-[25vw] rounded-full bg-copper/5 blur-[160px] translate-y-1/3" />
@@ -410,16 +449,18 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
 
         <div className="relative z-10 max-w-3xl mx-auto space-y-8">
           <h2 className="text-4xl sm:text-6xl font-black leading-[0.95] tracking-tight text-foreground">
-            Focus on gathering.<br />
+            Focus on gathering.
+            <br />
             We’ll manage the door.
           </h2>
           <p className="text-base text-muted-foreground max-w-lg mx-auto">
-            Design spaces, manage capacities, collect payments, and welcome guests with absolute ease. Set up takes less than five minutes.
+            Design spaces, manage capacities, collect payments, and welcome
+            guests with absolute ease. Set up takes less than five minutes.
           </p>
 
           <div className="pt-4">
             <Link
-              href={user ? '/events' : '/login'}
+              href={user ? "/events" : "/login"}
               className="inline-flex items-center gap-2 bg-foreground text-background text-sm font-bold px-10 py-4.5 rounded-full hover:bg-copper hover:text-white transition-all duration-300 shadow-xl shadow-black/10 dark:shadow-black/30"
             >
               Initialize Event Free
@@ -444,17 +485,18 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 crenelle
               </span>
               <span className="block font-mono text-[8px] text-muted-foreground/60 tracking-wider mt-1">
-                © 2026 CRENELLE SECURITY & TICKETING SERVICES. ALL RIGHTS RESERVED.
+                © 2026 CRENELLE SECURITY & TICKETING SERVICES. ALL RIGHTS
+                RESERVED.
               </span>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-8 font-semibold text-xs">
             {[
-              ['#hero', 'Overview'],
-              ['#showcase', 'Showcase'],
-              ['#features', 'Features Grid'],
-              ['#process', 'Operational Pipeline'],
+              ["#hero", "Overview"],
+              ["#showcase", "Showcase"],
+              ["#features", "Features Grid"],
+              ["#process", "Operational Pipeline"],
             ].map(([href, label]) => (
               <a
                 key={href}
@@ -467,7 +509,6 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
           </div>
         </div>
       </footer>
-
     </div>
-  )
+  );
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { QrCode, ArrowRight } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowRight } from 'lucide-react'
 
 export const metadata = {
   title: 'Page Not Found — Crenelle',
@@ -12,12 +13,22 @@ export default function NotFound() {
       {/* Navigation Header */}
       <header className="flex items-center justify-between px-8 md:px-14 py-6 border-b border-border bg-background/50 backdrop-blur-sm z-10">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-7 h-7 border border-copper/60 flex items-center justify-center group-hover:border-copper transition-colors">
-            <QrCode className="w-3.5 h-3.5 text-copper" />
-          </div>
-          <span className="font-display text-xl font-light tracking-[0.25em] uppercase text-foreground">
-            Crenelle
-          </span>
+          <Image
+            src="/Brand Logos/CRENELLE FULLH W.png"
+            alt="Crenelle"
+            width={150}
+            height={34}
+            className="h-7.5 w-auto hidden dark:block object-contain"
+            priority
+          />
+          <Image
+            src="/Brand Logos/CRENELLE FULLH B.png"
+            alt="Crenelle"
+            width={150}
+            height={34}
+            className="h-7.5 w-auto block dark:hidden object-contain"
+            priority
+          />
         </Link>
       </header>
 
