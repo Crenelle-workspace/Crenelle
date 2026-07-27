@@ -67,7 +67,7 @@ This is not an "event" problem. It is a **physical identity and access control p
 | **Database + Auth** | Supabase (PostgreSQL + RLS + Realtime) |
 | **Styling** | Tailwind CSS 4 + Radix UI + shadcn/ui |
 | **Email** | Resend (transactional — invitations + reminders) |
-| **QR Generation** | `qrcode` (npm) — inline in emails |
+| **QR Generation** | `qrcode` (npm) — inline MIME CID attachments in emails + `/api/qr/[token]` self-hosted PNG endpoint |
 | **QR Scanning** | `html5-qrcode` — browser camera, no app required |
 | **File Storage** | Supabase Storage (event banner images) |
 | **Forms** | `react-hook-form` + `zod` |
@@ -85,30 +85,23 @@ npm install
 
 ### 2. Configure environment variables
 
-Copy `.env.local.example` (or create `.env.local`) and fill in:
+Copy `.env.example` to `.env.local` and fill in your Supabase and Resend keys:
 
-```env
-# Supabase — required
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# Resend — required for email
-RESEND_API_KEY=re_xxxxxxxxxxxx
-EMAIL_FROM_ADDRESS=noreply@yourdomain.com
-
-# App URL — used in QR code links inside emails
-NEXT_PUBLIC_APP_URL=https://yourdomain.com
-
-# Admin dashboard — comma-separated email addresses
-ADMIN_EMAILS=admin@yourdomain.com
+```bash
+cp .env.example .env.local
 ```
 
 > `SUPABASE_SERVICE_ROLE_KEY` is **never** exposed to the browser. It is only used in server-side API routes and server actions.
 
-### 3. Run all database migrations
+### 3. Run database migrations
 
-In your **Supabase Dashboard → SQL Editor**, run each migration file in order:
+Use the **Supabase CLI** (recommended) to apply all migrations in order:
+
+```bash
+npx supabase db push
+```
+
+Alternatively, run each migration file in sequence via **Supabase Dashboard → SQL Editor**:
 
 ```
 supabase/migrations/
@@ -133,12 +126,22 @@ supabase/migrations/
   019_invitation_audit_trigger.sql     ← Creates trigger-based invitation audit logging
   020_rls_ticket_tier_system.sql       ← RLS policies for ticket tiers and perks
   021_trigger_fixes.sql                ← Fixes/optimizes tier capacity trigger constraints
-  022_merge_guests_registrations_attendees.sql ← Merges/replaces guests and registrations tables with unified attendees table
+  022_merge_guests_registrations_attendees.sql ← Merges guests + registrations into unified attendees table
   023_harden_checkin.sql               ← Hardens check-in by using qr_token as secure identifier
   024_capacity_and_status_triggers.sql ← DB triggers enforcing single check-in, status transitions, and capacity boundaries
   025_invitation_audit_trigger.sql     ← Re-configures/optimizes audit logs on invitations
   026_rls_overhaul.sql                 ← Complete overhaul of Row Level Security (RLS) for the unified schema
   027_fix_soft_deleted_tier_checkin.sql ← Handles soft-deleted ticket tiers during check-in validation
+  028_add_event_timezone.sql           ← Event timezone configuration
+  029_auto_end_events_cron.sql         ← Cron automation for event lifecycle status
+  030_organizer_settings.sql           ← Organizer platform settings
+  031_email_tracking.sql               ← Resend webhook email delivery and open tracking
+  032_paystack_payment_infrastructure.sql ← Ticket purchases and Paystack payment gateway integration
+  033_webhook_audit_and_disputes.sql   ← Payment webhook auditing and dispute resolution
+  034_process_charge_success_rpc.sql   ← Atomic Paystack transaction RPC handler
+  035_settlement_reconciliation.sql    ← Financial settlement reconciliation ledger
+  036_webhook_events_retention.sql     ← Automated webhook audit log cleanup retention
+  037_explicit_trigger_ordering.sql    ← Explicit numerical trigger execution ordering in PostgreSQL
 ```
 
 ### 4. Run locally

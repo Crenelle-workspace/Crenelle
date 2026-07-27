@@ -40,7 +40,8 @@ type Counter = {
 
 function playTone(type: 'admit' | 'deny' | 'warning') {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ctx = new AudioCtx()
 
     const configs: Record<string, Array<{ freq: number; start: number; duration: number; gain: number }>> = {
       // Admit: two ascending chime tones — cheerful, clear
@@ -85,7 +86,6 @@ export default function ScannerClient({
   token,
   gate,
   eventName,
-  eventId,
 }: {
   token: string
   gate: string
@@ -112,6 +112,7 @@ export default function ScannerClient({
   const [counter, setCounter] = useState<Counter | null>(null)
 
   // --- Refs ---
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scannerRef = useRef<any>(null)
   const lastScannedRef = useRef<string>('')
   const resultTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -331,7 +332,7 @@ export default function ScannerClient({
               CRENELLE
             </h1>
             <p className="font-mono text-xs text-muted-foreground/70 uppercase tracking-wider truncate">
-              {eventName} // {gate}
+              {`${eventName} // ${gate}`}
             </p>
 
           {/* Live usher counter */}

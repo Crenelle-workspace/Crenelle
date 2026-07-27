@@ -1,6 +1,21 @@
 import { Resend } from 'resend'
+import QRCode from 'qrcode'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getOptimizedBannerUrl } from './images'
+
+/** Generates a PNG Buffer server-side for inline CID email attachments */
+async function generateQrBuffer(qrToken: string): Promise<Buffer> {
+  return await QRCode.toBuffer(qrToken, {
+    type: 'png',
+    width: 440,
+    margin: 2,
+    color: {
+      dark: '#0A0A0A',
+      light: '#F0EDE8',
+    },
+    errorCorrectionLevel: 'M',
+  })
+}
 
 // Lazy init — avoids crash at build time when env var isn't set yet
 let _resend: Resend | null = null
@@ -220,8 +235,8 @@ export async function sendInvitationEmail({
   // Generate unsubscribe URL for this recipient
   const unsubscribeUrl = await getUnsubscribeUrl(actualRecipientEmail)
 
-  // Generate QR code URL using a hosted API (robust for emails), encoding qr_token
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${qrToken}&color=0A0A0A&bgcolor=F0EDE8`;
+  // Generate QR code PNG buffer server-side (no third-party data leak)
+  const qrBuffer = await generateQrBuffer(qrToken)
 
   const eventDate = new Date(event.date).toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -392,7 +407,7 @@ export async function sendInvitationEmail({
           SCAN AT THE GATE FOR ENTRY
         </p>
         <div class="qr-wrapper" style="display:inline-block;border:1px solid rgba(12,11,9,0.08);padding:16px;background-color:#F4F1EC;border-radius:2px;">
-          <img src="${qrUrl}" alt="Entry QR Code" width="220" height="220" style="display:block;border:none;" />
+          <img src="cid:qrcode" alt="Entry QR Code" width="220" height="220" style="display:block;border:none;" />
         </div>
         <p class="text-secondary" style="font-size:10px;letter-spacing:1px;color:#5C5850;margin:20px 0 0 0;line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
           This pass is unique to you. Do not replicate or share.
@@ -423,6 +438,13 @@ export async function sendInvitationEmail({
       to: actualRecipientEmail,
       subject: `You're confirmed — ${event.name}`,
       html,
+      attachments: [
+        {
+          filename: 'qrcode.png',
+          content: qrBuffer,
+          contentId: 'qrcode',
+        },
+      ],
     })
 
     if (sendError) {
@@ -440,9 +462,10 @@ export async function sendInvitationEmail({
     })
 
     return { success: true }
-  } catch (e: any) {
-    console.error('Email send error:', e)
-    return { error: e.message || 'Failed to send email' }
+  } catch (e: unknown) {
+    const err = e as Error
+    console.error('Email send error:', err)
+    return { error: err.message || 'Failed to send email' }
   }
 }
 
@@ -498,8 +521,8 @@ export async function sendReminderEmailsDirect({
     const partySizeText = partySize === 1 ? '1 PERSON' : `${partySize} PEOPLE`
     const actualRecipientName = invitation?.attendee?.name || recipient.name
 
-    // Generate QR code URL using a hosted API (robust for emails), encoding qr_token
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${qrToken}&color=0A0A0A&bgcolor=F0EDE8`;
+    // Generate QR code PNG buffer server-side
+    const qrBuffer = await generateQrBuffer(qrToken)
 
     let tierHtml = ''
     if (invitation?.ticket_tier_id && invitation?.ticket_tier) {
@@ -673,7 +696,7 @@ export async function sendReminderEmailsDirect({
           YOUR ENTRY PASS
         </p>
         <div class="qr-wrapper" style="display:inline-block;border:1px solid rgba(12,11,9,0.08);padding:16px;background-color:#F4F1EC;border-radius:2px;">
-          <img src="${qrUrl}" alt="Entry QR Code" width="220" height="220" style="display:block;border:none;" />
+          <img src="cid:qrcode" alt="Entry QR Code" width="220" height="220" style="display:block;border:none;" />
         </div>
       </div>
 
@@ -701,11 +724,19 @@ export async function sendReminderEmailsDirect({
         to: recipient.email,
         subject: `Reminder — ${event.name}`,
         html,
+        attachments: [
+          {
+            filename: 'qrcode.png',
+            content: qrBuffer,
+            contentId: 'qrcode',
+          },
+        ],
       })
 
       if (sendError) {
         // Resend SDK error object has name + message; log the full object for debugging
-        const errMsg = sendError.message || (sendError as any).name || JSON.stringify(sendError)
+        const errObj = sendError as unknown as { message?: string; name?: string }
+        const errMsg = sendError.message || errObj.name || JSON.stringify(sendError)
         console.error(`Resend error for ${recipient.email}:`, JSON.stringify(sendError))
         errors.push(`${recipient.email}: ${errMsg}`)
       } else {
@@ -720,8 +751,9 @@ export async function sendReminderEmailsDirect({
           resend_email_id: sendData?.id ?? null,
         })
       }
-    } catch (e: any) {
-      const errMsg = e.message || e.name || JSON.stringify(e)
+    } catch (e: unknown) {
+      const err = e as Error
+      const errMsg = err.message || err.name || JSON.stringify(e)
       console.error(`Exception sending reminder to ${recipient.email}:`, errMsg)
       errors.push(`${recipient.email}: ${errMsg}`)
     }
@@ -754,7 +786,6 @@ const roleDescriptions: Record<string, string> = {
  */
 export async function sendCoHostInviteEmail({
   inviteeEmail,
-  inviteeName,
   inviterName,
   inviterEmail,
   eventName,

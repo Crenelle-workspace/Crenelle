@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkRateLimit } from '@/lib/rate-limit'
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function POST(request: NextRequest) {
-  const { invitationId, scannerToken, count, checkOnly } = await request.json()
-  const scannedValue = invitationId // key sent by scanner client contains the qr_token
+  const { invitationId, scannerToken, checkOnly } = await request.json()
+  const scannedValue = invitationId // key sent by scanner client contains qr_token OR invitation UUID
 
   if (!scannedValue || !scannerToken) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  // Enforce rate limit (60 check-in attempts per minute per gate IP)
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
+  const { allowed } = checkRateLimit({
+    key: `scan-post:${scannerToken}:${clientIp}`,
+    limit: 60,
+    windowMs: 60_000,
+  })
+
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many check-in requests — please slow down.' }, { status: 429 })
   }
 
   const supabase = createAdminClient()
@@ -45,16 +60,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Scanning is not yet open for this event' }, { status: 403 })
   }
 
-  // 3. Look up the invitation by qr_token (Option A — primary qr_token lookup, no fallback needed)
-  const { data: invitation, error: invError } = await supabase
+  // 3. Look up the invitation by qr_token OR invitation.id (UUID from manual usher search)
+  const isUuid = UUID_REGEX.test(scannedValue)
+  const query = supabase
     .from('invitations')
     .select(`
       *,
       attendee:attendees(id, name, email, phone),
       ticket_tier:ticket_tiers(id, name)
     `)
-    .eq('qr_token', scannedValue)
-    .single()
+
+  const { data: invitation, error: invError } = await (
+    isUuid
+      ? query.eq('id', scannedValue).single()
+      : query.eq('qr_token', scannedValue).single()
+  )
 
   if (invError || !invitation) {
     return NextResponse.json({ error: 'Invalid QR code — invitation not found' }, { status: 404 })
@@ -129,11 +149,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg || 'Failed to record entry check-in' }, { status: 500 })
   }
 
-  // Optional: Also insert into entry_logs for historic gate metrics
-  await supabase.from('entry_logs').insert({
+  // Record entry log for historic gate metrics with error handling
+  const { error: logError } = await supabase.from('entry_logs').insert({
     invitation_id: invitation.id,
     scanner_link_id: scannerLink.id,
   })
+
+  if (logError) {
+    console.error('[scan] Non-blocking warning: Failed to insert entry_log for gate analytics:', logError)
+  }
 
   return NextResponse.json({
     success: true,
@@ -144,3 +168,4 @@ export async function POST(request: NextRequest) {
     tier: updatedInv.ticket_tier,
   })
 }
+
