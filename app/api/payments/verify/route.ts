@@ -50,7 +50,69 @@ export async function GET(request: NextRequest) {
   }
 
   // Payment already confirmed by webhook → redirect to success
+  // But first: check whether the invitation email actually went out.
+  // The webhook handler sends it fire-and-forget — if it silently failed
+  // (Resend error, QR timeout, etc.) we catch it here via email_logs dedup.
   if (payment?.status === 'paid') {
+    // Run the notification check in the background — don't block the redirect
+    if (payment.attendee_id && payment.event_id) {
+      const attendeeId = payment.attendee_id
+      const eventId    = payment.event_id
+
+      // Fetch attendee + invitation in parallel (needed for dedup check and send)
+      Promise.all([
+        supabase.from('attendees').select('name, email, phone').eq('id', attendeeId).single(),
+        supabase.from('invitations').select('id').eq('attendee_id', attendeeId).eq('event_id', eventId).maybeSingle(),
+      ]).then(async ([{ data: attendee }, { data: inv }]) => {
+        if (!attendee?.email || !inv?.id) return
+
+        // Dedup: only send if no invitation email has been logged for this recipient yet
+        const { data: existingLog } = await supabase
+          .from('email_logs')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('email_type', 'invitation')
+          .ilike('recipient_email', attendee.email)
+          .maybeSingle()
+
+        if (existingLog) return // already sent — nothing to do
+
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('name, date, time, venue, description, banner_url')
+          .eq('id', eventId)
+          .single()
+
+        if (!eventData) return
+
+        if (attendee.email) {
+          sendInvitationEmail({
+            eventId,
+            recipientEmail: attendee.email,
+            recipientName:  attendee.name,
+            invitationId:   inv.id,
+            event:          eventData,
+          }).catch((e) =>
+            Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_email' } })
+          )
+        }
+
+        if (attendee.phone) {
+          sendInvitationWhatsApp({
+            eventId,
+            recipientPhone: attendee.phone,
+            recipientName:  attendee.name,
+            invitationId:   inv.id,
+            event:          eventData,
+          }).catch((e) =>
+            Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_whatsapp' } })
+          )
+        }
+      }).catch((e) =>
+        Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_notification_check' } })
+      )
+    }
+
     const meta = payment.metadata as Record<string, string> | null
     const slug = meta?.event_slug ?? null
     const successUrl = slug
