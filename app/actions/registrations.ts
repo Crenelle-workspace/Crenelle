@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendInvitationEmail, sendReminderEmailsDirect } from '@/lib/email'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { checkRateLimitAsync } from '@/lib/rate-limit'
 import { sendInvitationWhatsApp } from '@/lib/whatsapp'
 import * as Sentry from '@sentry/nextjs'
 
@@ -25,12 +25,12 @@ export async function submitRegistration(eventId: string, formData: FormData) {
 
   const email = (formData.get('email') as string)?.trim().toLowerCase() ?? ''
 
-  const ipLimit = checkRateLimit({ key: `reg_ip:${ip}`, limit: 10, windowMs: 15 * 60 * 1000 })
+  const ipLimit = await checkRateLimitAsync({ key: `reg_ip:${ip}`, limit: 10, windowMs: 15 * 60 * 1000 })
   if (!ipLimit.allowed) {
     return { error: 'Too many registration attempts from your network. Please try again later.' }
   }
 
-  const emailLimit = checkRateLimit({ key: `reg_email:${email}`, limit: 3, windowMs: 60 * 60 * 1000 })
+  const emailLimit = await checkRateLimitAsync({ key: `reg_email:${email}`, limit: 3, windowMs: 60 * 60 * 1000 })
   if (!emailLimit.allowed) {
     return { error: 'Too many registrations for this email address. Please wait before trying again.' }
   }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { checkRateLimitAsync } from '@/lib/rate-limit'
+import { createEphemeralSearchToken } from '@/lib/ephemeral-token'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,9 +22,10 @@ function maskPhone(phone: string | null | undefined): string | null {
  * scanner token.
  *
  * Security Hardening:
- * - Does NOT expose qr_token. Returns the invitation ID (UUID) for check-in.
+ * - Does NOT expose qr_token or raw database UUIDs. Returns a signed 15-minute
+ *   ephemeral search token (`eph_...`) bound to this scanner link.
  * - Masks phone numbers to avoid full PII harvesting.
- * - Enforces rate limiting per IP and scanner token.
+ * - Enforces distributed rate limiting per IP and scanner token (Upstash-backed).
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -37,9 +39,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: [] })
   }
 
-  // Enforce rate limit on search endpoint (30 searches / min per IP)
+  // Enforce distributed rate limit on search endpoint (30 searches / min per IP)
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
-  const { allowed } = checkRateLimit({
+  const { allowed } = await checkRateLimitAsync({
     key: `scan-search:${token}:${clientIp}`,
     limit: 30,
     windowMs: 60_000,
@@ -78,8 +80,8 @@ export async function GET(request: NextRequest) {
         guestId: a.id,
         guestName: a.name,
         phone: maskPhone(a.phone),
-        // Use database invitation.id (UUID) instead of leaking qr_token
-        invitationId: inv?.id ?? null,
+        // Returns signed 15-minute ephemeral token instead of raw invitation.id or qr_token
+        invitationId: inv?.id ? createEphemeralSearchToken(inv.id, token) : null,
         partySize: inv?.party_size ?? 1,
         seatInfo: inv?.seat_info ?? null,
         invitationStatus: inv?.status ?? null,
@@ -90,4 +92,5 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ results })
 }
+
 

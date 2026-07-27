@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { checkRateLimit } from '@/lib/rate-limit'
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+import { checkRateLimitAsync } from '@/lib/rate-limit'
+import { verifyEphemeralSearchToken } from '@/lib/ephemeral-token'
 
 export async function POST(request: NextRequest) {
   const { invitationId, scannerToken, checkOnly } = await request.json()
-  const scannedValue = invitationId // key sent by scanner client contains qr_token OR invitation UUID
+  const scannedValue = invitationId // key sent by scanner client: qr_token OR signed ephemeral handle (eph_...)
 
   if (!scannedValue || !scannerToken) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  // Enforce rate limit (60 check-in attempts per minute per gate IP)
+  // Enforce distributed rate limit (60 check-in attempts per minute per gate IP)
   const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1'
-  const { allowed } = checkRateLimit({
+  const { allowed } = await checkRateLimitAsync({
     key: `scan-post:${scannerToken}:${clientIp}`,
     limit: 60,
     windowMs: 60_000,
@@ -60,8 +59,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Scanning is not yet open for this event' }, { status: 403 })
   }
 
-  // 3. Look up the invitation by qr_token OR invitation.id (UUID from manual usher search)
-  const isUuid = UUID_REGEX.test(scannedValue)
+  // 3. Resolve credential lookup:
+  // Option A (Camera scan): scannedValue is qr_token (permanent credential)
+  // Option B (Manual usher search): scannedValue is signed 15-min ephemeral handle (eph_...)
+  let targetInvitationId: string | null = null
+  let entryType: 'qr_camera' | 'manual_search' = 'qr_camera'
+
+  if (typeof scannedValue === 'string' && scannedValue.startsWith('eph_')) {
+    // Ephemeral manual search handle validation
+    const verifiedId = verifyEphemeralSearchToken(scannedValue, scannerToken)
+    if (!verifiedId) {
+      return NextResponse.json({ error: 'Search selection expired or invalid — please search again' }, { status: 403 })
+    }
+    targetInvitationId = verifiedId
+    entryType = 'manual_search'
+  }
+
   const query = supabase
     .from('invitations')
     .select(`
@@ -71,8 +84,8 @@ export async function POST(request: NextRequest) {
     `)
 
   const { data: invitation, error: invError } = await (
-    isUuid
-      ? query.eq('id', scannedValue).single()
+    targetInvitationId
+      ? query.eq('id', targetInvitationId).single()
       : query.eq('qr_token', scannedValue).single()
   )
 
@@ -149,10 +162,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg || 'Failed to record entry check-in' }, { status: 500 })
   }
 
-  // Record entry log for historic gate metrics with error handling
+  // Record entry log for historic gate metrics with explicit entry_type audit
   const { error: logError } = await supabase.from('entry_logs').insert({
     invitation_id: invitation.id,
     scanner_link_id: scannerLink.id,
+    entry_type: entryType,
   })
 
   if (logError) {
@@ -168,4 +182,5 @@ export async function POST(request: NextRequest) {
     tier: updatedInv.ticket_tier,
   })
 }
+
 
