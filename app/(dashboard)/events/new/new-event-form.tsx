@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Lock, Globe, Mail } from 'lucide-react'
 import { createEvent } from '@/app/actions/events'
@@ -26,7 +25,9 @@ export function NewEventForm({ profiles }: NewEventFormProps) {
   useEffect(() => {
     try {
       const detected = Intl.DateTimeFormat().resolvedOptions().timeZone
-      if (detected) setTimezone(detected)
+      if (detected) {
+        queueMicrotask(() => setTimezone(detected))
+      }
     } catch {
       // keep default
     }

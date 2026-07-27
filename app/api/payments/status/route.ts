@@ -36,6 +36,6 @@ export async function GET(request: NextRequest) {
     status: payment.status,
     payer_name: payment.payer_name,
     payer_email: payment.payer_email,
-    event_name: (payment.event as any)?.name ?? null,
+    event_name: (payment.event as unknown as { name?: string })?.name ?? null,
   })
 }

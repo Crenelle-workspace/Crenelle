@@ -133,9 +133,16 @@ export default function EmailClient({ eventId }: { eventId: string }) {
   }, [eventId])
 
   useEffect(() => {
-    loadData()
-    const poll = setInterval(loadData, 30_000)
-    return () => clearInterval(poll)
+    const timer = setTimeout(() => {
+      void loadData()
+    }, 0)
+    const poll = setInterval(() => {
+      void loadData()
+    }, 30_000)
+    return () => {
+      clearTimeout(timer)
+      clearInterval(poll)
+    }
   }, [loadData])
 
   if (loading) return <EmailTabSkeleton />

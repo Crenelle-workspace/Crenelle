@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -64,11 +65,12 @@ export function TiltEventCard({ children, imageUrl, className, bgClass }: TiltEv
       >
         {/* Background Event Image */}
         <div className="absolute inset-0 z-0">
-          <img
+          <Image
             src={imageUrl}
             alt="Event cover banner"
-            className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-102 transition-all duration-700"
-            loading="lazy"
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover opacity-85 group-hover:opacity-100 group-hover:scale-102 transition-all duration-700"
           />
           <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/50 to-black/10 z-10" />
         </div>

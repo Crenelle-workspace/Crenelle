@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
-import { useParams, notFound } from 'next/navigation'
+import { useState, useEffect, useCallback, useTransition } from 'react'
+import { useParams } from 'next/navigation'
 import { UserPlus, Trash2, Users, Shield, Eye, Star } from 'lucide-react'
 import { getTeamMembers, inviteTeamMember, removeTeamMember, updateTeamMemberRole } from '@/app/actions/team'
 import { fieldCls, labelCls } from '@/lib/form-styles'
@@ -47,7 +47,7 @@ export default function TeamPage() {
   const [isUpdatingRole, startUpdateTransition] = useTransition()
   const [loading, setLoading] = useState(true)
 
-  async function loadMembers() {
+  const loadMembers = useCallback(async () => {
     try {
       const result = await getTeamMembers(eventId)
       if (result.error) {
@@ -58,11 +58,11 @@ export default function TeamPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
 
   useEffect(() => {
     loadMembers()
-  }, [eventId])
+  }, [eventId, loadMembers])
 
   function handleInvite(e: React.FormEvent) {
     e.preventDefault()

@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ error: 'Invalid email type' }, { status: 400 })
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('API Send email error:', e)
-    return NextResponse.json({ error: e.message || 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Internal server error' }, { status: 500 })
   }
 }

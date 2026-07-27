@@ -51,7 +51,6 @@ export async function GET(request: NextRequest) {
 
   // Payment already confirmed by webhook → redirect to success
   if (payment?.status === 'paid') {
-    const eventId = payment.event_id
     const meta = payment.metadata as Record<string, string> | null
     const slug = meta?.event_slug ?? null
     const successUrl = slug

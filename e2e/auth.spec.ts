@@ -6,11 +6,6 @@
  */
 import { test, expect } from '@playwright/test'
 
-// Generate a unique email per run so tests don't conflict across runs
-const timestamp = Date.now()
-const testEmail = `e2e-test-${timestamp}@mailtest.dev`
-const testPassword = 'TestPass1!'
-
 test.describe('Authentication', () => {
   test('sign-up page renders correctly', async ({ page }) => {
     await page.goto('/register')

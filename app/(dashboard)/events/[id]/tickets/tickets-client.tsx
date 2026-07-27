@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Pencil, X, Ticket, Lock, Unlock, AlertCircle } from 'lucide-react'
+import { Plus, Pencil, X, Ticket, AlertCircle } from 'lucide-react'
 import { createTier, updateTier, softDeleteTier } from '@/app/actions/ticket-tiers'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
@@ -24,6 +24,15 @@ interface TicketTierWithAllocations {
   allocatedCount: number
 }
 
+interface RawTier {
+  id: string
+  name: string
+  price: number
+  capacity: number | null
+  is_public: boolean
+  currency?: string
+}
+
 export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
   const { id: eventId } = useParams<{ id: string }>()
   const [tiers, setTiers] = useState<TicketTierWithAllocations[]>([])
@@ -35,7 +44,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
   const [loading, setLoading] = useState(true)
   const [hasSubaccount, setHasSubaccount] = useState(false)
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       const supabase = createClient()
 
@@ -65,7 +74,8 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
       }
 
       // Map allocation counts to tiers
-      const mappedTiers: TicketTierWithAllocations[] = (tiersData ?? []).map((tier: any) => {
+      const rawTiers = (tiersData ?? []) as RawTier[]
+      const mappedTiers: TicketTierWithAllocations[] = rawTiers.map((tier) => {
         const allocatedCount = (allocations ?? [])
           .filter((a) => a.ticket_tier_id === tier.id)
           .reduce((sum, current) => sum + (current.party_size ?? 1), 0)
@@ -96,7 +106,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
 
   useEffect(() => {
     const supabase = createClient()
@@ -125,7 +135,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
       clearInterval(poll)
       supabase.removeChannel(channel)
     }
-  }, [eventId])
+  }, [eventId, loadData])
 
   async function handleAdd(formData: FormData) {
     setIsSaving(true)
@@ -145,8 +155,8 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
         setAddOpen(false)
         await loadData()
       }
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSaving(false)
     }
@@ -171,8 +181,8 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
         setEditTier(null)
         await loadData()
       }
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSaving(false)
     }
@@ -190,8 +200,8 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
         setDeleteTarget(null)
         await loadData()
       }
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsDeleting(false)
     }
@@ -423,7 +433,7 @@ function TierForm({
         <div className="flex items-start gap-2.5 p-3.5 border border-amber-500/20 bg-amber-500/5 text-amber-600 font-mono text-[10px] uppercase tracking-wide leading-relaxed">
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
           <div>
-            <span className="font-bold">Warning:</span> You haven't connected a bank account. Guests cannot buy paid tickets until a payout account is linked in settings.
+            <span className="font-bold">Warning:</span> You haven&apos;t connected a bank account. Guests cannot buy paid tickets until a payout account is linked in settings.
             <a href="/settings/payments" target="_blank" rel="noopener noreferrer" className="block text-copper underline mt-1 hover:text-copper/80">Connect bank account →</a>
           </div>
         </div>

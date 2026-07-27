@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CreditCard, Mail, Users, Send, Plus, RefreshCw } from 'lucide-react'
 import { SpotlightCard } from './spotlight-card'
@@ -245,7 +245,7 @@ export function FeaturesGrid() {
             <div className="space-y-1 text-[10px] border-b border-border/20 dark:border-border/10 pb-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">From Display:</span>
-                <strong className="text-foreground">"Grand Meridian"</strong>
+                <strong className="text-foreground">&quot;Grand Meridian&quot;</strong>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Reply-To Address:</span>

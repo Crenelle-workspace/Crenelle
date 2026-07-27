@@ -76,10 +76,10 @@ export async function addAttendee(eventId: string, formData: FormData) {
             console.error('Failed to send automated invitation email:', emailResult.error)
             emailWarning = emailResult.error
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error('Failed to send automated invitation email:', e)
           Sentry.captureException(e, { extra: { eventId, context: 'add_attendee_email' } })
-          emailWarning = e.message || 'Unknown email dispatch error'
+          emailWarning = e instanceof Error ? e.message : 'Unknown email dispatch error'
         }
       }
 
@@ -96,10 +96,10 @@ export async function addAttendee(eventId: string, formData: FormData) {
             console.error('Failed to send automated WhatsApp invitation:', whatsappResult.error)
             whatsappWarning = whatsappResult.error
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error('Failed to send automated WhatsApp invitation:', e)
           Sentry.captureException(e, { extra: { eventId, context: 'add_attendee_whatsapp' } })
-          whatsappWarning = e.message || 'Unknown WhatsApp dispatch error'
+          whatsappWarning = e instanceof Error ? e.message : 'Unknown WhatsApp dispatch error'
         }
       }
     }
@@ -213,10 +213,10 @@ export async function addMultipleAttendees(eventId: string, emailsText: string, 
         // Throttle slightly
         await new Promise(resolve => setTimeout(resolve, 100))
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(`Bulk import error for ${email}:`, e)
       Sentry.captureException(e, { extra: { eventId, email, context: 'add_multiple_attendees' } })
-      errors.push(`${email}: ${e.message || 'unknown error'}`)
+      errors.push(`${email}: ${e instanceof Error ? e.message : 'unknown error'}`)
     }
   }
 

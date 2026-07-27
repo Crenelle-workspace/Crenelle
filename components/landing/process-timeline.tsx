@@ -1,8 +1,9 @@
 'use client'
 
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { QrCode, CheckCircle2, Sliders, Shield, Mail, Users, ArrowUpRight, BarChart3 } from 'lucide-react'
+import { QrCode, CheckCircle2, Sliders, Shield, Mail, ArrowUpRight, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Step {
@@ -272,10 +273,12 @@ export function ProcessTimeline() {
 
                       {/* Video feedback backdrop */}
                       <div className="absolute inset-0 z-0 opacity-20">
-                        <img
+                        <Image
                           src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=400&q=80"
                           alt="Scan interface backdrop"
-                          className="w-full h-full object-cover blur-[1px]"
+                          fill
+                          sizes="400px"
+                          className="object-cover blur-[1px]"
                         />
                       </div>
                       

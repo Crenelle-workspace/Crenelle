@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendInvitationEmail, sendReminderEmailsDirect } from '@/lib/email'
+import { sendInvitationEmail, sendReminderEmailsDirect, type ReminderEmailRecipient } from '@/lib/email'
 import { checkRateLimitAsync } from '@/lib/rate-limit'
 import { sendInvitationWhatsApp } from '@/lib/whatsapp'
 import * as Sentry from '@sentry/nextjs'
@@ -190,10 +190,10 @@ export async function acceptRegistration(attendeeId: string, eventId: string, se
         console.error('Failed to send invitation email:', emailResult.error)
         emailWarning = emailResult.error
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to send invitation email:', e)
       Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_email' } })
-      emailWarning = e.message || 'Unknown email dispatch error'
+      emailWarning = e instanceof Error ? e.message : 'Unknown email dispatch error'
     }
   }
 
@@ -211,10 +211,10 @@ export async function acceptRegistration(attendeeId: string, eventId: string, se
         console.error('Failed to send WhatsApp invitation:', whatsappResult.error)
         whatsappWarning = whatsappResult.error
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to send WhatsApp invitation:', e)
       Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_whatsapp' } })
-      whatsappWarning = e.message || 'Unknown WhatsApp dispatch error'
+      whatsappWarning = e instanceof Error ? e.message : 'Unknown WhatsApp dispatch error'
     }
   }
 
@@ -342,12 +342,13 @@ export async function sendReminderEmails(eventId: string, customMessage: string)
     .eq('event_id', eventId)
     .neq('status', 'cancelled')
 
-  const recipients = ((invitations ?? []) as any[])
+  const invList = (invitations ?? []) as unknown as { id: string; status: string; attendee: { email?: string; name?: string } | { email?: string; name?: string }[] }[]
+  const recipients = invList
     .map(inv => {
       const attendee = Array.isArray(inv.attendee) ? inv.attendee[0] : inv.attendee
-      return { email: attendee?.email, name: attendee?.name, invitationId: inv.id }
+      return { email: attendee?.email, name: attendee?.name ?? 'Guest', invitationId: inv.id }
     })
-    .filter(r => r.email)
+    .filter((r): r is ReminderEmailRecipient => Boolean(r.email))
 
   if (recipients.length === 0) return { error: 'No confirmed guests with emails to send to' }
 
@@ -361,7 +362,8 @@ export async function sendReminderEmails(eventId: string, customMessage: string)
 
     revalidatePath(`/events/${eventId}`)
 
-    if (res.sent === 0 && (res as any).skipped > 0 && !res.errors?.length) {
+    const resRecord = res as Record<string, unknown>
+    if (res.sent === 0 && Number(resRecord.skipped) > 0 && !res.errors?.length) {
       return { error: 'No emails sent — all guests have unsubscribed from emails.' }
     }
 
@@ -376,8 +378,8 @@ export async function sendReminderEmails(eventId: string, customMessage: string)
         ? `Sent to ${res.sent} guest(s). Failed for: ${res.errors.join(', ')}`
         : undefined,
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     Sentry.captureException(e, { extra: { eventId, context: 'send_reminder_emails' } })
-    return { error: e.message || 'Failed to send reminder emails' }
+    return { error: e instanceof Error ? e.message : 'Failed to send reminder emails' }
   }
 }

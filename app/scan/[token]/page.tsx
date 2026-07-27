@@ -15,7 +15,7 @@ export default async function ScannerPage({ params }: { params: Promise<{ token:
 
   if (!scannerLink) notFound()
 
-  const event = scannerLink.event as any
+  const event = scannerLink.event as unknown as { name?: string; date?: string; venue?: string; status?: string } | null
   const eventStatus: string = event?.status ?? 'draft'
 
   // --- Link deactivated by organiser ---

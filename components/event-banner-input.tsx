@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { UploadCloud, Link2, X, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { UploadCloud, Link2, X, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -58,9 +58,9 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
 
       setBannerUrl(publicUrl)
       toast.success('Banner uploaded successfully')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Upload error:', err)
-      const msg = err.message || 'Failed to upload image'
+      const msg = err instanceof Error ? err.message : 'Failed to upload image'
       setError(msg)
       toast.error(
         'Upload failed. The "banners" storage bucket may not exist yet in Supabase. Please paste an image URL instead.'

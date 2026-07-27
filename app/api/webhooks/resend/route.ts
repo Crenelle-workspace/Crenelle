@@ -78,9 +78,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
-  let payload: any
+  let payload: { type?: string; data?: { email_id?: string; click?: { link?: string } } }
   try {
-    payload = JSON.parse(rawBody)
+    payload = JSON.parse(rawBody) as { type?: string; data?: { email_id?: string; click?: { link?: string } } }
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }

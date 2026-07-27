@@ -165,7 +165,7 @@ export function EventsDashboardClient({
                 Co-hosting
               </p>
               <span className="font-sans text-[10px] text-muted-foreground ml-1">
-                — events you've been invited to collaborate on
+                — events you&apos;ve been invited to collaborate on
               </span>
             </div>
             <div className="flex flex-col gap-4">

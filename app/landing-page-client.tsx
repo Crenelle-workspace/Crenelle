@@ -1,19 +1,12 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
   QrCode,
   ArrowRight,
-  Shield,
-  Mail,
-  Users,
-  CreditCard,
-  Sparkles,
-  Calendar,
-  MapPin,
   Clock,
-  ArrowUpRight,
   Smartphone,
   ShieldCheck,
   Activity
@@ -21,13 +14,12 @@ import {
 import { ModeToggle } from '@/components/mode-toggle'
 import { cn } from '@/lib/utils'
 import { TiltEventCard } from '@/components/landing/tilt-event-card'
-import { SpotlightCard } from '@/components/landing/spotlight-card'
 import { InteractiveTicketStack } from '@/components/landing/interactive-ticket-stack'
 import { FeaturesGrid } from '@/components/landing/features-grid'
 import { ProcessTimeline } from '@/components/landing/process-timeline'
 
 interface LandingPageClientProps {
-  user: any
+  user: unknown
 }
 
 // ── Motion Variants for Staggered Load-Ins ──
@@ -230,7 +222,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 <span className="text-[9px] uppercase font-bold tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full inline-block">
                   Banquets
                 </span>
-                <h3 className="text-xl font-bold font-sans text-stone-100">Founders' Dinners & Feasts</h3>
+                <h3 className="text-xl font-bold font-sans text-stone-100">Founders&apos; Dinners &amp; Feasts</h3>
                 <p className="text-xs text-stone-300/80 leading-relaxed">
                   Broadcast personalized invitations directly to your guest list.
                 </p>
@@ -365,11 +357,12 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                 >
                   {/* Masked Backdrop Image */}
                   <div className="absolute inset-0 z-0">
-                    <img
+                    <Image
                       src={feat.image}
                       alt={feat.title}
-                      className="w-full h-full object-cover opacity-65 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700 filter grayscale group-hover:grayscale-0"
-                      loading="lazy"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-cover opacity-65 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700 filter grayscale group-hover:grayscale-0"
                     />
                     {/* Bottom gradient fade */}
                     <div className="absolute inset-0 bg-linear-to-t from-stone-950 via-stone-950/40 to-stone-950/15 z-10" />

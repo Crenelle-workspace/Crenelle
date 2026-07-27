@@ -196,7 +196,7 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
       })
     : 'N/A'
 
-  const totalCapacity = event ? (event as any).capacity : null
+  const totalCapacity = event ? (event as unknown as { capacity?: number | null }).capacity : null
   const capacityPctStr = totalCapacity ? ` / ${totalCapacity} capacity` : ''
 
   return (

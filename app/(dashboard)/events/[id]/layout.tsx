@@ -32,13 +32,6 @@ export async function generateMetadata(
   }
 }
 
-const statusConfig: Record<string, { label: string; cls: string }> = {
-  live:      { label: 'Live',      cls: 'status-live' },
-  published: { label: 'Published', cls: 'status-published' },
-  draft:     { label: 'Draft',     cls: 'status-draft' },
-  ended:     { label: 'Ended',     cls: 'status-ended' },
-}
-
 const roleLabels: Record<string, string> = {
   viewer:          'CO-HOST // VIEWER',
   scanner_manager: 'CO-HOST // SCANNER MGR',
@@ -66,8 +59,6 @@ export default async function EventLayout({
   // Resolve current user's role (owner | viewer | scanner_manager | null)
   const access = await getEventAccess(id)
   if (!access.role) notFound() // no access at all
-
-  const statusInfo = statusConfig[event.status] ?? { label: event.status, cls: 'status-draft' }
 
   // Build tab list based on event type and role
   const baseTabs = [

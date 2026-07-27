@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useCallback, useTransition } from 'react'
 import { useParams } from 'next/navigation'
 import { Plus, Copy, ToggleLeft, ToggleRight, Trash2, Link2, Lock } from 'lucide-react'
 import { createScannerLink, toggleScannerLink, deleteScannerLink } from '@/app/actions/scanner-links'
@@ -23,7 +23,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
   const [isDeleting, startDeleteTransition] = useTransition()
   const [loading, setLoading] = useState(true)
 
-  async function loadLinks() {
+  const loadLinks = useCallback(async () => {
     try {
       const supabase = createClient()
       const { data } = await supabase
@@ -35,7 +35,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
 
   useEffect(() => {
     loadLinks()
@@ -52,7 +52,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       clearInterval(poll)
       supabase.removeChannel(channel)
     }
-  }, [eventId])
+  }, [eventId, loadLinks])
 
   const scanUrl = (token: string) =>
     `${window.location.origin}/scan/${token}`

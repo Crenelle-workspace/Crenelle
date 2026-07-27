@@ -28,7 +28,7 @@ export default function SignupPage() {
     const params = new URLSearchParams(window.location.search)
     const oauthError = params.get('error')
     if (oauthError) {
-      setError(oauthError)
+      queueMicrotask(() => setError(oauthError))
     }
   }, [])
 
@@ -75,7 +75,7 @@ export default function SignupPage() {
         setError(error.message)
         setGoogleLoading(false)
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred during Google sign up')
       setGoogleLoading(false)
     }

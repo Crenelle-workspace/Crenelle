@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Printer, QrCode } from 'lucide-react'
@@ -33,7 +34,8 @@ export default function CardsPage() {
       setEvent(ev)
 
       const cardList: CardData[] = []
-      for (const a of (attendees ?? []) as any[]) {
+      const attendeeList = (attendees ?? []) as (Attendee & { invitations?: Invitation[] })[]
+      for (const a of attendeeList) {
         const invitation = a.invitations?.[0]
         if (!invitation) continue
         const qrDataUrl = await QRCode.toDataURL(invitation.qr_token, {
@@ -89,7 +91,7 @@ export default function CardsPage() {
       </div>
 
       <p className="font-mono text-[10px] text-foreground/60 uppercase tracking-widest mb-6 print:hidden">
-        Tip: Use browser Print dialog → Save as PDF → Enable "Background graphics" for best results.
+        Tip: Use browser Print dialog → Save as PDF → Enable &quot;Background graphics&quot; for best results.
       </p>
 
       {/* Print grid */}
@@ -135,9 +137,12 @@ function EntryCard({
       <div className="w-full border-t border-dashed border-foreground/10 mb-3" aria-hidden="true" />
 
       {/* QR Code */}
-      <img
+      <Image
         src={qrDataUrl}
         alt={`QR code for ${guestName}`}
+        width={112}
+        height={112}
+        unoptimized
         className="w-28 h-28 mb-4 border-2 border-foreground/10"
       />
 

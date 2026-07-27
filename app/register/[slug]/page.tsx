@@ -5,7 +5,6 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { CalendarDays, MapPin, Clock, CheckCircle2, XCircle, Users, CreditCard, AlertTriangle, Loader2 } from 'lucide-react'
 import { submitRegistration } from '@/app/actions/registrations'
 import { getOptimizedBannerUrl } from '@/lib/images'
-import { toast } from 'sonner'
 
 interface EventInfo {
   id: string
@@ -71,38 +70,25 @@ export default function PublicRegistrationPage() {
     if (!paymentRef) return
 
     setVerifyingPayment(true)
-    let pollInterval: NodeJS.Timeout
-
-    async function checkStatus() {
+    const pollInterval = setInterval(async () => {
       try {
         const res = await fetch(`/api/payments/status?reference=${paymentRef}`)
         if (!res.ok) throw new Error()
         const json = await res.json()
-
-        if (json.status === 'paid') {
-          setVerifiedPaymentStatus('paid')
+        if (json.status === 'paid' || json.status === 'failed' || json.status === 'not_found') {
+          setVerifiedPaymentStatus(json.status)
           setVerifyingPayment(false)
           clearInterval(pollInterval)
-        } else if (json.status === 'failed' || json.status === 'abandoned') {
-          setVerifiedPaymentStatus('failed')
-          setVerifyingPayment(false)
-          clearInterval(pollInterval)
-        } else {
-          setVerifiedPaymentStatus('pending')
         }
       } catch {
-        // Keep polling
+        // Retry next poll
       }
-    }
-
-    checkStatus()
-
-    pollInterval = setInterval(checkStatus, 3000)
+    }, 2500)
 
     const timeout = setTimeout(() => {
       clearInterval(pollInterval)
       setVerifyingPayment(false)
-    }, 45000)
+    }, 30000)
 
     return () => {
       clearInterval(pollInterval)
@@ -175,7 +161,7 @@ export default function PublicRegistrationPage() {
       setSubmitting(false)
       isSubmitting.current = false
     } else {
-      setWaitlisted(!!(result as any)?.waitlisted)
+      setWaitlisted(Boolean((result as { waitlisted?: boolean })?.waitlisted))
       setSubmitted(true)
     }
   }
@@ -284,12 +270,12 @@ export default function PublicRegistrationPage() {
               <h1 className="font-display text-4xl uppercase text-foreground mb-3">ADDED TO WAITLIST</h1>
               <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
                 <span className="text-foreground font-bold">{event.name}</span> is currently full.
-                You've been added to the waitlist and will be notified if a spot opens up.
+                You&apos;ve been added to the waitlist and will be notified if a spot opens up.
               </p>
               <div className="border-t border-foreground/10 pt-6">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/50 leading-relaxed">
                   The organizer manages the waitlist. If a place becomes available,
-                  you'll receive an email with your entry pass QR code.
+                  you&apos;ll receive an email with your entry pass QR code.
                 </p>
               </div>
             </div>
@@ -303,7 +289,7 @@ export default function PublicRegistrationPage() {
               <div className="border-t border-foreground/10 pt-6">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/50 leading-relaxed">
                   The organizer will review your registration.
-                  If accepted, you'll receive an email with your entry pass QR code.
+                  If accepted, you&apos;ll receive an email with your entry pass QR code.
                 </p>
               </div>
             </div>
@@ -516,7 +502,7 @@ export default function PublicRegistrationPage() {
                         <div className="flex items-start gap-2 p-3 border border-foreground/10 bg-foreground/3">
                           <CreditCard className="h-3.5 w-3.5 text-foreground/40 mt-0.5 shrink-0" />
                           <p className="font-mono text-[9px] uppercase tracking-wide text-foreground/50 leading-relaxed">
-                            You'll be redirected to Paystack to complete payment securely via card, bank transfer, or USSD.
+                            You&apos;ll be redirected to Paystack to complete payment securely via card, bank transfer, or USSD.
                           </p>
                         </div>
                       )}

@@ -41,15 +41,6 @@ export async function GET(request: NextRequest) {
 
   const totalSeats = (invitations ?? []).reduce((sum, i) => sum + (i.party_size ?? 1), 0)
 
-  // Total entries for this event
-  const { count: totalEntries } = await supabase
-    .from('entry_logs')
-    .select('*', { count: 'exact', head: true })
-    .in(
-      'invitation_id',
-      (invitations ?? []).map((_, idx) => idx), // need invitation IDs — re-query
-    )
-
   // Simpler: count all entry_logs for the event via scanner_links join
   // Get all scanner_link IDs for this event
   const { data: allLinks } = await supabase

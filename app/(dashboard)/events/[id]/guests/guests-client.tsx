@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Plus, Pencil, X, Users, Lock, Download } from 'lucide-react'
 import { addAttendee, updateAttendee, cancelAttendeeInvitation, addMultipleAttendees, updateAttendeeTicketTier } from '@/app/actions/attendees'
 import { createClient } from '@/lib/supabase/client'
-import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
+import { fieldCls, labelCls } from '@/lib/form-styles'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -23,7 +23,7 @@ type GuestWithInvitation = Attendee & {
 export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
   const { id: eventId } = useParams<{ id: string }>()
   const [guests, setGuests] = useState<GuestWithInvitation[]>([])
-  const [tiers, setTiers] = useState<any[]>([])
+  const [tiers, setTiers] = useState<TicketTier[]>([])
   const [addOpen, setAddOpen] = useState(false)
   const [editGuest, setEditGuest] = useState<GuestWithInvitation | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<GuestWithInvitation | null>(null)
@@ -95,7 +95,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
     document.body.removeChild(link)
   }
 
-  async function loadGuests() {
+  const loadGuests = useCallback(async () => {
     const supabase = createClient()
     const { data } = await supabase
       .from('attendees')
@@ -103,10 +103,11 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
       .eq('event_id', eventId)
       .in('source', ['imported', 'manual'])
       .order('created_at', { ascending: true })
-    setGuests((data as any[])?.map(g => ({ ...g, invitation: g.invitations?.[0] ?? null })) ?? [])
-  }
+    const rawList = (data ?? []) as unknown as (Attendee & { invitations?: (Invitation & { ticket_tier?: TicketTier | null })[] })[]
+    setGuests(rawList.map(g => ({ ...g, invitation: g.invitations?.[0] ?? null })))
+  }, [eventId])
 
-  async function loadTiers() {
+  const loadTiers = useCallback(async () => {
     const supabase = createClient()
     const { data } = await supabase
       .from('ticket_tiers')
@@ -114,8 +115,8 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
       .eq('event_id', eventId)
       .is('deleted_at', null)
       .order('created_at', { ascending: true })
-    setTiers(data ?? [])
-  }
+    setTiers((data ?? []) as TicketTier[])
+  }, [eventId])
 
   useEffect(() => {
     const supabase = createClient()
@@ -142,7 +143,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
       clearInterval(poll)
       supabase.removeChannel(channel)
     }
-  }, [eventId])
+  }, [eventId, loadGuests, loadTiers])
 
   async function handleAdd(formData: FormData) {
     setIsSaving(true)
@@ -159,8 +160,8 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
         setAddOpen(false)
         await loadGuests()
       }
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSaving(false)
     }
@@ -181,8 +182,8 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
         setAddOpen(false)
         await loadGuests()
       }
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSaving(false)
     }
@@ -195,8 +196,8 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
       const result = await updateAttendee(editGuest.id, eventId, formData)
       if (result?.error) toast.error(result.error)
       else { toast.success('Guest updated'); setEditGuest(null); await loadGuests() }
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSaving(false)
     }
@@ -212,8 +213,8 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
         toast.success('Ticket tier updated successfully')
         await loadGuests()
       }
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSavingTier(null)
     }
@@ -439,8 +440,8 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
                 const result = await cancelAttendeeInvitation(deleteTarget.id, eventId)
                 if (result?.error) toast.error(result.error)
                 else { toast.success('Invitation cancelled'); await loadGuests(); setDeleteTarget(null) }
-              } catch (e: any) {
-                toast.error(e.message || 'An error occurred')
+              } catch (e: unknown) {
+                toast.error(e instanceof Error ? e.message : 'An error occurred')
               } finally {
                 setIsDeleting(false)
               }
@@ -463,7 +464,7 @@ function GuestForm({
   loading: boolean
   prefix: string
   defaultValues?: { name: string; phone: string; email: string; party_size: number; seat_info: string; ticket_tier_id?: string | null }
-  tiers: any[]
+  tiers: TicketTier[]
 }) {
   return (
     <form action={onSubmit} className="flex flex-col gap-5 mt-2">

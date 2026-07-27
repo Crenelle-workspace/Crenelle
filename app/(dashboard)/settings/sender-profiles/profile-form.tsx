@@ -52,7 +52,7 @@ export function ProfileForm({ profile, onDone }: ProfileFormProps) {
           placeholder="e.g. Acme Foundation, Tech Arm Lagos"
           className={fieldCls}
         />
-        <p className={hintCls}>Shown in the "From:" field of every email sent for this identity</p>
+        <p className={hintCls}>Shown in the &quot;From:&quot; field of every email sent for this identity</p>
       </div>
 
       <div className="flex flex-col gap-2">

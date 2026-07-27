@@ -246,9 +246,11 @@ export default function ScannerClient({
     }, 3000)
   }
 
-  // ── QR camera ───────────────────────────────────────────────────────────────
+  const processScanRef = useRef(processScan)
+  processScanRef.current = processScan
 
-  async function startScanner() {
+  const startScanner = useCallback(async () => {
+    if (scannerRef.current) return
     const { Html5Qrcode } = await import('html5-qrcode')
     const scanner = new Html5Qrcode('qr-reader')
 
@@ -256,7 +258,7 @@ export default function ScannerClient({
       await scanner.start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => processScan(decodedText.trim()),
+        (decodedText) => processScanRef.current(decodedText.trim()),
         () => {}
       )
       scannerRef.current = scanner
@@ -264,17 +266,18 @@ export default function ScannerClient({
     } catch (err) {
       console.error('Scanner start error:', err)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    startScanner()
+    void startScanner()
+
     return () => {
       clearTimeout(resultTimeoutRef.current)
       if (scannerRef.current) {
         try { scannerRef.current.stop() } catch {}
       }
     }
-  }, [])
+  }, [startScanner])
 
   // ── Manual name search ──────────────────────────────────────────────────────
 

@@ -16,9 +16,9 @@ import * as Sentry from '@sentry/nextjs'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const eventId = params.id
+  const { id: eventId } = await params
 
   if (!eventId) {
     return NextResponse.json({ error: 'Event ID is required' }, { status: 400 })

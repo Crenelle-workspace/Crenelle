@@ -2,20 +2,20 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, KeyRound, ShieldAlert, LogOut, Trash2, CheckCircle2, UserCircle } from 'lucide-react'
+import { Loader2, KeyRound, ShieldAlert, LogOut, Trash2, UserCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
 import { deleteAccountAction, sendPasswordResetEmailAction } from '@/app/actions/auth'
+import type { User, UserIdentity } from '@supabase/supabase-js'
 
 interface AccountSettingsFormProps {
-  user: any
+  user: User
 }
 
 export function AccountSettingsForm({ user: initialUser }: AccountSettingsFormProps) {
   const router = useRouter()
-  const [user, setUser] = useState(initialUser)
+  const [user, setUser] = useState<User>(initialUser)
   const [displayName, setDisplayName] = useState(initialUser.user_metadata?.full_name ?? '')
   const [updatingProfile, setUpdatingProfile] = useState(false)
   const [loadingIdentities, setLoadingIdentities] = useState(false)
@@ -70,16 +70,16 @@ export function AccountSettingsForm({ user: initialUser }: AccountSettingsFormPr
         toast.success('Display name updated successfully.')
         await refreshUser()
       }
-    } catch (err) {
+    } catch {
       toast.error('An unexpected error occurred.')
     } finally {
       setUpdatingProfile(false)
     }
   }
 
-  const identities = user?.identities ?? []
-  const hasGoogle = identities.some((id: any) => id.provider === 'google')
-  const hasEmail = identities.some((id: any) => id.provider === 'email')
+  const identities = (user?.identities ?? []) as UserIdentity[]
+  const hasGoogle = identities.some((id) => id.provider === 'google')
+  const hasEmail = identities.some((id) => id.provider === 'email')
   const totalIdentities = identities.length
 
   const handleLinkGoogle = async () => {
@@ -94,13 +94,13 @@ export function AccountSettingsForm({ user: initialUser }: AccountSettingsFormPr
       if (error) {
         toast.error(`Failed to link Google: ${error.message}`)
       }
-    } catch (err) {
+    } catch {
       toast.error('An unexpected error occurred.')
     }
   }
 
   const handleUnlinkGoogle = async () => {
-    const googleIdentity = identities.find((id: any) => id.provider === 'google')
+    const googleIdentity = identities.find((id) => id.provider === 'google')
     if (!googleIdentity) return
 
     if (totalIdentities <= 1) {
@@ -117,7 +117,7 @@ export function AccountSettingsForm({ user: initialUser }: AccountSettingsFormPr
         toast.success('Google account disconnected successfully.')
         await refreshUser()
       }
-    } catch (err) {
+    } catch {
       toast.error('An unexpected error occurred.')
     }
   }
@@ -160,7 +160,7 @@ export function AccountSettingsForm({ user: initialUser }: AccountSettingsFormPr
         setConfirmPassword('')
         await refreshUser()
       }
-    } catch (err) {
+    } catch {
       toast.error('An unexpected error occurred.')
     } finally {
       setUpdatingPassword(false)
@@ -176,7 +176,7 @@ export function AccountSettingsForm({ user: initialUser }: AccountSettingsFormPr
       } else {
         toast.success('Password reset email sent. Please check your inbox.')
       }
-    } catch (err) {
+    } catch {
       toast.error('An unexpected error occurred.')
     } finally {
       setSendingReset(false)
@@ -193,7 +193,7 @@ export function AccountSettingsForm({ user: initialUser }: AccountSettingsFormPr
       } else {
         toast.success('Successfully signed out of all other sessions.')
       }
-    } catch (err) {
+    } catch {
       toast.error('An unexpected error occurred.')
     } finally {
       setSigningOutOthers(false)
@@ -212,7 +212,7 @@ export function AccountSettingsForm({ user: initialUser }: AccountSettingsFormPr
         if (result?.error) {
           toast.error(result.error)
         }
-      } catch (err) {
+      } catch {
         toast.error('Failed to delete account.')
       }
     })

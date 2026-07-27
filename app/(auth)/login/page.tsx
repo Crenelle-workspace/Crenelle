@@ -17,7 +17,7 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search)
     const oauthError = params.get('error')
     if (oauthError) {
-      setError(oauthError)
+      queueMicrotask(() => setError(oauthError))
     }
   }, [])
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
         setError(error.message)
         setGoogleLoading(false)
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred during Google sign in')
       setGoogleLoading(false)
     }

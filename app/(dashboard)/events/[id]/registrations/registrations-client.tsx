@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle } from 'lucide-react'
 import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails } from '@/app/actions/registrations'
@@ -27,6 +27,18 @@ interface Registration {
   payment_status?: 'paid' | 'pending' | 'failed' | 'refunded' | 'abandoned' | 'unpaid' | 'free'
 }
 
+interface AttendeeRow {
+  id: string
+  event_id: string
+  name: string
+  email: string
+  phone: string | null
+  registration_status: Registration['status']
+  created_at: string
+  ticket_tier?: TicketTier | null
+  payments?: { status: string; created_at: string }[]
+}
+
 export default function RegistrationsPage() {
   const { id: eventId } = useParams<{ id: string }>()
   const [registrations, setRegistrations] = useState<Registration[]>([])
@@ -41,7 +53,7 @@ export default function RegistrationsPage() {
   const [rejectTarget, setRejectTarget] = useState<Registration | null>(null)
   const [loading, setLoading] = useState(true)
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       const supabase = createClient()
       const [{ data: attendees }, { data: ev }] = await Promise.all([
@@ -58,20 +70,21 @@ export default function RegistrationsPage() {
           .single(),
       ])
 
-      const mappedRegs = (attendees ?? []).map((a: any) => {
+      const rows = (attendees ?? []) as unknown as AttendeeRow[]
+      const mappedRegs: Registration[] = rows.map((a) => {
         const hasPayments = a.payments && a.payments.length > 0
         let paymentStatus: Registration['payment_status'] = 'unpaid'
 
         if (hasPayments) {
-          if (a.payments.some((p: any) => p.status === 'paid')) {
+          if (a.payments?.some((p) => p.status === 'paid')) {
             paymentStatus = 'paid'
-          } else if (a.payments.some((p: any) => p.status === 'pending')) {
+          } else if (a.payments?.some((p) => p.status === 'pending')) {
             paymentStatus = 'pending'
           } else {
-            const sortedPayments = [...a.payments].sort(
+            const sortedPayments = [...(a.payments ?? [])].sort(
               (x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime()
             )
-            paymentStatus = sortedPayments[0]?.status || 'unpaid'
+            paymentStatus = (sortedPayments[0]?.status as Registration['payment_status']) || 'unpaid'
           }
         } else if (a.ticket_tier?.price === 0) {
           paymentStatus = 'free'
@@ -90,12 +103,12 @@ export default function RegistrationsPage() {
         }
       })
 
-      setRegistrations(mappedRegs as any[])
+      setRegistrations(mappedRegs)
       setEvent(ev)
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
 
   useEffect(() => {
     loadData()
@@ -112,7 +125,7 @@ export default function RegistrationsPage() {
       clearInterval(poll)
       supabase.removeChannel(channel)
     }
-  }, [eventId])
+  }, [eventId, loadData])
 
   function handleAccept(reg: Registration) {
     setAcceptTarget(reg)
@@ -136,8 +149,8 @@ export default function RegistrationsPage() {
       }
       setAcceptTarget(null)
       await loadData()
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSubmitting(false)
     }
@@ -152,8 +165,8 @@ export default function RegistrationsPage() {
       else toast.success(`${rejectTarget.full_name} rejected`)
       setRejectTarget(null)
       await loadData()
-    } catch (e: any) {
-      toast.error(e.message || 'An error occurred')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSubmitting(false)
     }
@@ -406,8 +419,8 @@ export default function RegistrationsPage() {
                         const result = await promoteFromWaitlist(reg.id, eventId)
                         if (result?.error) toast.error(result.error)
                         else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
-                      } catch (e: any) {
-                        toast.error(e.message || 'An error occurred')
+                      } catch (e: unknown) {
+                        toast.error(e instanceof Error ? e.message : 'An error occurred')
                       } finally {
                         setIsSubmitting(false)
                       }

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { QrCode } from 'lucide-react'
@@ -96,7 +97,7 @@ export function InteractiveTicketStack() {
         >
           {/* Small crop image banner */}
           <div className="w-full h-20 rounded-xl overflow-hidden relative bg-stone-900/10">
-            <img src={t.imageUrl} alt={t.title} className="w-full h-full object-cover" />
+            <Image src={t.imageUrl} alt={t.title} fill sizes="232px" className="object-cover" />
             <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent" />
           </div>
 

@@ -213,13 +213,6 @@ export default function EventOverviewPage() {
     setSendingReminder(false)
   }
 
-  const statusColors: Record<string, string> = {
-    live:      'status-admitted',
-    published: 'status-pending',
-    draft:     'bg-foreground/10 text-foreground/60 px-4 py-1',
-    ended:     'status-denied',
-  }
-
   if (editing) {
     return (
       <div className="max-w-2xl">

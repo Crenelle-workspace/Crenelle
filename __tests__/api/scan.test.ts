@@ -71,7 +71,7 @@ function makeRequest(body: Record<string, unknown>): NextRequest {
  *         .from().insert()
  */
 function makeChain(resolveWith: { data?: unknown; error?: unknown } = {}) {
-  const chain: any = {
+  const chain: Record<string, unknown> = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     insert: vi.fn().mockResolvedValue({ error: null }),

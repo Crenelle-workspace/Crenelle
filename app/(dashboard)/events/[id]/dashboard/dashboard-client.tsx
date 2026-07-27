@@ -8,7 +8,7 @@ import { StatCard } from '@/components/stat-card'
 import { SectionHeader } from '@/components/section-header'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import type { EntryLog, Invitation, Attendee, Event } from '@/lib/types'
+import type { Invitation, Event } from '@/lib/types'
 import dynamic from 'next/dynamic'
 import { EventSummaryReport } from '@/components/event-summary-pdf'
 
@@ -33,10 +33,23 @@ type InvitationRaw = Pick<Invitation, 'id' | 'party_size' | 'seat_info' | 'statu
   guest: GuestName
 }
 
-type EntryLogRaw = Pick<EntryLog, 'id' | 'scanned_at'> & {
-  invitation: Pick<Invitation, 'id' | 'party_size' | 'seat_info'> & {
-    attendee: GuestName | GuestName[]
-  }
+type RawDbInvitation = {
+  id: string
+  party_size: number
+  seat_info: string | null
+  status: Invitation['status']
+  attendee: GuestName | GuestName[] | null
+}
+
+type RawDbLog = {
+  id: string
+  scanned_at: string
+  invitation: {
+    id: string
+    party_size: number
+    seat_info: string | null
+    attendee: GuestName | GuestName[] | null
+  } | { id: string; party_size: number; seat_info: string | null; attendee: GuestName | GuestName[] | null }[] | null
 }
 
 export default function LiveDashboardPage() {
@@ -106,8 +119,8 @@ export default function LiveDashboardPage() {
           .in('invitation_id', (invitations ?? []).map(i => i.id))
           .order('scanned_at', { ascending: false })
 
-        const logsArr = (logs ?? []) as any[]
-        const invArrRaw = (invitations ?? []) as any[]
+        const logsArr = (logs ?? []) as unknown as RawDbLog[]
+        const invArrRaw = (invitations ?? []) as unknown as RawDbInvitation[]
 
         const invArr: InvitationRaw[] = invArrRaw.map(i => {
           const att = Array.isArray(i.attendee) ? i.attendee[0] : i.attendee
@@ -326,7 +339,7 @@ export default function LiveDashboardPage() {
             }
             fileName={`event-summary-${event.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`}
           >
-            {({ blob, url, loading: pdfLoading, error }) => (
+            {({ loading: pdfLoading }) => (
               <Button
                 variant="primary"
                 className="gap-2 h-12 px-6 text-sm shrink-0"

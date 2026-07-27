@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { Mail, Star, Pencil, Trash2, Plus } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import type { SenderProfile } from '@/lib/types'
 import {
