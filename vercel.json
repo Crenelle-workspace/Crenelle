@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/payments/pending-check",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/settlements/reconcile",
-      "schedule": "0 * * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }
