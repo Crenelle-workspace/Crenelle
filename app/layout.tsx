@@ -21,7 +21,7 @@ const syne = Syne({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://crenelle.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://crenelle.org'),
   title: 'Crenelle — Event Access Management',
   description: 'Issue QR-coded entry passes, scan guests in real-time, and take full control of every door.',
   icons: {

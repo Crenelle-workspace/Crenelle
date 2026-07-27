@@ -180,8 +180,94 @@ async function handleChargeSuccess(
         console.warn('[Paystack Webhook] Received charge.success for unknown reference:', reference)
         return NextResponse.json({ received: true }, { status: 200 })
 
-      case 'already_processed':
+      case 'already_processed': {
+        // The DB was already updated (payment = 'paid') but Paystack retried because it
+        // never received a 200 (e.g. our first handler run timed out after the RPC commit).
+        // We must still attempt to send the invitation if it hasn't gone out yet.
+        // Note: the pending-check cron also covers this case (runs every 15 min) — this
+        // handler closes the gap for webhook retries that arrive before the cron fires.
+        const attendeeId = result.attendee_id ?? null
+        const eventId    = result.event_id ?? null
+
+        if (!attendeeId || !eventId) {
+          return NextResponse.json({ received: true, skipped: 'already_processed' }, { status: 200 })
+        }
+
+        // Look up invitation + attendee in parallel (attendee email needed for dedup check)
+        const [{ data: existingInv }, { data: attendee }] = await Promise.all([
+          supabase
+            .from('invitations')
+            .select('id')
+            .eq('attendee_id', attendeeId)
+            .eq('event_id', eventId)
+            .maybeSingle(),
+          supabase
+            .from('attendees')
+            .select('name, email, phone')
+            .eq('id', attendeeId)
+            .single(),
+        ])
+
+        if (!existingInv?.id || !attendee?.email) {
+          // No invitation or no email address — nothing to send
+          return NextResponse.json({ received: true, skipped: 'already_processed' }, { status: 200 })
+        }
+
+        // Dedup: check if an invitation email has already been sent to this specific recipient.
+        // Must filter by recipient_email (not just event_id) — events have multiple attendees.
+        const { data: existingLog } = await supabase
+          .from('email_logs')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('email_type', 'invitation')
+          .ilike('recipient_email', attendee.email)
+          .maybeSingle()
+
+        if (existingLog) {
+          // Email already sent to this attendee — safe to skip
+          console.log('[Paystack Webhook] already_processed — invitation email already sent, skipping')
+          return NextResponse.json({ received: true, skipped: 'already_processed' }, { status: 200 })
+        }
+
+        // Email hasn't been sent yet — fetch event details and send now
+        console.log('[Paystack Webhook] already_processed — resending missed invitation notifications')
+
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('name, date, time, venue, description, banner_url')
+          .eq('id', eventId)
+          .single()
+
+        if (attendee.email && eventData) {
+          sendInvitationEmail({
+            eventId,
+            recipientEmail: attendee.email,
+            recipientName: attendee.name,
+            invitationId: existingInv.id,
+            event: eventData,
+          }).catch((e) =>
+            Sentry.captureException(e, {
+              extra: { reference, attendeeId, context: 'paystack_webhook_resend_email_on_retry' },
+            })
+          )
+        }
+
+        if (attendee.phone && eventData) {
+          sendInvitationWhatsApp({
+            eventId,
+            recipientPhone: attendee.phone,
+            recipientName: attendee.name,
+            invitationId: existingInv.id,
+            event: eventData,
+          }).catch((e) =>
+            Sentry.captureException(e, {
+              extra: { reference, attendeeId, context: 'paystack_webhook_resend_whatsapp_on_retry' },
+            })
+          )
+        }
+
         return NextResponse.json({ received: true, skipped: 'already_processed' }, { status: 200 })
+      }
 
       case 'amount_mismatch':
         Sentry.captureMessage('[Paystack Webhook] Amount mismatch detected by RPC — possible tampering', {
