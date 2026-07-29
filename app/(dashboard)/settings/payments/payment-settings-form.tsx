@@ -154,17 +154,17 @@ export function PaymentSettingsForm({ settings }: Props) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div className="p-4 rounded-2xl bg-stone-900/40 border border-border/40 space-y-1">
-                <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground/75 block">ACCOUNT NAME</span>
-                <p className="font-sans text-sm font-bold text-foreground">{settings.account_name ?? '—'}</p>
+              <div className="p-4 rounded-2xl bg-card border border-border/60 shadow-xs space-y-1.5">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-copper block">ACCOUNT NAME</span>
+                <p className="font-sans text-sm font-bold text-foreground tracking-tight">{settings.account_name ?? '—'}</p>
               </div>
-              <div className="p-4 rounded-2xl bg-stone-900/40 border border-border/40 space-y-1">
-                <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground/75 block">BANK NAME</span>
-                <p className="font-sans text-sm font-bold text-foreground">{settings.bank_name ?? '—'}</p>
+              <div className="p-4 rounded-2xl bg-card border border-border/60 shadow-xs space-y-1.5">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-copper block">BANK NAME</span>
+                <p className="font-sans text-sm font-bold text-foreground tracking-tight">{settings.bank_name ?? '—'}</p>
               </div>
-              <div className="p-4 rounded-2xl bg-stone-900/40 border border-border/40 space-y-1">
-                <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground/75 block">ACCOUNT NUMBER</span>
-                <p className="font-mono text-sm font-bold text-foreground">{settings.account_number ? `••••${settings.account_number.slice(-4)}` : '—'}</p>
+              <div className="p-4 rounded-2xl bg-card border border-border/60 shadow-xs space-y-1.5">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-copper block">ACCOUNT NUMBER</span>
+                <p className="font-mono text-sm font-bold text-foreground tracking-tight">{settings.account_number ? `••••${settings.account_number.slice(-4)}` : '—'}</p>
               </div>
             </div>
 
