@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Check, Eye, Sparkles, Plane, LayoutTemplate, Moon, Flame } from 'lucide-react'
+import { Check, Eye, Sparkles, Plane, LayoutTemplate, Moon, Flame, Maximize2 } from 'lucide-react'
 import { updateEventEmailTheme } from '@/app/actions/events'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -63,6 +63,15 @@ const THEME_OPTIONS: ThemeOption[] = [
     icon: Flame,
     badge: 'HIGH ENERGY',
     accentColor: '#4F46E5',
+  },
+  {
+    id: 'horizontal_pass',
+    name: 'Horizon Panoramic Strip',
+    subtitle: 'Panoramic Ticket Stub',
+    description: 'Full-width event banner header on top with a sleek side-by-side horizontal ticket strip below and right-hand vertical QR stub.',
+    icon: Maximize2,
+    badge: 'PANORAMIC STRIP',
+    accentColor: '#06B6D4',
   },
 ]
 

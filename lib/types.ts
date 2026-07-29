@@ -1,6 +1,6 @@
 export type EventStatus = 'draft' | 'published' | 'live' | 'ended'
 export type EventType = 'closed' | 'open'
-export type EmailTheme = 'classic' | 'boarding_pass' | 'minimal_mono' | 'luxe_dark' | 'bold_poster'
+export type EmailTheme = 'classic' | 'boarding_pass' | 'minimal_mono' | 'luxe_dark' | 'bold_poster' | 'horizontal_pass'
 export type InvitationStatus = 'pending' | 'active' | 'cancelled' | 'checked_in' | 'expired'
 export type RegistrationStatus = 'pending' | 'accepted' | 'rejected' | 'waitlist'
 export type AttendeeSource = 'imported' | 'public_registration' | 'manual'

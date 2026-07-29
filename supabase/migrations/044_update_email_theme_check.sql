@@ -1,6 +1,5 @@
--- Migration 043: Add email_theme column to events table
-ALTER TABLE events
-ADD COLUMN email_theme TEXT NOT NULL DEFAULT 'classic';
+-- Migration 044: Update email_theme check constraint to include horizontal_pass
+ALTER TABLE events DROP CONSTRAINT IF EXISTS events_email_theme_check;
 
 ALTER TABLE events
 ADD CONSTRAINT events_email_theme_check

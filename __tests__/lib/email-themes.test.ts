@@ -100,13 +100,21 @@ describe('Email Theme Architecture (Phase 1)', () => {
     const html = renderTicketEmail({ ...mockOptions, theme: 'luxe_dark', tierName: 'Gala VIP' })
     expect(html).toContain('CRENELLE PRIVÉ')
     expect(html).toContain('HONORED GUEST')
-    expect(html).toContain('#D4AF37')
+    expect(html).toContain('#C5A059')
   })
 
   it('renders bold poster theme with neo-brutalist header banner', () => {
     const html = renderTicketEmail({ ...mockOptions, theme: 'bold_poster' })
-    expect(html).toContain('CRENELLE // LIVE PASS')
+    expect(html).toContain('CRENELLE // LIVE SERIES')
     expect(html).toContain('ADMIT ONE')
     expect(html).toContain('#4F46E5')
+  })
+
+  it('renders horizontal landscape pass theme with dynamic split layout', () => {
+    const html = renderTicketEmail({ ...mockOptions, theme: 'horizontal_pass' })
+    expect(html).toContain('CRENELLE HORIZON')
+    expect(html).toContain('HORIZONTAL STRIP')
+    expect(html).toContain('#06B6D4')
+    expect(html).toContain('GATE ENTRY STUB')
   })
 })
