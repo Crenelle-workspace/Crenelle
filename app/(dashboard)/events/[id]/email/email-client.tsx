@@ -9,7 +9,8 @@ import { createClient } from '@/lib/supabase/client'
 import { SectionHeader } from '@/components/section-header'
 import { StatCard } from '@/components/stat-card'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { EmailLog } from '@/lib/types'
+import { EmailThemePicker } from '@/components/email-theme-picker'
+import type { EmailLog, EmailTheme } from '@/lib/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,6 +99,7 @@ function EmailTabSkeleton() {
 
 export default function EmailClient({ eventId }: { eventId: string }) {
   const [logs, setLogs] = useState<EmailLog[]>([])
+  const [emailTheme, setEmailTheme] = useState<EmailTheme>('classic')
   const [stats, setStats] = useState<EmailStats>({
     sent: 0, delivered: 0, opened: 0, clicked: 0,
     bounced: 0, complained: 0, openRate: 0, clickRate: 0,
@@ -108,6 +110,17 @@ export default function EmailClient({ eventId }: { eventId: string }) {
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
+
+    // Fetch email theme
+    const { data: eventData } = await supabase
+      .from('events')
+      .select('email_theme')
+      .eq('id', eventId)
+      .single()
+
+    if (eventData?.email_theme) {
+      setEmailTheme(eventData.email_theme as EmailTheme)
+    }
 
     const { data } = await supabase
       .from('email_logs')
@@ -159,10 +172,10 @@ export default function EmailClient({ eventId }: { eventId: string }) {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-foreground/20 pb-6">
         <SectionHeader
           eyebrow="EMAIL_ANALYTICS"
-          title="Email Outreach"
+          title="Email Outreach & Themes"
           subtitle={
             noData
-              ? 'No emails sent yet — send invitations or reminders to see tracking data here'
+              ? 'Configure email templates and view delivery & engagement analytics'
               : 'Open and click rates are tracked via Resend webhooks'
           }
         />
@@ -176,6 +189,18 @@ export default function EmailClient({ eventId }: { eventId: string }) {
             ? `Updated ${lastRefreshed.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
             : 'Refresh'}
         </button>
+      </div>
+
+      {/* Theme Picker Section */}
+      <EmailThemePicker eventId={eventId} currentTheme={emailTheme} />
+
+      {/* Analytics Title Divider */}
+      <div className="border-t border-border pt-6">
+        <SectionHeader
+          eyebrow="ENGAGEMENT_ANALYTICS"
+          title="Delivery & Outreach Stats"
+          subtitle="Real-time delivery, open, and click tracking"
+        />
       </div>
 
       {/* Stats grid */}
