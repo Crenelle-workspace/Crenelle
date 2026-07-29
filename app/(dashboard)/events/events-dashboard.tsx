@@ -10,6 +10,7 @@ import { deleteEvent } from "@/app/actions/events"
 import { EmptyState } from "@/components/empty-state"
 import type { Event, Invitation } from "@/lib/types"
 
+import { WorkspaceSetupCard, type SetupStatus } from "@/components/workspace-setup-card"
 import { useDashboardData } from "./hooks/use-dashboard-data"
 import { StatsPanel } from "./components/stats-panel"
 import { ControlBar } from "./components/control-bar"
@@ -20,6 +21,7 @@ interface EventsDashboardClientProps {
   initialInvitations: Invitation[]
   initialLogs: { invitation_id: string }[]
   coHostedEvents?: Array<Event & { memberRole: string }>
+  setupStatus?: SetupStatus
 }
 
 const roleLabels: Record<string, string> = {
@@ -33,6 +35,7 @@ export function EventsDashboardClient({
   initialInvitations,
   initialLogs,
   coHostedEvents = [],
+  setupStatus,
 }: EventsDashboardClientProps) {
   const { events, invitations, logs, eventStats, stats, remaining, capacityPercent } =
     useDashboardData({ initialEvents, initialInvitations, initialLogs })
@@ -63,9 +66,12 @@ export function EventsDashboardClient({
     })
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-      {/* Events list */}
-      <div className="lg:col-span-7 flex flex-col gap-6">
+    <div className="space-y-8">
+      {setupStatus && <WorkspaceSetupCard status={setupStatus} />}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* Events list */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
         <EventsHeader
           isSearchExpanded={isSearchExpanded}
           setIsSearchExpanded={setIsSearchExpanded}
@@ -235,6 +241,7 @@ export function EventsDashboardClient({
           currentStatus={statusTarget.status}
         />
       )}
+      </div>
     </div>
   )
 }

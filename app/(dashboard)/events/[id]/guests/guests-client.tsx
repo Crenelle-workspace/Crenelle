@@ -344,7 +344,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
                     value={guest.invitation?.ticket_tier_id ?? ''}
                     disabled={isSavingTier === guest.id}
                     onChange={(e) => handleTierChange(guest.id, e.target.value || null)}
-                    className="self-start font-mono text-[9px] uppercase tracking-wider bg-foreground/10 text-foreground px-1.5 py-0.5 mt-0.5 font-semibold border border-foreground/15 rounded-none outline-none cursor-pointer hover:bg-foreground/20 max-w-[150px] truncate"
+                    className="self-start font-mono text-[9px] uppercase tracking-wider bg-foreground/10 text-foreground px-1.5 py-0.5 mt-0.5 font-semibold border border-foreground/15 rounded-none outline-none cursor-pointer hover:bg-foreground/20 max-w-37.5truncate"
                   >
                     <option value="">No Tier</option>
                     {tiers.map((t) => (

@@ -243,15 +243,17 @@ export function NewEventForm({ profiles }: NewEventFormProps) {
           </label>
 
           {profiles.length === 0 ? (
-            <div className="flex items-center gap-3 border border-dashed border-border px-4 py-3">
-              <Mail className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <div className="flex items-center gap-3 border border-dashed border-copper/30 bg-copper/5 px-4 py-3 rounded-xl">
+              <Mail className="size-4 text-copper shrink-0" aria-hidden="true" />
               <p className="font-sans text-xs text-muted-foreground">
-                No sender profiles yet.{' '}
+                No sender profiles created yet. Emails will send from your default account name.{' '}
                 <a
                   href="/settings/sender-profiles"
-                  className="text-copper hover:underline underline-offset-2"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-copper font-medium hover:underline underline-offset-2"
                 >
-                  Create one in Settings →
+                  Create Sender Profile in Settings →
                 </a>
               </p>
             </div>

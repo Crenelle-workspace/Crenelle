@@ -38,6 +38,35 @@ export default async function EventsPage() {
     }))
   }
 
+  // Workspace setup status indicators
+  const [
+    { data: profilesData },
+    { data: paymentData },
+    { data: orgSettingsData }
+  ] = await Promise.all([
+    supabase
+      .from('sender_profiles')
+      .select('id')
+      .limit(1),
+    supabase
+      .from('organizer_payment_settings')
+      .select('is_verified, paystack_subaccount_code')
+      .eq('organizer_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+      .maybeSingle(),
+    supabase
+      .from('organizer_settings')
+      .select('org_name, email_footer')
+      .eq('organizer_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+      .maybeSingle(),
+  ])
+
+  const setupStatus = {
+    hasOrgName: !!orgSettingsData?.org_name,
+    hasSenderProfile: (profilesData ?? []).length > 0,
+    hasPaymentSubaccount: !!paymentData?.is_verified && !!paymentData?.paystack_subaccount_code,
+    hasEmailFooter: !!orgSettingsData?.email_footer,
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* ── Page header ── */}
@@ -67,6 +96,7 @@ export default async function EventsPage() {
         initialInvitations={(invitations as Invitation[]) || []}
         initialLogs={(logs as { invitation_id: string }[]) || []}
         coHostedEvents={coHostedEvents}
+        setupStatus={setupStatus}
       />
     </div>
   )
