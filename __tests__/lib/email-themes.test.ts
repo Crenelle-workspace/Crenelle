@@ -98,14 +98,14 @@ describe('Email Theme Architecture (Phase 1)', () => {
 
   it('renders luxe dark theme with gold metallic framing', () => {
     const html = renderTicketEmail({ ...mockOptions, theme: 'luxe_dark', tierName: 'Gala VIP' })
-    expect(html).toContain('EXCLUSIVE INVITATION')
+    expect(html).toContain('CRENELLE PRIVÉ')
     expect(html).toContain('HONORED GUEST')
     expect(html).toContain('#D4AF37')
   })
 
   it('renders bold poster theme with neo-brutalist header banner', () => {
     const html = renderTicketEmail({ ...mockOptions, theme: 'bold_poster' })
-    expect(html).toContain('CRENELLE FESTIVAL PASS')
+    expect(html).toContain('CRENELLE // LIVE PASS')
     expect(html).toContain('ADMIT ONE')
     expect(html).toContain('#4F46E5')
   })
