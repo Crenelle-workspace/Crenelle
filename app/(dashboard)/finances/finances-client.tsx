@@ -152,13 +152,15 @@ export function FinancesClient() {
   // Expanded payout cards state
   const [expandedPayouts, setExpandedPayouts] = useState<Record<string, boolean>>({})
 
-  // Format currency helper
+  // Format currency helper (rounds up to whole Naira, e.g. 203.05 -> ₦204)
   const formatNGN = (amount: number) => {
+    const naira = Math.ceil(amount)
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
-      minimumFractionDigits: 2,
-    }).format(amount)
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(naira)
   }
 
   // 1. Fetch overview

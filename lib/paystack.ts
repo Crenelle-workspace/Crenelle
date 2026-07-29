@@ -321,11 +321,11 @@ export function calculateSplit(
 }
 
 /**
- * Format a kobo amount as a human-readable NGN string.
- * e.g. 1000000 → "₦10,000.00"
+ * Format a kobo amount as a human-readable NGN string without decimals.
+ * e.g. 20305 → "₦204"
  */
 export function formatKoboAsNGN(kobo: number): string {
-  const naira = kobo / 100;
+  const naira = Math.ceil(kobo / 100);
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",

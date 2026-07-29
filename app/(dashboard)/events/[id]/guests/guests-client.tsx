@@ -68,7 +68,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
       escapeCSV(g.invitation?.ticket_tier?.name ?? 'No Tier'),
       escapeCSV(
         g.invitation?.ticket_tier?.price
-          ? `${g.invitation.ticket_tier.currency ?? 'NGN'} ${(g.invitation.ticket_tier.price / 100).toFixed(2)}`
+          ? `${g.invitation.ticket_tier.currency ?? 'NGN'} ${Math.ceil(g.invitation.ticket_tier.price / 100).toLocaleString('en-NG')}`
           : 'Free'
       ),
       escapeCSV(g.invitation?.status ?? 'pending'),
@@ -506,7 +506,7 @@ function GuestForm({
           <option value="">No Tier / Standard</option>
           {tiers.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.name} ({t.price === 0 ? 'Free' : `${(t.price / 100).toLocaleString()} ${t.currency || 'NGN'}`})
+              {t.name} ({t.price === 0 ? 'Free' : `${Math.ceil(t.price / 100).toLocaleString('en-NG')} ${t.currency || 'NGN'}`})
             </option>
           ))}
         </select>

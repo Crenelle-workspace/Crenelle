@@ -485,7 +485,7 @@ export default function PublicRegistrationPage() {
                     >
                       {event.tiers.map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.name} {t.price === 0 ? '(Free)' : `(₦${(t.price / 100).toLocaleString()})`}
+                          {t.name} {t.price === 0 ? '(Free)' : `(₦${Math.ceil(t.price / 100).toLocaleString('en-NG')})`}
                         </option>
                       ))}
                     </select>
@@ -516,7 +516,7 @@ export default function PublicRegistrationPage() {
                           : submitting
                           ? 'SUBMITTING...'
                           : isPaidTier
-                          ? `PAY ₦${((selectedTier?.price ?? 0) / 100).toLocaleString()} & REGISTER →`
+                          ? `PAY ₦${Math.ceil((selectedTier?.price ?? 0) / 100).toLocaleString('en-NG')} & REGISTER →`
                           : 'REGISTER →'}
                       </button>
                     </>

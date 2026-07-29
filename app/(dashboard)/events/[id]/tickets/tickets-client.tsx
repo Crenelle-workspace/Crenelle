@@ -142,7 +142,8 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
     try {
       const name = formData.get('name') as string
       const rawPrice = Number(formData.get('price')) || 0
-      const price = Math.ceil(rawPrice * 100) // Convert NGN to kobo (ceil for cleaner UX, e.g. ₦203.05 → ₦204)
+      const nairaPrice = Math.ceil(rawPrice) // Round to nearest whole Naira (e.g. 203.05 -> 204)
+      const price = nairaPrice * 100 // Convert whole NGN to kobo (e.g. 204 -> 20400 kobo)
       const hasCap = formData.get('has_capacity') === 'true'
       const capacity = hasCap ? Number(formData.get('capacity')) || null : null
       const isPublic = formData.get('is_public') === 'true'
@@ -168,7 +169,8 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
     try {
       const name = formData.get('name') as string
       const rawPrice = Number(formData.get('price')) || 0
-      const price = Math.ceil(rawPrice * 100) // Convert NGN to kobo (ceil for cleaner UX, e.g. ₦203.05 → ₦204)
+      const nairaPrice = Math.ceil(rawPrice) // Round to nearest whole Naira (e.g. 203.05 -> 204)
+      const price = nairaPrice * 100 // Convert whole NGN to kobo (e.g. 204 -> 20400 kobo)
       const hasCap = formData.get('has_capacity') === 'true'
       const capacity = hasCap ? Number(formData.get('capacity')) || null : null
       const isPublic = formData.get('is_public') === 'true'
@@ -296,7 +298,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
                     </div>
 
                     <p className="font-mono text-xl font-black text-copper whitespace-nowrap">
-                      {tier.price === 0 ? 'FREE' : `₦${(tier.price / 100).toLocaleString()}`}
+                      {tier.price === 0 ? 'FREE' : `₦${Math.ceil(tier.price / 100).toLocaleString('en-NG')}`}
                     </p>
                   </div>
 
@@ -459,12 +461,12 @@ function TierForm({
             name="price"
             type="number"
             min="0"
-            step="0.01"
+            step="1"
             value={priceValue}
-            onChange={(e) => setPriceValue(Number(e.target.value) || 0)}
+            onChange={(e) => setPriceValue(Math.ceil(Number(e.target.value) || 0))}
             required
             className={fieldCls}
-            placeholder="0.00"
+            placeholder="0"
           />
         </div>
 
