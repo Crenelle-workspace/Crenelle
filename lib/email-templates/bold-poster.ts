@@ -26,16 +26,18 @@ export function renderBoldPosterTheme(options: RenderOptions & {
 
   const isReminder = emailType === 'reminder'
   const titleBadge = isReminder ? 'REMINDER PASS' : 'ADMIT ONE'
-  const passCode = qrToken ? qrToken.replace(/-/g, '').slice(0, 8).toUpperCase() : 'POSTER-01'
+  const passCode = qrToken ? qrToken.replace(/-/g, '').slice(0, 10).toUpperCase() : 'POSTER-01'
 
   const bannerHtml = (event.banner_url && safeImageUrl(getOptimizedBannerUrl(event.banner_url, 'email'))) ? `
-    <div style="margin-bottom:24px;border-radius:8px;overflow:hidden;border:2px solid #000000;">
+    <!-- High Contrast Festival Banner -->
+    <div style="margin-bottom:24px;border-radius:6px;overflow:hidden;border:3px solid #000000;box-shadow:4px 4px 0px #000000;">
       <img src="${safeImageUrl(getOptimizedBannerUrl(event.banner_url, 'email'))}" alt="${escapeHtml(event.name)}" style="width:100%;height:auto;display:block;" />
     </div>` : ''
 
   const customMsgHtml = customMessage ? `
-    <div style="background-color:#FEF08A;border:2px solid #000000;border-radius:8px;padding:18px;margin-bottom:24px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.5;color:#000000;box-shadow:3px 3px 0px #000000;">
-      <strong style="display:block;margin-bottom:4px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;">⚡ EVENT NOTICE:</strong>
+    <!-- Neon Warning Sticker Notice -->
+    <div style="background-color:#CCFF00;border:3px solid #000000;border-radius:6px;padding:18px;margin-bottom:24px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.5;color:#000000;box-shadow:4px 4px 0px #000000;">
+      <strong style="display:block;margin-bottom:4px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:900;">⚡ FESTIVAL ANNOUNCEMENT:</strong>
       ${escapeHtml(customMessage)}
     </div>` : ''
 
@@ -66,18 +68,15 @@ export function renderBoldPosterTheme(options: RenderOptions & {
       }
       .bg-card {
         background-color: #18181B !important;
-        border-color: #3F3F46 !important;
-        box-shadow: 4px 4px 0px #6366F1 !important;
+        border-color: #FFFFFF !important;
+        box-shadow: 8px 8px 0px #CCFF00 !important;
       }
       .text-heading {
         color: #FAFAFA !important;
       }
-      .text-body {
-        color: #E4E4E7 !important;
-      }
       .box-block {
         background-color: #27272A !important;
-        border-color: #3F3F46 !important;
+        border-color: #FAFAFA !important;
         color: #FAFAFA !important;
       }
     }
@@ -86,20 +85,20 @@ export function renderBoldPosterTheme(options: RenderOptions & {
 <body class="bg-body" style="margin:0;padding:0;background-color:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;">
   <div style="max-width:600px;margin:0 auto;padding:40px 16px;">
     
-    <!-- Outer Card Frame with Bold Neo-Brutalist Border & Shadow -->
-    <div class="bg-card" style="background-color:#FFFFFF;border:3px solid #000000;border-radius:12px;overflow:hidden;box-shadow:6px 6px 0px #000000;">
+    <!-- Outer Card Frame with Heavy Neo-Brutalist Border & Drop Shadow -->
+    <div class="bg-card" style="background-color:#FFFFFF;border:4px solid #000000;border-radius:12px;overflow:hidden;box-shadow:8px 8px 0px #000000;">
       
       <!-- Electric Header Banner -->
-      <table style="width:100%;border-collapse:collapse;background-color:#4F46E5;padding:20px 24px;">
+      <table style="width:100%;border-collapse:collapse;background-color:#4F46E5;padding:24px;">
         <tr>
-          <td style="padding:20px 24px;">
-            <span style="font-size:12px;font-weight:900;letter-spacing:3px;color:#A5B4FC;text-transform:uppercase;">CRENELLE FESTIVAL PASS</span>
-            <div style="font-size:26px;font-weight:900;color:#FFFFFF;margin-top:4px;letter-spacing:-0.5px;text-transform:uppercase;line-height:1.1;">
+          <td style="padding:24px;">
+            <span style="font-size:11px;font-weight:900;letter-spacing:3.5px;color:#A5B4FC;text-transform:uppercase;display:block;margin-bottom:6px;">CRENELLE // LIVE PASS</span>
+            <div style="font-size:28px;font-weight:900;color:#FFFFFF;letter-spacing:-0.8px;text-transform:uppercase;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif;">
               ${escapeHtml(event.name)}
             </div>
           </td>
-          <td style="padding:20px 24px;text-align:right;vertical-align:top;">
-            <span style="display:inline-block;padding:6px 12px;background-color:#10B981;color:#000000;font-size:11px;font-weight:900;letter-spacing:1px;border-radius:20px;border:2px solid #000000;">
+          <td style="padding:24px;text-align:right;vertical-align:top;">
+            <span style="display:inline-block;padding:6px 14px;background-color:#CCFF00;color:#000000;font-size:11px;font-weight:900;letter-spacing:1.5px;border-radius:4px;border:2.5px solid #000000;box-shadow:2px 2px 0px #000000;">
               ${titleBadge}
             </span>
           </td>
@@ -112,53 +111,75 @@ export function renderBoldPosterTheme(options: RenderOptions & {
         ${bannerHtml}
         ${customMsgHtml}
 
-        <!-- 2x2 Info Block Layout -->
-        <table style="width:100%;border-collapse:separate;border-spacing:8px;margin-bottom:24px;margin-left:-8px;margin-right:-8px;">
+        <!-- 2x2 Info Block Grid Layout -->
+        <table style="width:100%;border-collapse:separate;border-spacing:10px;margin-bottom:20px;margin-left:-10px;margin-right:-10px;">
           <tr>
-            <td class="box-block" style="width:50%;background-color:#F4F4F5;border:2px solid #000000;border-radius:8px;padding:14px;box-shadow:2px 2px 0px #000000;">
+            <td class="box-block" style="width:50%;background-color:#FFFFFF;border:3px solid #000000;border-radius:8px;padding:16px;box-shadow:3px 3px 0px #000000;">
               <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#4F46E5;text-transform:uppercase;display:block;">DATE</span>
-              <span class="text-heading" style="font-size:14px;font-weight:800;color:#000000;display:block;margin-top:2px;">${eventDateFormatted}</span>
+              <span class="text-heading" style="font-size:15px;font-weight:900;color:#000000;display:block;margin-top:4px;">${eventDateFormatted}</span>
             </td>
-            <td class="box-block" style="width:50%;background-color:#F4F4F5;border:2px solid #000000;border-radius:8px;padding:14px;box-shadow:2px 2px 0px #000000;">
+            <td class="box-block" style="width:50%;background-color:#FFFFFF;border:3px solid #000000;border-radius:8px;padding:16px;box-shadow:3px 3px 0px #000000;">
               <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#4F46E5;text-transform:uppercase;display:block;">TIME</span>
-              <span class="text-heading" style="font-size:14px;font-weight:800;color:#000000;display:block;margin-top:2px;">${timeFormatted || 'ALL DAY'}</span>
+              <span class="text-heading" style="font-size:15px;font-weight:900;color:#000000;display:block;margin-top:4px;">${timeFormatted || 'ALL DAY'}</span>
             </td>
           </tr>
           <tr>
-            <td class="box-block" style="width:50%;background-color:#F4F4F5;border:2px solid #000000;border-radius:8px;padding:14px;box-shadow:2px 2px 0px #000000;">
-              <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#4F46E5;text-transform:uppercase;display:block;">ATTENDEE</span>
-              <span class="text-heading" style="font-size:14px;font-weight:800;color:#000000;display:block;margin-top:2px;">${escapeHtml(recipientName)}</span>
+            <td class="box-block" style="width:50%;background-color:#FFFFFF;border:3px solid #000000;border-radius:8px;padding:16px;box-shadow:3px 3px 0px #000000;">
+              <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#4F46E5;text-transform:uppercase;display:block;">PASSENGER</span>
+              <span class="text-heading" style="font-size:15px;font-weight:900;color:#000000;display:block;margin-top:4px;">${escapeHtml(recipientName)}</span>
             </td>
-            <td class="box-block" style="width:50%;background-color:#F4F4F5;border:2px solid #000000;border-radius:8px;padding:14px;box-shadow:2px 2px 0px #000000;">
-              <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#4F46E5;text-transform:uppercase;display:block;">ENTRY TICKET</span>
-              <span class="text-heading" style="font-size:14px;font-weight:800;color:#000000;display:block;margin-top:2px;">${partySizeText}</span>
+            <td class="box-block" style="width:50%;background-color:#FFFFFF;border:3px solid #000000;border-radius:8px;padding:16px;box-shadow:3px 3px 0px #000000;">
+              <span style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#4F46E5;text-transform:uppercase;display:block;">TICKET CAPACITY</span>
+              <span class="text-heading" style="font-size:15px;font-weight:900;color:#000000;display:block;margin-top:4px;">${partySizeText}</span>
             </td>
           </tr>
         </table>
 
-        <!-- Venue & Tier Banner Block -->
-        <div class="box-block" style="background-color:#F4F4F5;border:2px solid #000000;border-radius:8px;padding:14px 18px;margin-bottom:28px;box-shadow:2px 2px 0px #000000;">
-          <div style="font-size:13px;font-weight:700;" class="text-heading">
-            📍 <strong>LOCATION:</strong> ${escapeHtml(event.venue)}
+        <!-- Venue, Seat & Tier Banner Block -->
+        <div class="box-block" style="background-color:#FFFFFF;border:3px solid #000000;border-radius:8px;padding:16px 20px;margin-bottom:28px;box-shadow:4px 4px 0px #000000;">
+          <div style="font-size:14px;font-weight:900;" class="text-heading">
+            📍 <strong>VENUE:</strong> ${escapeHtml(event.venue)}
           </div>
           ${seatInfo ? `
-          <div style="font-size:12px;color:#059669;font-weight:800;margin-top:6px;">
+          <div style="font-size:13px;color:#059669;font-weight:900;margin-top:8px;">
             💺 <strong>SEAT / ZONE:</strong> ${escapeHtml(seatInfo)}
           </div>` : ''}
           ${tierName ? `
-          <div style="font-size:12px;color:#4F46E5;font-weight:800;margin-top:6px;">
+          <div style="font-size:13px;color:#4F46E5;font-weight:900;margin-top:8px;">
             🎟️ <strong>TIER:</strong> ${escapeHtml(tierName)} ${tierPerks.length > 0 ? `(${tierPerks.map(p => escapeHtml(p)).join(' · ')})` : ''}
           </div>` : ''}
         </div>
 
-        <!-- High-Impact QR Code Container -->
-        <div style="text-align:center;background-color:#4F46E5;border:3px solid #000000;border-radius:8px;padding:24px;box-shadow:4px 4px 0px #000000;">
-          <div style="font-size:11px;font-weight:900;letter-spacing:2px;color:#FFFFFF;text-transform:uppercase;margin-bottom:16px;">
-            SCAN FOR EVENT ENTRY • NO: ${passCode}
-          </div>
-          <div style="display:inline-block;padding:16px;background-color:#FFFFFF;border:3px solid #000000;border-radius:8px;">
-            <img src="${qrCidOrSrc}" alt="Festival Entry Code" width="210" height="210" style="display:block;border:none;" />
-          </div>
+      </div>
+
+      <!-- Torn / Perforated Stub Divider -->
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="border-top:3px dashed #000000;padding:14px 0;text-align:center;background-color:#FEF08A;">
+            <span style="font-size:10px;font-weight:900;letter-spacing:3px;color:#000000;text-transform:uppercase;font-family:'Courier New',Courier,monospace;">
+              ✂ TEAR HERE FOR FESTIVAL ENTRY ✂
+            </span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Industrial Barcode & High-Impact QR Block -->
+      <div style="background-color:#F4F4F5;padding:28px;text-align:center;border-top:3px solid #000000;">
+        
+        <div style="font-size:11px;font-weight:900;letter-spacing:2.5px;color:#4F46E5;text-transform:uppercase;margin-bottom:16px;">
+          SCAN CODE AT ENTRY GATE
+        </div>
+
+        <div style="display:inline-block;padding:18px;background-color:#FFFFFF;border:4px solid #000000;border-radius:8px;box-shadow:6px 6px 0px #000000;">
+          <img src="${qrCidOrSrc}" alt="Festival Entry QR Code" width="220" height="220" style="display:block;border:none;" />
+        </div>
+
+        <!-- Simulated Raw Industrial Barcode -->
+        <div style="margin-top:20px;font-family:'Courier New',Courier,monospace;font-size:18px;letter-spacing:5px;color:#000000;font-weight:900;user-select:none;">
+          ||| || | |||| || | || |||| | |||
+        </div>
+        <div style="font-size:11px;letter-spacing:3px;color:#000000;margin-top:6px;font-weight:900;font-family:'Courier New',Courier,monospace;">
+          ${passCode}
         </div>
 
       </div>
@@ -166,9 +187,9 @@ export function renderBoldPosterTheme(options: RenderOptions & {
     </div>
 
     <!-- Micro Footer -->
-    <div style="padding:24px 0 10px 0;text-align:center;">
-      <p style="font-size:10px;font-weight:900;letter-spacing:2px;color:#71717A;margin:0 0 6px 0;text-transform:uppercase;">
-        CRENELLE // BOLD_POSTER_SERIES
+    <div style="padding:28px 0 10px 0;text-align:center;">
+      <p style="font-size:10px;font-weight:900;letter-spacing:2.5px;color:#71717A;margin:0 0 6px 0;text-transform:uppercase;">
+        CRENELLE // BOLD_NEO_BRUTALIST_SERIES
       </p>
       <p style="font-size:9px;color:#A1A1AA;margin:0;">
         <a href="${unsubscribeUrl}" style="color:#71717A;text-decoration:underline;">Unsubscribe</a>
