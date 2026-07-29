@@ -67,10 +67,13 @@ export default async function EventsPage() {
     hasEmailFooter: !!orgSettingsData?.email_footer,
   }
 
+  const totalEvents = (events?.length ?? 0) + coHostedEvents.length
+  const hasEvents = totalEvents > 0
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* ── Page header ── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6 pb-8 border-b border-border/40">
+      <div className={`${hasEvents ? 'hidden md:flex' : 'flex'} flex-col md:flex-row md:items-end justify-between mb-10 gap-6 pb-8 border-b border-border/40`}>
         <div className="space-y-1">
           <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-2.5 py-1 rounded-full inline-block mb-2">
             Your Dashboard
@@ -79,7 +82,7 @@ export default async function EventsPage() {
             Event Manifest
           </h1>
           <p className="font-sans text-xs text-muted-foreground pt-1">
-            {events?.length ?? 0} {events?.length === 1 ? 'event' : 'events'} currently managed
+            {totalEvents} {totalEvents === 1 ? 'event' : 'events'} currently managed
           </p>
         </div>
         

@@ -416,14 +416,14 @@ export default function EventOverviewPage() {
       <div className="lg:col-span-7 xl:col-span-8 space-y-6">
         <div className="brutalist-card">
         {/* Card header */}
-        <div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-foreground/20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-8 pb-6 border-b-2 border-foreground/20">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/70">EVENT_DETAILS</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setReminderOpen(true)}
-              className="gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-4"
+              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-3 sm:px-4"
             >
               <Mail className="h-3.5 w-3.5" aria-hidden="true" />
               Remind
@@ -432,7 +432,7 @@ export default function EventOverviewPage() {
               variant="ghost"
               size="sm"
               onClick={() => setEditing(true)}
-              className="gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-4"
+              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-3 sm:px-4"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
               Edit
@@ -441,7 +441,7 @@ export default function EventOverviewPage() {
               variant="ghost"
               size="sm"
               onClick={handleDelete}
-              className="gap-2 font-mono text-xs uppercase tracking-widest text-denied/60 hover:text-denied border border-denied/20 hover:border-denied/50 h-9 px-4"
+              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-denied/60 hover:text-denied border border-denied/20 hover:border-denied/50 h-9 px-3 sm:px-4"
               aria-label={`Delete event ${event.name}`}
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />

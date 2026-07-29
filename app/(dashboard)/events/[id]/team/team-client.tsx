@@ -101,9 +101,9 @@ export default function TeamPage() {
 
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
           <DialogTrigger asChild>
-            <Button variant="signal" className="gap-2 h-12 px-6 text-sm shrink-0">
+            <Button variant="copper" className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full">
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              INVITE_CO-HOST
+              Invite Co-Host
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-background border border-border max-w-md">
@@ -158,13 +158,14 @@ export default function TeamPage() {
                 </div>
               </div>
 
-              <button
+              <Button
                 type="submit"
+                variant="copper"
                 disabled={isPending || !email.trim()}
-                className="w-full bg-foreground text-background font-sans text-sm font-semibold uppercase tracking-[0.12em] py-3.5 hover:opacity-80 transition-opacity disabled:opacity-40"
+                className="w-full h-11 text-xs font-bold uppercase rounded-full"
               >
                 {isPending ? 'Sending invite...' : 'Send invite →'}
-              </button>
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -212,6 +213,16 @@ export default function TeamPage() {
           icon={<Users className="h-10 w-10" />}
           title="NO_CO-HOSTS"
           subtitle="Invite a co-host to give them access to collaborate on this event"
+          action={
+            <Button
+              variant="copper"
+              onClick={() => setInviteOpen(true)}
+              className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full"
+            >
+              <UserPlus className="h-4 w-4" />
+              Invite Co-Host
+            </Button>
+          }
         />
       ) : (
         <div className="flex flex-col gap-3">

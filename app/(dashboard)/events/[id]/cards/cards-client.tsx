@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/empty-state'
 import QRCode from 'qrcode'
+import { SectionHeader } from '@/components/section-header'
 import type { Attendee, Invitation, Event } from '@/lib/types'
 
 type CardData = {
@@ -71,22 +72,20 @@ export default function CardsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 border-b-2 border-foreground/10 pb-6 print:hidden">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-signal mb-1">QR_PASS_MANIFEST</p>
-          <h2 className="font-display text-4xl uppercase text-foreground leading-none">QR Passes</h2>
-          <p className="font-mono text-xs text-foreground/70 uppercase tracking-widest mt-2">
-            {cards.length} pass{cards.length !== 1 ? 'es' : ''} ready to print
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 border-b border-border/40 pb-6 print:hidden">
+        <SectionHeader
+          eyebrow="QR_PASS_MANIFEST"
+          title="QR Passes"
+          subtitle={`${cards.length} pass${cards.length !== 1 ? 'es' : ''} ready to print`}
+        />
         <Button
           onClick={() => window.print()}
-          variant="signal"
-          className="gap-2 h-12 px-6 text-sm shrink-0"
+          variant="copper"
+          className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full"
           aria-label="Print all QR passes"
         >
           <Printer className="h-4 w-4" aria-hidden="true" />
-          PRINT_ALL_PASSES
+          Print All Passes
         </Button>
       </div>
 
