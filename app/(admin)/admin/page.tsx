@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { fetchAdminStats } from '@/lib/supabase/admin-stats'
+import { requireAdmin } from '@/lib/admin'
 import { AdminStatsGrid } from './admin-stats-grid'
 
 export const metadata = {
@@ -14,22 +13,8 @@ export const metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
-  // ── Auth guard (belt-and-suspenders — layout already checks) ──
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const adminEmails = (process.env.ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-
-  if (!adminEmails.includes((user.email ?? '').toLowerCase())) {
-    redirect('/')
-  }
+  // Auth + admin allowlist gate (belt-and-suspenders — layout already checks).
+  await requireAdmin()
 
   // ── Fetch initial stats server-side (fast first paint) ──
   const initialStats = await fetchAdminStats()

@@ -10,6 +10,31 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // ── Security headers (applied to every route) ──────────────────────────────
+  // Conservative, non-breaking hardening. No Content-Security-Policy here on
+  // purpose: a strict CSP would need per-nonce wiring for Next.js/Sentry inline
+  // scripts and is out of scope for this batch. camera=(self) is kept ENABLED
+  // because the QR scanner (/scan) needs same-origin camera access.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(), geolocation=(), interest-cohort=()',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+        ],
+      },
+    ]
+  },
 }
 
 export default withSentryConfig(nextConfig, {

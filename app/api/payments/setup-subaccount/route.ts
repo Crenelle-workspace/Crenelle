@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveAccountNumber, createSubaccount } from '@/lib/paystack'
+import { resolveAccountNumber, createSubaccount, updateSubaccount } from '@/lib/paystack'
 import * as Sentry from '@sentry/nextjs'
 
 /**
  * POST /api/payments/setup-subaccount
  *
- * Creates a Paystack subaccount for the authenticated organiser's bank account.
- * Can be called in two steps:
+ * Creates or updates a Paystack subaccount for the authenticated organiser.
+ * Idempotent on 'connect': if the organiser already has a subaccount in the DB,
+ * we update it on Paystack instead of creating a new one — preventing orphaned
+ * duplicate subaccounts from repeated form submissions.
  *
  *   Step 1 (resolve):   { action: 'resolve', account_number, bank_code }
  *     → Returns resolved account_name for confirmation UI
  *
  *   Step 2 (connect):   { action: 'connect', account_number, bank_code, bank_name, business_name }
- *     → Creates the Paystack subaccount and stores it in organizer_payment_settings
+ *     → Creates (or updates) the Paystack subaccount and saves to organizer_payment_settings
+ *
+ *   Step 3 (update):    { action: 'update' }
+ *     → Re-syncs percentage_charge on the existing subaccount to match PAYSTACK_PLATFORM_FEE_PERCENT
  */
 export async function POST(request: NextRequest) {
   // Auth check — must be a logged-in organiser
@@ -26,7 +31,7 @@ export async function POST(request: NextRequest) {
   }
 
   let body: {
-    action?: 'resolve' | 'connect'
+    action?: 'resolve' | 'connect' | 'update'
     account_number?: string
     bank_code?: string
     bank_name?: string
@@ -66,7 +71,7 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // ── Step 2: Create subaccount and save to DB ───────────────────
+  // ── Step 2: Create (or update) subaccount and save to DB ──────
   if (action === 'connect') {
     if (!bank_name || !business_name) {
       return NextResponse.json(
@@ -78,41 +83,85 @@ export async function POST(request: NextRequest) {
     const adminSupabase = createAdminClient()
     const platformFeePercent = parseFloat(process.env.PAYSTACK_PLATFORM_FEE_PERCENT ?? '5')
 
-    // Organiser receives (100 - platformFee)% of each transaction
-    const organiserPercent = 100 - platformFeePercent
+    // IMPORTANT: In Paystack, percentage_charge = the main account's (Crenelle's) cut.
+    // The subaccount automatically receives the remainder (100% - percentage_charge).
+    // e.g. percentage_charge: 5 → Crenelle keeps 5%, organiser receives 95%.
+    const crenellePercent = platformFeePercent
 
-    // Create the Paystack subaccount
-    const { data: subaccount, error: subaccountError } = await createSubaccount({
-      business_name,
-      settlement_bank: bank_code,
-      account_number,
-      percentage_charge: organiserPercent,
-      description: `Crenelle organiser: ${business_name}`,
-      primary_contact_email: user.email,
-    })
+    // ── Idempotency guard: reuse existing subaccount if one exists ──
+    // Check if this organiser already has a subaccount in our DB.
+    // If they do, update it on Paystack (PUT) rather than creating a duplicate (POST).
+    const { data: existing } = await adminSupabase
+      .from('organizer_payment_settings')
+      .select('paystack_subaccount_code')
+      .eq('organizer_id', user.id)
+      .maybeSingle()
 
-    if (subaccountError || !subaccount) {
-      Sentry.captureMessage('[Paystack Setup] Failed to create subaccount', {
-        level: 'error',
-        extra: { userId: user.id, error: subaccountError },
-      })
-      return NextResponse.json(
-        { error: subaccountError ?? 'Failed to create payment account. Please try again.' },
-        { status: 502 }
+    let subaccountCode: string
+    let subaccountBusinessName: string
+
+    if (existing?.paystack_subaccount_code) {
+      // ── Existing subaccount: update bank details + percentage_charge ──
+      console.log(`[Setup Subaccount] Organiser ${user.id} already has subaccount ${existing.paystack_subaccount_code} — updating instead of creating`)
+
+      const { data: updated, error: updateError } = await updateSubaccount(
+        existing.paystack_subaccount_code,
+        {
+          business_name,
+          percentage_charge: crenellePercent,
+        }
       )
+
+      if (updateError || !updated) {
+        Sentry.captureMessage('[Paystack Setup] Failed to update existing subaccount on reconnect', {
+          level: 'error',
+          extra: { userId: user.id, subaccountCode: existing.paystack_subaccount_code, updateError },
+        })
+        return NextResponse.json(
+          { error: updateError ?? 'Failed to update payment account. Please try again.' },
+          { status: 502 }
+        )
+      }
+
+      subaccountCode = existing.paystack_subaccount_code
+      subaccountBusinessName = updated.business_name
+    } else {
+      // ── No existing subaccount: create a fresh one ──
+      const { data: created, error: createError } = await createSubaccount({
+        business_name,
+        settlement_bank: bank_code,
+        account_number,
+        percentage_charge: crenellePercent,
+        description: `Crenelle organiser: ${business_name}`,
+        primary_contact_email: user.email,
+      })
+
+      if (createError || !created) {
+        Sentry.captureMessage('[Paystack Setup] Failed to create subaccount', {
+          level: 'error',
+          extra: { userId: user.id, error: createError },
+        })
+        return NextResponse.json(
+          { error: createError ?? 'Failed to create payment account. Please try again.' },
+          { status: 502 }
+        )
+      }
+
+      subaccountCode = created.subaccount_code
+      subaccountBusinessName = created.business_name
     }
 
-    // Upsert into organizer_payment_settings
+    // Save / update the subaccount details in our DB
     const { error: upsertError } = await adminSupabase
       .from('organizer_payment_settings')
       .upsert(
         {
           organizer_id: user.id,
-          paystack_subaccount_code: subaccount.subaccount_code,
+          paystack_subaccount_code: subaccountCode,
           bank_name,
           bank_code,
           account_number,
-          account_name: subaccount.business_name,
+          account_name: subaccountBusinessName,
           is_verified: true,
           platform_fee_percent: platformFeePercent,
           connected_at: new Date().toISOString(),
@@ -126,18 +175,66 @@ export async function POST(request: NextRequest) {
         extra: { userId: user.id, context: 'setup_subaccount_upsert' },
       })
       return NextResponse.json(
-        { error: 'Payment account created with Paystack but failed to save. Contact support.' },
+        { error: 'Payment account saved with Paystack but failed to save locally. Contact support.' },
         { status: 500 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      subaccount_code: subaccount.subaccount_code,
-      account_name: subaccount.business_name,
+      subaccount_code: subaccountCode,
+      account_name: subaccountBusinessName,
       message: 'Bank account connected successfully. Payments will be settled within T+1.',
     })
   }
 
-  return NextResponse.json({ error: 'Invalid action. Use "resolve" or "connect".' }, { status: 400 })
+  // ── Step 3: Update an existing subaccount (fix inverted percentage_charge) ─
+  if (action === 'update') {
+    const adminSupabase = createAdminClient()
+    const platformFeePercent = parseFloat(process.env.PAYSTACK_PLATFORM_FEE_PERCENT ?? '5')
+    // IMPORTANT: In Paystack, percentage_charge = the main account's (Crenelle's) cut.
+    // The subaccount automatically receives the remainder (100% - percentage_charge).
+    // e.g. percentage_charge: 5 → Crenelle keeps 5%, organiser receives 95%.
+    const crenellePercent = platformFeePercent
+    const organiserPercent = 100 - platformFeePercent
+
+    // Fetch the organiser's current subaccount code from DB
+    const { data: paySettings, error: settingsError } = await adminSupabase
+      .from('organizer_payment_settings')
+      .select('paystack_subaccount_code')
+      .eq('organizer_id', user.id)
+      .maybeSingle()
+
+    if (settingsError || !paySettings?.paystack_subaccount_code) {
+      return NextResponse.json(
+        { error: 'No connected subaccount found. Please connect your bank account first.' },
+        { status: 404 }
+      )
+    }
+
+    const { data: updated, error: updateError } = await updateSubaccount(
+      paySettings.paystack_subaccount_code,
+      { percentage_charge: crenellePercent },
+    )
+
+    if (updateError || !updated) {
+      Sentry.captureMessage('[Paystack] Failed to update subaccount percentage_charge', {
+        level: 'error',
+        extra: { userId: user.id, subaccountCode: paySettings.paystack_subaccount_code, updateError },
+      })
+      return NextResponse.json(
+        { error: updateError ?? 'Failed to update subaccount. Please try again.' },
+        { status: 502 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      subaccount_code: paySettings.paystack_subaccount_code,
+      percentage_charge: updated.percentage_charge,
+      message: `Subaccount updated: Crenelle retains ${crenellePercent}%, organiser receives ${organiserPercent}%.`,
+    })
+  }
+
+  return NextResponse.json({ error: 'Invalid action. Use "resolve", "connect", or "update".' }, { status: 400 })
 }

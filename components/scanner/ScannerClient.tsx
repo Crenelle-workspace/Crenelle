@@ -121,7 +121,11 @@ export default function ScannerClient({
 
   const fetchCounter = useCallback(async () => {
     try {
-      const res = await fetch(`/api/scan/counter?token=${token}`)
+      const res = await fetch('/api/scan/counter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
       if (res.ok) {
         const data = await res.json()
         setCounter(data)
@@ -288,7 +292,11 @@ export default function ScannerClient({
     searchDebounce.current = setTimeout(async () => {
       setSearchLoading(true)
       try {
-        const res = await fetch(`/api/scan/search?token=${token}&q=${encodeURIComponent(q)}`)
+        const res = await fetch('/api/scan/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, q }),
+        })
         if (res.ok) {
           const data = await res.json()
           setSearchResults(data.results ?? [])

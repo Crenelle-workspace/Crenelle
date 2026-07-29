@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { QrCode } from 'lucide-react'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (

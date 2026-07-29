@@ -1,54 +1,24 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { redirect } from 'next/navigation'
-import { ShieldCheck, QrCode, LogOut } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { ShieldCheck, LogOut } from 'lucide-react'
 import { logout } from '@/app/actions/auth'
 import { ModeToggle } from '@/components/mode-toggle'
+import { requireAdmin } from '@/lib/admin'
 
 /**
  * Admin layout — completely separate from the organizer (dashboard) group.
  *
- * Access control:
- *   ADMIN_EMAILS is a comma-separated list of email addresses allowed admin access.
- *   Example .env.local:
- *     ADMIN_EMAILS=you@example.com,backup@example.com
- *
- * To add a new admin: append their email to ADMIN_EMAILS and redeploy.
- * For full RBAC with database-backed roles, migrate to an `admin_roles` table.
+ * Access control is centralized in lib/admin.ts (requireAdmin). See that file
+ * for the ADMIN_EMAILS allowlist behaviour and the documented migration path
+ * to a database-backed `admin_roles` table.
  */
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // 1. Must be authenticated
-  if (!user) redirect('/login')
-
-  // 2. Must be in the admin allow-list
-  //
-  // ⚠️  KNOWN LIMITATION: This is an email-based allowlist read from an env var.
-  //    Two weaknesses:
-  //      a) Adding/removing admins requires a redeploy.
-  //      b) If an admin changes their auth email address they silently lose access.
-  //
-  //    MIGRATION PATH: When ready, create an `admin_roles` table:
-  //      CREATE TABLE admin_roles (user_id uuid PRIMARY KEY REFERENCES auth.users(id));
-  //    Then check: SELECT 1 FROM admin_roles WHERE user_id = auth.uid()
-  //    This is keyed on the immutable user.id, not the mutable user.email.
-  const adminEmails = (process.env.ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-
-  if (!adminEmails.includes((user.email ?? '').toLowerCase())) {
-    redirect('/')
-  }
+  // Auth + admin allowlist gate (redirects on failure).
+  const user = await requireAdmin()
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

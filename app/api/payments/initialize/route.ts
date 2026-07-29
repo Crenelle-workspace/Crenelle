@@ -248,6 +248,11 @@ export async function POST(request: NextRequest) {
     reference,
     subaccount: paymentSettings?.paystack_subaccount_code ?? undefined,
     bearer: 'account', // Crenelle bears the Paystack processing fee
+    // transaction_charge explicitly sets the flat kobo amount Crenelle retains.
+    // This overrides the subaccount's default percentage_charge for this transaction,
+    // guaranteeing the correct split (Crenelle gets platformFeeKobo, organiser gets the rest).
+    // Only set when there is a subaccount — no split needed if organiser has no subaccount.
+    transaction_charge: paymentSettings?.paystack_subaccount_code ? platformFeeKobo : undefined,
     callback_url: `${appUrl}/api/payments/verify?reference=${reference}`,
     channels: ['card', 'bank', 'ussd', 'bank_transfer'],
     metadata: {

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { redirect } from 'next/navigation'
-import { LogOut, Settings, Plus } from 'lucide-react'
+import { LogOut, Settings, Plus, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/actions/auth'
 import { ModeToggle } from '@/components/mode-toggle'
@@ -55,6 +55,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               <span>New Event</span>
+            </Link>
+            <Link
+              href="/finances"
+              className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-foreground border border-border/40 hover:border-border hover:bg-stone-500/10 px-3.5 py-2 rounded-full transition-all"
+              aria-label="Finances"
+            >
+              <Wallet className="h-3.5 w-3.5 text-copper" aria-hidden="true" />
+              <span className="hidden sm:inline">Finances</span>
             </Link>
             <Link
               href="/settings/sender-profiles"

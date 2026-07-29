@@ -142,7 +142,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
     try {
       const name = formData.get('name') as string
       const rawPrice = Number(formData.get('price')) || 0
-      const price = Math.round(rawPrice * 100) // Convert NGN to kobo
+      const price = Math.ceil(rawPrice * 100) // Convert NGN to kobo (ceil for cleaner UX, e.g. ₦203.05 → ₦204)
       const hasCap = formData.get('has_capacity') === 'true'
       const capacity = hasCap ? Number(formData.get('capacity')) || null : null
       const isPublic = formData.get('is_public') === 'true'
@@ -168,7 +168,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
     try {
       const name = formData.get('name') as string
       const rawPrice = Number(formData.get('price')) || 0
-      const price = Math.round(rawPrice * 100) // Convert NGN to kobo
+      const price = Math.ceil(rawPrice * 100) // Convert NGN to kobo (ceil for cleaner UX, e.g. ₦203.05 → ₦204)
       const hasCap = formData.get('has_capacity') === 'true'
       const capacity = hasCap ? Number(formData.get('capacity')) || null : null
       const isPublic = formData.get('is_public') === 'true'

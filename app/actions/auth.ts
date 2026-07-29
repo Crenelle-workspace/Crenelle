@@ -23,7 +23,9 @@ export async function login(formData: FormData) {
     password: result.data.password,
   });
 
-  if (error) return { error: error.message };
+  // Generic message: never reveal whether it was the email or the password
+  // that was wrong (that difference is an account-enumeration oracle).
+  if (error) return { error: "Invalid email or password." };
 
   revalidatePath("/", "layout");
   redirect("/events");
@@ -46,7 +48,16 @@ export async function signup(formData: FormData) {
     password: result.data.password,
   });
 
-  if (error) return { error: error.message };
+  // Generic message on failure: Supabase returns a distinct "User already
+  // registered" error that would let an attacker enumerate which emails have
+  // accounts. The neutral guidance below is shown for ANY signup failure, so
+  // it confirms nothing about a specific address.
+  if (error) {
+    return {
+      error:
+        "We couldn't complete your sign up. If you already have an account, please sign in instead.",
+    };
+  }
 
   revalidatePath("/", "layout");
   redirect("/events");

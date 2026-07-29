@@ -99,6 +99,12 @@ export interface PaystackInitializeParams {
   reference: string;
   subaccount?: string; // organiser's subaccount code (e.g. ACCT_xxxx)
   bearer?: "account" | "subaccount"; // who bears Paystack's processing fee
+  /**
+   * Flat kobo amount that Crenelle (main account) retains from this transaction.
+   * Overrides the subaccount's default percentage_charge for this specific transaction.
+   * Use this to guarantee the correct split even if the subaccount default was misconfigured.
+   */
+  transaction_charge?: number;
   callback_url?: string;
   metadata?: Record<string, unknown>;
   channels?: Array<"card" | "bank" | "ussd" | "bank_transfer" | "qr">;
@@ -139,7 +145,7 @@ export interface PaystackSubaccountParams {
   business_name: string;
   settlement_bank: string; // bank code, e.g. '058'
   account_number: string;
-  percentage_charge: number; // Paystack routes this % to the subaccount
+  percentage_charge: number; // Crenelle's cut (%). The subaccount receives (100 - percentage_charge)%.
   description?: string;
   primary_contact_email?: string;
   primary_contact_name?: string;
@@ -237,6 +243,27 @@ export async function fetchSubaccount(
 > {
   return paystackFetch<PaystackSubaccountResponse>(
     `/subaccount/${encodeURIComponent(subaccountCode)}`,
+  );
+}
+
+/**
+ * Update an existing Paystack subaccount.
+ * Use to correct percentage_charge if the split was misconfigured.
+ * Only the fields provided in params will be updated.
+ */
+export async function updateSubaccount(
+  subaccountCode: string,
+  params: Partial<Pick<PaystackSubaccountParams, 'percentage_charge' | 'business_name' | 'description'>>,
+): Promise<
+  | { data: PaystackSubaccountResponse; error: null }
+  | { data: null; error: string }
+> {
+  return paystackFetch<PaystackSubaccountResponse>(
+    `/subaccount/${encodeURIComponent(subaccountCode)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(params),
+    },
   );
 }
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calendar, Plus, Settings } from 'lucide-react'
+import { Calendar, Plus, Settings, Wallet } from 'lucide-react'
 
 export function MobileNav() {
   const pathname = usePathname()
@@ -12,6 +12,11 @@ export function MobileNav() {
       label: 'Events',
       href: '/events',
       icon: Calendar,
+    },
+    {
+      label: 'Finances',
+      href: '/finances',
+      icon: Wallet,
     },
     {
       label: 'New Event',

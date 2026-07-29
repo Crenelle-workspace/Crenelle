@@ -39,22 +39,25 @@ function maskPhone(phone: string | null | undefined): string | null {
 }
 
 /**
- * GET /api/scan/search?token=<scannerToken>&q=<name>
+ * POST /api/scan/search   body: { token: <scannerToken>, q: <name> }
  *
  * Manual name-search fallback for damaged or dead-battery QR codes.
  * Returns up to 10 matching attendees for the event associated with the
  * scanner token.
  *
  * Security Hardening:
+ * - Reads the scanner token and query from the POST body (never the query
+ *   string) so neither leaks into access logs, proxy logs, browser history or
+ *   Referer headers.
  * - Does NOT expose qr_token or raw database UUIDs. Returns a signed 15-minute
  *   ephemeral search token (`eph_...`) bound to this scanner link.
  * - Masks phone numbers to avoid full PII harvesting.
  * - Enforces distributed rate limiting per IP and scanner token (Upstash-backed).
  */
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const token = searchParams.get('token')?.trim()
-  const q = searchParams.get('q')?.trim()
+export async function POST(request: NextRequest) {
+  const body = await request.json().catch(() => ({}))
+  const token = typeof body.token === 'string' ? body.token.trim() : null
+  const q = typeof body.q === 'string' ? body.q.trim() : null
 
   if (!token) {
     return NextResponse.json({ error: 'Missing scanner token' }, { status: 400 })

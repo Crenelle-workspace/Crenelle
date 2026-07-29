@@ -38,7 +38,13 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
         throw new Error('Image size must be less than 5MB.')
       }
 
-      const fileExt = file.name.split('.').pop()
+      // Derive a SAFE extension from an allowlist — never trust the raw
+      // client filename. `file.name.split('.').pop()` can contain path
+      // separators or `..` (e.g. "foo.a/../../evil"), which would be injected
+      // into the storage object key and could traverse the bucket path.
+      const rawExt = (file.name.split('.').pop() ?? '').toLowerCase()
+      const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']
+      const fileExt = allowedExts.includes(rawExt) ? rawExt : 'jpg'
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
 
       const { error: uploadError } = await supabase.storage

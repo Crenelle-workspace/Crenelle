@@ -15,7 +15,12 @@ export async function GET(
 ) {
   const { token } = await params
 
-  if (!token || token.length < 8) {
+  // Only render QR codes for values that look like our own tokens
+  // (invitations.qr_token = 32 hex chars; UUID fallback also matches). This
+  // prevents the endpoint being abused as an open QR renderer for arbitrary
+  // attacker-supplied data — e.g. encoding a phishing/malware URL into a QR
+  // served from this trusted origin. URLs, whitespace and scripts are rejected.
+  if (!token || !/^[A-Za-z0-9_-]{8,128}$/.test(token)) {
     return NextResponse.json({ error: 'Invalid QR token' }, { status: 400 })
   }
 
