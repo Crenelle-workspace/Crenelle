@@ -387,40 +387,40 @@ export function FinancesClient() {
       </div>
 
       {/* ── Navigation Tabs ── */}
-      <div className="border-b border-border/40 flex items-center gap-6 overflow-x-auto">
+      <div className="inline-flex gap-1.5 border border-border/40 bg-card/40 backdrop-blur-xl p-1.5 rounded-full overflow-x-auto shadow-xs">
         <button
           onClick={() => setActiveTab('events')}
-          className={`pb-3 font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors relative whitespace-nowrap cursor-pointer ${
+          className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
             activeTab === 'events'
-              ? 'text-copper border-b-2 border-copper'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'bg-foreground text-background shadow-xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
           }`}
         >
-          <Layers className="w-4 h-4" />
+          <Layers className="w-3.5 h-3.5" />
           Revenue by Event ({overview?.by_event.length ?? 0})
         </button>
 
         <button
           onClick={() => setActiveTab('payouts')}
-          className={`pb-3 font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors relative whitespace-nowrap cursor-pointer ${
+          className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
             activeTab === 'payouts'
-              ? 'text-copper border-b-2 border-copper'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'bg-foreground text-background shadow-xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
           }`}
         >
-          <Building2 className="w-4 h-4" />
+          <Building2 className="w-3.5 h-3.5" />
           Payout Settlements {payoutsData ? `(${payoutsData.summary.payout_count})` : ''}
         </button>
 
         <button
           onClick={() => setActiveTab('transactions')}
-          className={`pb-3 font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors relative whitespace-nowrap cursor-pointer ${
+          className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
             activeTab === 'transactions'
-              ? 'text-copper border-b-2 border-copper'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'bg-foreground text-background shadow-xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
           }`}
         >
-          <Receipt className="w-4 h-4" />
+          <Receipt className="w-3.5 h-3.5" />
           Transaction Ledger
         </button>
       </div>

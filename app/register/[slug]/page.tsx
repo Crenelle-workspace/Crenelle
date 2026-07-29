@@ -2,21 +2,43 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { CalendarDays, MapPin, Clock, CheckCircle2, XCircle, Users, CreditCard, AlertTriangle, Loader2 } from 'lucide-react'
+import Image from 'next/image'
+import { motion } from 'framer-motion'
 import { submitRegistration } from '@/app/actions/registrations'
-import { getOptimizedBannerUrl } from '@/lib/images'
+import { EventHero } from '@/components/event-showcase/EventHero'
+import { EventDescription } from '@/components/event-showcase/EventDescription'
+import { EventAgendaTimeline } from '@/components/event-showcase/EventAgendaTimeline'
+import { EventSpeakers } from '@/components/event-showcase/EventSpeakers'
+import { EventFAQ } from '@/components/event-showcase/EventFAQ'
+import {
+  Ticket,
+  ShieldCheck,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  ArrowRight,
+  CreditCard,
+  AlertTriangle,
+} from 'lucide-react'
+import type { AgendaItem, SpeakerInfo, FAQItem } from '@/lib/types'
 
 interface EventInfo {
   id: string
   name: string
   date: string
   time: string | null
+  timezone?: string
   venue: string
   description: string | null
   status: string
   max_registrations: number | null
   registration_count: number
   banner_url?: string | null
+  agenda?: AgendaItem[]
+  speakers?: SpeakerInfo[]
+  faqs?: FAQItem[]
+  location_url?: string | null
   tiers?: Array<{ id: string; name: string; price: number; currency: string }>
 }
 
@@ -32,14 +54,17 @@ export default function PublicRegistrationPage() {
   const [waitlisted, setWaitlisted] = useState(false)
   const [selectedTierId, setSelectedTierId] = useState('')
   const [redirectingToPaystack, setRedirectingToPaystack] = useState(false)
+  const [isFormVisible, setIsFormVisible] = useState(false)
+  const rsvpFormRef = useRef<HTMLDivElement>(null)
   const isSubmitting = useRef(false)
 
-  // Payment status from Paystack redirect callback
-  const paymentStatus = searchParams.get('payment')
+  // Payment reference from Paystack redirect callback
   const paymentRef = searchParams.get('reference')
 
   const [verifyingPayment, setVerifyingPayment] = useState(false)
-  const [verifiedPaymentStatus, setVerifiedPaymentStatus] = useState<'paid' | 'pending' | 'failed' | 'not_found' | null>(null)
+  const [verifiedPaymentStatus, setVerifiedPaymentStatus] = useState<
+    'paid' | 'pending' | 'failed' | 'not_found' | null
+  >(null)
 
   useEffect(() => {
     async function loadEvent() {
@@ -75,7 +100,11 @@ export default function PublicRegistrationPage() {
         const res = await fetch(`/api/payments/status?reference=${paymentRef}`)
         if (!res.ok) throw new Error()
         const json = await res.json()
-        if (json.status === 'paid' || json.status === 'failed' || json.status === 'not_found') {
+        if (
+          json.status === 'paid' ||
+          json.status === 'failed' ||
+          json.status === 'not_found'
+        ) {
           setVerifiedPaymentStatus(json.status)
           setVerifyingPayment(false)
           clearInterval(pollInterval)
@@ -96,29 +125,44 @@ export default function PublicRegistrationPage() {
     }
   }, [paymentRef])
 
+  useEffect(() => {
+    if (loading || !event) return
+    const target = rsvpFormRef.current
+    if (!target) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsFormVisible(entry.isIntersecting)
+      },
+      { threshold: 0 }
+    )
+
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [loading, event])
+
+  const scrollToRSVP = () => {
+    rsvpFormRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   async function handleSubmit(formData: FormData) {
     if (isSubmitting.current || !event) return
+    isSubmitting.current = true
+    setSubmitting(true)
+    setError(null)
 
-    const selectedTier = event.tiers?.find((t) => t.id === selectedTierId)
+    const fullName = (formData.get('full_name') as string) || ''
+    const email = (formData.get('email') as string) || ''
+    const phone = (formData.get('phone') as string) || ''
+    const tierId = (formData.get('ticket_tier_id') as string) || selectedTierId
 
-    // ── Paid tier: redirect to Paystack ─────────────────────────
-    if (selectedTier && selectedTier.price > 0) {
-      isSubmitting.current = true
-      setRedirectingToPaystack(true)
-      setError(null)
+    const selectedTier = event.tiers?.find((t) => t.id === tierId)
+    const isPaidTier = selectedTier ? selectedTier.price > 0 : false
 
-      const name = (formData.get('full_name') as string)?.trim()
-      const email = (formData.get('email') as string)?.trim()
-      const phone = (formData.get('phone') as string)?.trim() || undefined
-
-      if (!name || !email) {
-        setError('Name and email are required.')
-        setRedirectingToPaystack(false)
-        isSubmitting.current = false
-        return
-      }
-
-      try {
+    try {
+      if (isPaidTier && selectedTier) {
+        // Paid ticket tier -> initialize Paystack transaction
+        setRedirectingToPaystack(true)
         const res = await fetch('/api/payments/initialize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -126,413 +170,436 @@ export default function PublicRegistrationPage() {
             event_id: event.id,
             ticket_tier_id: selectedTier.id,
             payer_email: email,
-            payer_name: name,
-            payer_phone: phone,
+            payer_name: fullName,
+            payer_phone: phone || undefined,
           }),
         })
 
-        const json = await res.json()
-
-        if (!res.ok || json.error) {
-          setError(json.error ?? 'Could not start payment. Please try again.')
+        const data = await res.json()
+        if (!res.ok || data.error) {
+          setError(data.error || 'Failed to initialize payment. Please try again.')
           setRedirectingToPaystack(false)
           isSubmitting.current = false
+          setSubmitting(false)
           return
         }
 
-        // Redirect to Paystack hosted checkout
-        window.location.href = json.authorization_url
-      } catch {
-        setError('Network error. Please try again.')
-        setRedirectingToPaystack(false)
-        isSubmitting.current = false
+        if (data.authorization_url) {
+          window.location.href = data.authorization_url
+          return
+        }
+      } else {
+        // Free ticket tier or waitlist
+        const result = await submitRegistration(event.id, formData)
+        if (result.error) {
+          setError(result.error)
+          isSubmitting.current = false
+          setSubmitting(false)
+          return
+        }
+
+        if (result.waitlisted) {
+          setWaitlisted(true)
+        }
+        setSubmitted(true)
       }
-      return
-    }
-
-    // ── Free tier: existing approval flow ───────────────────────
-    isSubmitting.current = true
-    setSubmitting(true)
-    setError(null)
-
-    const result = await submitRegistration(event.id, formData)
-    if (result?.error) {
-      setError(result.error)
-      setSubmitting(false)
+    } catch {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
       isSubmitting.current = false
-    } else {
-      setWaitlisted(Boolean((result as { waitlisted?: boolean })?.waitlisted))
-      setSubmitted(true)
+      setSubmitting(false)
     }
   }
 
-  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="font-mono text-xs uppercase text-foreground/60 tracking-widest animate-pulse">
-          LOADING_EVENT...
-        </p>
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="flex flex-col items-center text-center">
+          <Loader2 size={28} strokeWidth={1.75} className="mb-4 animate-spin text-copper" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            Loading event
+          </p>
+        </div>
       </div>
     )
   }
 
-  // Not found
   if (notFound || !event) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="text-center">
-          <XCircle className="h-12 w-12 text-denied mx-auto mb-4" />
-          <h1 className="font-display text-4xl uppercase text-foreground mb-2">EVENT NOT FOUND</h1>
-          <p className="font-mono text-xs uppercase text-foreground/60 tracking-widest">
-            This registration link is invalid or the event is no longer accepting registrations.
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md border border-border bg-card p-10 text-center">
+          <XCircle size={40} strokeWidth={1.5} className="mx-auto mb-5 text-ember" />
+          <h1 className="font-display text-3xl font-medium tracking-tight text-foreground">
+            Event not found
+          </h1>
+          <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            This registration page doesn&apos;t exist, or registration has since closed.
           </p>
         </div>
       </div>
     )
   }
 
-  // Registration full
-  const isFull = event.max_registrations !== null && event.registration_count >= event.max_registrations
-
-  // Paystack verification loader screen
-  if (paymentRef && verifyingPayment && verifiedPaymentStatus !== 'paid' && verifiedPaymentStatus !== 'failed') {
+  // Payment Verification Polling Screen
+  if (verifyingPayment) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="border-2 border-foreground/20 bg-secondary/5 p-8">
-            <Loader2 className="h-16 w-16 text-signal mx-auto mb-6 animate-spin" />
-            <h1 className="font-display text-4xl uppercase text-foreground mb-3">VERIFYING PAYMENT</h1>
-            <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
-              Checking transaction status for reference <span className="font-bold text-foreground">{paymentRef}</span>.
-              Please do not close this window.
-            </p>
-          </div>
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md border border-border bg-card p-10 text-center">
+          <Loader2 size={32} strokeWidth={1.75} className="mx-auto mb-6 animate-spin text-copper" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-copper">
+            Verifying payment
+          </p>
+          <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            Checking transaction{' '}
+            <span className="font-mono text-foreground">{paymentRef}</span>. Please keep this page open.
+          </p>
         </div>
       </div>
     )
   }
 
-  // Paystack payment success (redirected back from Paystack and verified)
+  // Payment Paid Confirmed Screen
   if (verifiedPaymentStatus === 'paid') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4 select-none">
-        <div className="max-w-md w-full text-center">
-          <div className="border border-emerald-500/30 bg-card/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl">
-            <CheckCircle2 className="h-16 w-16 text-emerald-400 mx-auto mb-5" />
-            <h1 className="font-display text-4xl uppercase text-foreground mb-3">PAYMENT CONFIRMED</h1>
-            <p className="font-sans text-xs text-muted-foreground leading-relaxed mb-6">
-              Your ticket for <span className="text-foreground font-bold">{event?.name}</span> has been confirmed.
-              Your QR entry pass card will be delivered to your email inbox shortly.
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-md border border-border bg-card p-10 text-center"
+        >
+          <CheckCircle2 size={40} strokeWidth={1.5} className="mx-auto mb-5 text-emerald-400" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-emerald-400">
+            Payment confirmed
+          </p>
+          <h1 className="mt-3 font-display text-3xl font-medium leading-tight tracking-tight text-foreground">
+            You&apos;re going to {event.name}
+          </h1>
+          <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            Your ticket is confirmed and your QR entry pass has been emailed to you.
+          </p>
+          {paymentRef && (
+            <p className="mt-6 border-t border-border pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Ref&nbsp;·&nbsp;{paymentRef}
             </p>
-            {paymentRef && (
-              <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-widest bg-stone-500/10 border border-border/30 px-3 py-1 rounded-full inline-block">
-                Ref: {paymentRef}
-              </span>
-            )}
-          </div>
-        </div>
+          )}
+        </motion.div>
       </div>
     )
   }
 
-  // Paystack payment failed (redirected or verified status is failed)
-  if (paymentStatus === 'failed' || verifiedPaymentStatus === 'failed') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="border-2 border-denied/30 bg-denied/5 p-8">
-            <AlertTriangle className="h-16 w-16 text-denied mx-auto mb-6" />
-            <h1 className="font-display text-4xl uppercase text-foreground mb-3">PAYMENT FAILED</h1>
-            <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
-              Your payment was not completed. No charge has been made.
-            </p>
-            <a
-              href={`/register/${slug}`}
-              className="inline-block font-display text-xl uppercase tracking-wider bg-signal text-void px-8 py-3 hover:bg-signal/90 transition-colors"
-            >
-              TRY AGAIN →
-            </a>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Free-tier registration success state
+  // Free Tier Submission Success Screen
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="max-w-md w-full text-center">
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-md border border-border bg-card p-10 text-center"
+        >
           {waitlisted ? (
-            <div className="border-2 border-signal/30 bg-signal/5 p-8">
-              <Clock className="h-16 w-16 text-signal mx-auto mb-6" />
-              <h1 className="font-display text-4xl uppercase text-foreground mb-3">ADDED TO WAITLIST</h1>
-              <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
-                <span className="text-foreground font-bold">{event.name}</span> is currently full.
-                You&apos;ve been added to the waitlist and will be notified if a spot opens up.
+            <>
+              <Clock size={38} strokeWidth={1.5} className="mx-auto mb-5 text-copper" />
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-copper">
+                Added to waitlist
               </p>
-              <div className="border-t border-foreground/10 pt-6">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/50 leading-relaxed">
-                  The organizer manages the waitlist. If a place becomes available,
-                  you&apos;ll receive an email with your entry pass QR code.
-                </p>
-              </div>
-            </div>
+              <h1 className="mt-3 font-display text-3xl font-medium leading-tight tracking-tight text-foreground">
+                You&apos;re on the list
+              </h1>
+              <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
+                <span className="text-foreground">{event.name}</span> is at capacity. We&apos;ll notify you the moment a spot opens up.
+              </p>
+            </>
           ) : (
-            <div className="border-2 border-admitted/30 bg-admitted/5 p-8">
-              <CheckCircle2 className="h-16 w-16 text-admitted mx-auto mb-6" />
-              <h1 className="font-display text-4xl uppercase text-foreground mb-3">REGISTRATION RECEIVED</h1>
-              <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-6">
-                Your registration for <span className="text-foreground font-bold">{event.name}</span> has been submitted successfully.
+            <>
+              <CheckCircle2 size={40} strokeWidth={1.5} className="mx-auto mb-5 text-emerald-400" />
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-emerald-400">
+                Registration confirmed
               </p>
-              <div className="border-t border-foreground/10 pt-6">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/50 leading-relaxed">
-                  The organizer will review your registration.
-                  If accepted, you&apos;ll receive an email with your entry pass QR code.
-                </p>
-              </div>
-            </div>
+              <h1 className="mt-3 font-display text-3xl font-medium leading-tight tracking-tight text-foreground">
+                You&apos;re going to {event.name}
+              </h1>
+              <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
+                Your spot is confirmed. Check your email for your entry pass.
+              </p>
+            </>
           )}
-        </div>
+        </motion.div>
       </div>
     )
   }
 
-  const eventDate = new Date(event.date).toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  const isFull =
+    event.max_registrations !== null &&
+    event.registration_count >= event.max_registrations
+
+  // ── Shared editorial form styles ──
+  const labelClass =
+    'mb-2 block font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground'
+  const inputClass =
+    'w-full border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground/40 focus:border-copper focus:outline-none'
+  const submitClass =
+    'mt-1 flex w-full items-center justify-center gap-2 bg-foreground py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-background transition-colors hover:bg-copper hover:text-white disabled:cursor-not-allowed disabled:opacity-50'
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
-      <div className="max-w-lg w-full">
-        {event.banner_url && (
-          <div className="border-2 border-foreground/20 border-b-0 aspect-video w-full overflow-hidden bg-void/10 select-none">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={getOptimizedBannerUrl(event.banner_url, 'web')}
-              alt={`${event.name} banner`}
-              className="w-full h-full object-cover"
+    <div className="min-h-screen bg-background text-foreground selection:bg-copper selection:text-black">
+      {/* Official Crenelle Header Bar */}
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-8">
+          <div className="flex items-center gap-4">
+            {/* Crenelle Official Brand Logo */}
+            <Image
+              src="/Brand Logos/CRENELLE WORDMARK B.png"
+              alt="Crenelle Logo"
+              width={50}
+              height={16}
+              className="h-5 w-auto object-contain block dark:hidden"
+              priority
             />
-          </div>
-        )}
-
-        {/* Event header */}
-        <div className="border-2 border-foreground/20 p-6 mb-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-signal mb-2">
-            EVENT REGISTRATION
-          </p>
-          <h1 className="font-display text-5xl uppercase text-foreground leading-none tracking-tight mb-4">
-            {event.name}
-          </h1>
-
-          <div className="flex flex-col gap-2 mt-4">
-            <div className="flex items-center gap-3">
-              <CalendarDays className="h-4 w-4 text-foreground/50 shrink-0" />
-              <span className="font-mono text-sm text-foreground/80">{eventDate}</span>
-            </div>
-            {event.time && (
-              <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-foreground/50 shrink-0" />
-                <span className="font-mono text-sm text-foreground/80">{event.time.slice(0, 5)}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-3">
-              <MapPin className="h-4 w-4 text-foreground/50 shrink-0" />
-              <span className="font-mono text-sm text-foreground/80">{event.venue}</span>
-            </div>
-            {event.max_registrations && (
-              <div className="flex items-center gap-3">
-                <Users className="h-4 w-4 text-foreground/50 shrink-0" />
-                <span className="font-mono text-sm text-foreground/80">
-                  {event.registration_count} / {event.max_registrations} spots taken
-                </span>
-              </div>
-            )}
+            <Image
+              src="/Brand Logos/CRENELLE WORDMARK W.png"
+              alt="Crenelle Logo"
+              width={50}
+              height={16}
+              className="h-5 w-auto object-contain hidden dark:block"
+              priority
+            />
+            <span className="hidden items-center gap-1.5 border-l border-border pl-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:inline-flex">
+              <ShieldCheck size={13} strokeWidth={1.75} className="text-emerald-400" />
+              Verified event
+            </span>
           </div>
 
-          {event.description && (
-            <p className="font-mono text-xs text-foreground/60 mt-4 leading-relaxed border-t border-foreground/10 pt-4">
-              {event.description}
-            </p>
-          )}
+          <button
+            onClick={scrollToRSVP}
+            className="group inline-flex items-center gap-2 bg-foreground px-5 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.15em] text-background transition-colors hover:bg-copper hover:text-white"
+          >
+            <span>Register</span>
+            <ArrowRight
+              size={13}
+              strokeWidth={2}
+              className="transition-transform group-hover:translate-x-0.5"
+            />
+          </button>
         </div>
+      </header>
 
-        {/* Registration form */}
-        <div className="border-2 border-foreground/20 border-t-0 p-6">
-          {isFull ? (
-            <div className="text-center py-8">
-              <Clock className="h-10 w-10 text-signal mx-auto mb-4" />
-              <h2 className="font-display text-2xl uppercase text-foreground mb-2">EVENT IS FULL</h2>
-              <p className="font-mono text-xs text-foreground/60 uppercase tracking-widest mb-6">
-                All spots are taken — but you can join the waitlist.
-              </p>
+      {/* Main Content Showcase Layout */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 lg:py-12 pb-24 sm:pb-12">
+        {/* Hero Showcase Header */}
+        <EventHero
+          name={event.name}
+          date={event.date}
+          time={event.time}
+          timezone={event.timezone}
+          venue={event.venue}
+          bannerUrl={event.banner_url}
+          locationUrl={event.location_url}
+          description={event.description}
+        />
 
-              {error && (
-                <div
-                  role="alert"
-                  aria-live="assertive"
-                  className="border-2 border-denied bg-denied/10 p-4 font-mono text-sm text-denied uppercase tracking-wide mb-4 text-left"
-                >
-                  ⚠ {error}
-                </div>
-              )}
+        {/* Split Grid: Details Showcase (Left) + Registration Widget (Right) */}
+        <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:items-start">
+          {/* Left Column (Showcase Sections) */}
+          <div className="space-y-10 lg:col-span-7 xl:col-span-8">
+            <EventDescription description={event.description} />
+            <EventAgendaTimeline agenda={event.agenda} />
+            <EventSpeakers speakers={event.speakers} />
+            <EventFAQ faqs={event.faqs} />
+          </div>
 
-              <form action={handleSubmit} className="flex flex-col gap-5 text-left">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="wl-name" className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/80">Full Name *</label>
-                  <input id="wl-name" name="full_name" required placeholder="e.g. Ngozi Okafor"
-                    className="w-full bg-background border-2 border-foreground/40 text-foreground font-mono text-sm px-4 py-3 placeholder:text-foreground/40 focus:outline-none focus:border-signal transition-colors" />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="wl-email" className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/80">Email Address *</label>
-                  <input id="wl-email" name="email" type="email" required placeholder="you@example.com"
-                    className="w-full bg-background border-2 border-foreground/40 text-foreground font-mono text-sm px-4 py-3 placeholder:text-foreground/40 focus:outline-none focus:border-signal transition-colors" />
-                </div>
-                <button type="submit" disabled={submitting}
-                  className="w-full h-14 bg-signal text-void font-display text-2xl uppercase tracking-wider hover:bg-signal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  {submitting ? 'JOINING...' : 'JOIN WAITLIST →'}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <>
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60 mb-6">
-                Fill in your details below to register for this event.
-                The organizer will review and confirm your spot.
-              </p>
+          {/* Right Column (High-Visibility Sticky RSVP Card) */}
+          <div ref={rsvpFormRef} className="sticky top-20 lg:col-span-5 xl:col-span-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="border border-border bg-card p-6 sm:p-8"
+            >
+              <div className="mb-6 border-b border-border pb-5">
+                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-copper">
+                  Registration
+                </p>
+                <h2 className="mt-2 font-display text-3xl font-medium tracking-tight text-foreground">
+                  Reserve your place
+                </h2>
+              </div>
 
-              {error && (
-                <div
-                  role="alert"
-                  aria-live="assertive"
-                  className="border-2 border-denied bg-denied/10 p-4 font-mono text-sm text-denied uppercase tracking-wide mb-4"
-                >
-                  ⚠ {error}
-                </div>
-              )}
-
-              <form action={handleSubmit} className="flex flex-col gap-5">
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="reg-name"
-                    className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/80"
-                  >
-                    Full Name *
-                  </label>
-                  <input
-                    id="reg-name"
-                    name="full_name"
-                    required
-                    placeholder="e.g. Ngozi Okafor"
-                    className="w-full bg-background border-2 border-foreground/40 text-foreground font-mono text-sm px-4 py-3 placeholder:text-foreground/40 focus:outline-none focus:border-signal transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="reg-email"
-                    className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/80"
-                  >
-                    Email Address *
-                  </label>
-                  <input
-                    id="reg-email"
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="you@example.com"
-                    className="w-full bg-background border-2 border-foreground/40 text-foreground font-mono text-sm px-4 py-3 placeholder:text-foreground/40 focus:outline-none focus:border-signal transition-colors"
-                  />
-                  <p className="font-mono text-[9px] text-foreground/40 uppercase tracking-wide">
-                    Your invitation and QR entry pass will be sent to this email
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="reg-phone"
-                    className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/80"
-                  >
-                    Phone Number
-                  </label>
-                  <input
-                    id="reg-phone"
-                    name="phone"
-                    placeholder="+234..."
-                    className="w-full bg-background border-2 border-foreground/40 text-foreground font-mono text-sm px-4 py-3 placeholder:text-foreground/40 focus:outline-none focus:border-signal transition-colors"
-                  />
-                </div>
-
-                {event.tiers && event.tiers.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    <label
-                      htmlFor="reg-tier"
-                      className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/80"
-                    >
-                      Select Ticket Tier *
-                    </label>
-                    <select
-                      id="reg-tier"
-                      name="ticket_tier_id"
-                      value={selectedTierId}
-                      onChange={(e) => setSelectedTierId(e.target.value)}
-                      required
-                      className="w-full bg-background border-2 border-foreground/40 text-foreground font-mono text-sm px-4 py-3 focus:outline-none focus:border-signal transition-colors"
-                    >
-                      {event.tiers.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} {t.price === 0 ? '(Free)' : `(₦${Math.ceil(t.price / 100).toLocaleString('en-NG')})`}
-                        </option>
-                      ))}
-                    </select>
+              {/* Capacity */}
+              {event.max_registrations && (
+                <div className="mb-6">
+                  <div className="mb-2 flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                    <span>Capacity</span>
+                    <span>
+                      <span className="text-foreground">{event.registration_count}</span>
+                      {' / '}
+                      {event.max_registrations}
+                    </span>
                   </div>
-                )}
+                  <div className="h-1 w-full overflow-hidden bg-secondary">
+                    <div
+                      className="h-full bg-copper transition-all duration-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (event.registration_count / event.max_registrations) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
-                {(() => {
-                  const selectedTier = event.tiers?.find((t) => t.id === selectedTierId)
-                  const isPaidTier = selectedTier ? selectedTier.price > 0 : false
-                  const isProcessing = submitting || redirectingToPaystack
-                  return (
-                    <>
-                      {isPaidTier && (
-                        <div className="flex items-start gap-2 p-3 border border-foreground/10 bg-foreground/3">
-                          <CreditCard className="h-3.5 w-3.5 text-foreground/40 mt-0.5 shrink-0" />
-                          <p className="font-mono text-[9px] uppercase tracking-wide text-foreground/50 leading-relaxed">
-                            You&apos;ll be redirected to Paystack to complete payment securely via card, bank transfer, or USSD.
-                          </p>
-                        </div>
-                      )}
-                      <button
-                        type="submit"
-                        disabled={isProcessing}
-                        className="w-full h-14 bg-signal text-void font-display text-2xl uppercase tracking-wider hover:bg-signal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              {error && (
+                <div
+                  role="alert"
+                  className="mb-5 flex items-start gap-2.5 border border-ember/50 bg-ember/10 p-3 text-xs leading-relaxed text-foreground"
+                >
+                  <AlertTriangle size={16} strokeWidth={1.75} className="mt-px shrink-0 text-ember" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Registration / Waitlist Form */}
+              {isFull ? (
+                <div>
+                  <div className="mb-6 flex items-start gap-3 border border-border bg-secondary/30 p-4">
+                    <Clock size={18} strokeWidth={1.5} className="mt-0.5 shrink-0 text-copper" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        This event is at capacity
+                      </h3>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Join the waitlist and we&apos;ll notify you if a spot opens.
+                      </p>
+                    </div>
+                  </div>
+
+                  <form action={handleSubmit} className="space-y-5">
+                    <div>
+                      <label className={labelClass}>Full name</label>
+                      <input name="full_name" required placeholder="Alex Morgan" className={inputClass} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Email address</label>
+                      <input
+                        name="email"
+                        type="email"
+                        required
+                        placeholder="alex@example.com"
+                        className={inputClass}
+                      />
+                    </div>
+                    <button type="submit" disabled={submitting} className={submitClass}>
+                      {submitting ? 'Joining…' : 'Join the waitlist'}
+                      {!submitting && <ArrowRight size={15} strokeWidth={2} />}
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <form action={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className={labelClass}>Full name</label>
+                    <input name="full_name" required placeholder="Alex Morgan" className={inputClass} />
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Email address</label>
+                    <input
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="alex@example.com"
+                      className={inputClass}
+                    />
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                      Your QR entry pass will be sent here.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>
+                      Phone <span className="text-muted-foreground/60">· optional</span>
+                    </label>
+                    <input name="phone" placeholder="+234…" className={inputClass} />
+                  </div>
+
+                  {event.tiers && event.tiers.length > 0 && (
+                    <div>
+                      <label className={labelClass}>Ticket</label>
+                      <select
+                        name="ticket_tier_id"
+                        value={selectedTierId}
+                        onChange={(e) => setSelectedTierId(e.target.value)}
+                        required
+                        className={`${inputClass} cursor-pointer`}
                       >
-                        {redirectingToPaystack
-                          ? 'REDIRECTING TO PAYMENT...'
-                          : submitting
-                          ? 'SUBMITTING...'
-                          : isPaidTier
-                          ? `PAY ₦${Math.ceil((selectedTier?.price ?? 0) / 100).toLocaleString('en-NG')} & REGISTER →`
-                          : 'REGISTER →'}
-                      </button>
-                    </>
-                  )
-                })()}
-              </form>
-            </>
-          )}
-        </div>
+                        {event.tiers.map((t) => (
+                          <option key={t.id} value={t.id} className="bg-card text-foreground">
+                            {t.name}{' '}
+                            {t.price === 0
+                              ? '(Free)'
+                              : `— ₦${Math.ceil(t.price / 100).toLocaleString('en-NG')}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-        {/* Footer */}
-        <div className="text-center mt-6">
-          <p className="font-mono text-[8px] uppercase tracking-[0.3em] text-foreground/30">
-            CRENELLE_ENTRY_SYSTEM // SECURE_REGISTRATION
-          </p>
+                  {(() => {
+                    const selectedTier = event.tiers?.find(
+                      (t) => t.id === selectedTierId
+                    )
+                    const isPaidTier = selectedTier ? selectedTier.price > 0 : false
+                    const isProcessing = submitting || redirectingToPaystack
+                    return (
+                      <div className="pt-1">
+                        {isPaidTier && (
+                          <div className="mb-4 flex items-start gap-2.5 border-l-2 border-copper/50 bg-secondary/30 py-2.5 pl-3 pr-2 text-[11px] leading-relaxed text-muted-foreground">
+                            <CreditCard size={15} strokeWidth={1.5} className="mt-px shrink-0 text-copper" />
+                            <span>
+                              Secure checkout via Paystack — card, bank transfer, or USSD.
+                            </span>
+                          </div>
+                        )}
+
+                        <button type="submit" disabled={isProcessing} className={submitClass}>
+                          {redirectingToPaystack
+                            ? 'Redirecting…'
+                            : submitting
+                            ? 'Submitting…'
+                            : isPaidTier
+                            ? `Pay ₦${Math.ceil(
+                                (selectedTier?.price ?? 0) / 100
+                              ).toLocaleString('en-NG')} & register`
+                            : 'Confirm registration'}
+                          {!isProcessing && <ArrowRight size={15} strokeWidth={2} />}
+                        </button>
+                      </div>
+                    )
+                  })()}
+                </form>
+              )}
+            </motion.div>
+          </div>
         </div>
+      </main>
+
+      {/* Mobile Sticky Floating RSVP Bar */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 p-3 backdrop-blur-xl transition-all duration-300 sm:hidden ${
+          isFormVisible ? 'translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+        }`}
+      >
+        <button
+          onClick={scrollToRSVP}
+          className="flex w-full items-center justify-center gap-2 bg-foreground py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-background transition-colors active:bg-copper active:text-white"
+        >
+          <Ticket size={16} strokeWidth={1.75} />
+          <span>Register</span>
+          <ArrowRight size={14} strokeWidth={2} />
+        </button>
       </div>
     </div>
   )

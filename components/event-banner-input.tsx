@@ -109,11 +109,11 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
         onValueChange={(v) => setActiveTab(v as 'upload' | 'url')}
         className="w-full"
       >
-        <TabsList variant="line" className="border-b-2 border-foreground/10 w-full justify-start mb-4">
-          <TabsTrigger value="upload" className="font-mono text-xs uppercase tracking-widest px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal">
+        <TabsList variant="line" className="grid grid-cols-2 w-full border-b-2 border-foreground/10 mb-4 h-auto p-0">
+          <TabsTrigger value="upload" className="w-full font-mono text-[10px] sm:text-xs uppercase tracking-wider sm:tracking-widest px-1 sm:px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal text-center whitespace-normal sm:whitespace-nowrap">
             Upload Image File
           </TabsTrigger>
-          <TabsTrigger value="url" className="font-mono text-xs uppercase tracking-widest px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal">
+          <TabsTrigger value="url" className="w-full font-mono text-[10px] sm:text-xs uppercase tracking-wider sm:tracking-widest px-1 sm:px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal text-center whitespace-normal sm:whitespace-nowrap">
             Paste Image URL
           </TabsTrigger>
         </TabsList>

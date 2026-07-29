@@ -93,10 +93,35 @@ export async function updateEvent(id: string, formData: FormData) {
     max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
     banner_url: newBannerUrl,
     sender_profile_id: (formData.get('sender_profile_id') as string) || null,
+    location_url: (formData.get('location_url') as string) || null,
   }
 
   if (formData.has('email_theme')) {
     updateData.email_theme = formData.get('email_theme') as string
+  }
+
+  if (formData.has('agenda')) {
+    try {
+      updateData.agenda = JSON.parse(formData.get('agenda') as string)
+    } catch {
+      // invalid json fallback
+    }
+  }
+
+  if (formData.has('speakers')) {
+    try {
+      updateData.speakers = JSON.parse(formData.get('speakers') as string)
+    } catch {
+      // invalid json fallback
+    }
+  }
+
+  if (formData.has('faqs')) {
+    try {
+      updateData.faqs = JSON.parse(formData.get('faqs') as string)
+    } catch {
+      // invalid json fallback
+    }
   }
 
   const { error } = await supabase

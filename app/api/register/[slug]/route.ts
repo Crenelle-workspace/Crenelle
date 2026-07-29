@@ -17,7 +17,7 @@ export async function GET(
   // Fetch the event by registration_slug
   const { data: event, error } = await supabase
     .from('events')
-    .select('id, name, date, time, venue, description, status, event_type, max_registrations, banner_url')
+    .select('id, name, date, time, timezone, venue, description, status, event_type, max_registrations, banner_url, agenda, speakers, faqs, location_url')
     .eq('registration_slug', slug)
     .eq('event_type', 'open')
     .single()
@@ -53,12 +53,17 @@ export async function GET(
     name: event.name,
     date: event.date,
     time: event.time,
+    timezone: event.timezone || 'Africa/Lagos',
     venue: event.venue,
     description: event.description,
     status: event.status,
     max_registrations: event.max_registrations,
     registration_count: count ?? 0,
     banner_url: event.banner_url,
+    agenda: event.agenda || [],
+    speakers: event.speakers || [],
+    faqs: event.faqs || [],
+    location_url: event.location_url || null,
     tiers: tiers ?? [],
   })
 }

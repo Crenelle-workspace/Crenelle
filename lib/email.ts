@@ -418,6 +418,12 @@ export async function sendReminderEmailsDirect({
     year: 'numeric',
   })
 
+  let theme = event.email_theme
+  if (!theme) {
+    const { data: dbEvent } = await supabase.from('events').select('email_theme').eq('id', eventId).single()
+    if (dbEvent?.email_theme) theme = dbEvent.email_theme
+  }
+
   let sent = 0
   const errors: string[] = []
 
@@ -477,7 +483,7 @@ export async function sendReminderEmailsDirect({
     }
 
     const html = renderTicketEmail({
-      theme: event.email_theme,
+      theme,
       emailType: 'reminder',
       event,
       recipientName: actualRecipientName,

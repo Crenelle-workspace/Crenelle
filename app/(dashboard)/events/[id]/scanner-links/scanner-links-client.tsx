@@ -7,6 +7,7 @@ import { createScannerLink, toggleScannerLink, deleteScannerLink } from '@/app/a
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SectionHeader } from '@/components/section-header'
 import { EmptyState } from '@/components/empty-state'
@@ -90,10 +91,10 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
         {canManage ? (
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <button className="inline-flex items-center gap-2 bg-foreground text-background font-sans text-sm font-semibold uppercase tracking-[0.12em] px-6 py-3 hover:opacity-80 transition-opacity shrink-0">
+              <Button variant="copper" className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full">
                 <Plus className="h-4 w-4" aria-hidden="true" />
-                New link
-              </button>
+                Create Scanner Link
+              </Button>
             </DialogTrigger>
             <DialogContent className="bg-background border border-border max-w-md">
               <DialogHeader>
@@ -113,11 +114,14 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
                     Helps identify which usher is at which gate
                   </p>
                 </div>
-                <button type="submit" disabled={isPending}
-                  className="w-full bg-foreground text-background font-sans text-sm font-semibold uppercase tracking-[0.12em] py-3.5 hover:opacity-80 transition-opacity disabled:opacity-40"
+                <Button
+                  type="submit"
+                  variant="copper"
+                  disabled={isPending}
+                  className="w-full h-11 text-xs font-bold uppercase rounded-full"
                 >
                   {isPending ? 'Creating...' : 'Create link →'}
-                </button>
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -159,13 +163,14 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
           subtitle="Create a scanner link and share it with your door ushers on event day."
           action={
             canManage ? (
-              <button
+              <Button
+                variant="copper"
                 onClick={() => setAddOpen(true)}
-                className="inline-flex items-center gap-2 bg-copper hover:bg-copper-dark text-white font-sans text-xs font-bold px-6 py-3.5 rounded-full transition-all duration-300 shadow-md shadow-copper/20 cursor-pointer"
+                className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Create First Link
-              </button>
+                Create Scanner Link
+              </Button>
             ) : null
           }
         />

@@ -3,6 +3,7 @@ import { renderBoardingPassTheme } from './boarding-pass'
 import { renderMinimalMonoTheme } from './minimal-mono'
 import { renderLuxeDarkTheme } from './luxe-dark'
 import { renderBoldPosterTheme } from './bold-poster'
+import { renderHorizontalPassTheme } from './horizontal-pass'
 
 export interface RenderTicketEmailOptions {
   theme?: string | null
@@ -47,6 +48,8 @@ export function renderTicketEmail(options: RenderTicketEmailOptions): string {
       return renderLuxeDarkTheme(options)
     case 'bold_poster':
       return renderBoldPosterTheme(options)
+    case 'horizontal_pass':
+      return renderHorizontalPassTheme(options)
     case 'classic':
     default:
       return renderClassicTheme(options)

@@ -245,7 +245,7 @@ export default function RegistrationsPage() {
           subtitle={loading ? "Loading registrations..." : `${counts.pending} pending · ${counts.accepted} accepted · ${counts.rejected} rejected · ${counts.waitlist} waitlist`}
         />
 
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           {/* Send Reminder */}
           <Button
             variant="ghost"

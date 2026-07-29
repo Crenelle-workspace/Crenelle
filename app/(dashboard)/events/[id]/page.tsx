@@ -11,7 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import { toast } from 'sonner'
-import type { Event } from '@/lib/types'
+import { AgendaEditor } from '@/components/event-editor/AgendaEditor'
+import { SpeakerEditor } from '@/components/event-editor/SpeakerEditor'
+import { FAQEditor } from '@/components/event-editor/FAQEditor'
+import type { Event, AgendaItem, SpeakerInfo, FAQItem } from '@/lib/types'
 import { EventBannerInput } from '@/components/event-banner-input'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { EventStatusBadge } from './event-status-badge'
@@ -30,6 +33,12 @@ export default function EventOverviewPage() {
   const [editTimezone, setEditTimezone] = useState('Africa/Lagos')
   const [showTzPicker, setShowTzPicker] = useState(false)
   const isSubmitting = useRef(false)
+
+  // Rich description detail state
+  const [editAgenda, setEditAgenda] = useState<AgendaItem[]>([])
+  const [editSpeakers, setEditSpeakers] = useState<SpeakerInfo[]>([])
+  const [editFaqs, setEditFaqs] = useState<FAQItem[]>([])
+  const [editLocationUrl, setEditLocationUrl] = useState('')
 
   // Reminder dialog state
   const [reminderOpen, setReminderOpen] = useState(false)
@@ -57,6 +66,10 @@ export default function EventOverviewPage() {
         setEditEventType(data.event_type || 'closed')
         // Seed the edit timezone from the saved value
         setEditTimezone(data.timezone || 'Africa/Lagos')
+        setEditAgenda(data.agenda || [])
+        setEditSpeakers(data.speakers || [])
+        setEditFaqs(data.faqs || [])
+        setEditLocationUrl(data.location_url || '')
 
         // Resolve current user to check if they are the owner
         const { data: { user } } = await supabase.auth.getUser()
@@ -344,18 +357,43 @@ export default function EventOverviewPage() {
             </select>
           </div>
 
+          <div className="flex flex-col gap-2">
+            <label htmlFor="ev-location-url" className={labelCls}>Google Maps / Location Link</label>
+            <input
+              id="ev-location-url"
+              name="location_url"
+              defaultValue={event.location_url ?? ''}
+              placeholder="https://maps.google.com/..."
+              className={fieldCls}
+            />
+          </div>
+
           <EventBannerInput defaultValue={event.banner_url} />
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="ev-desc" className={labelCls}>Description</label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="ev-desc" className={labelCls}>Event Overview & Description</label>
+              <span className="font-mono text-[9px] uppercase text-signal">Supports Markdown (# Heading, - Bullet)</span>
+            </div>
             <textarea
               id="ev-desc"
               name="description"
               defaultValue={event.description ?? ''}
-              rows={3}
-              className={`${fieldCls} resize-none`}
+              rows={5}
+              placeholder="Tell attendees what to expect..."
+              className={`${fieldCls} font-mono text-xs`}
             />
           </div>
+
+          {/* Agenda, Speakers, FAQs Editors */}
+          <AgendaEditor agenda={editAgenda} onChange={setEditAgenda} />
+          <input type="hidden" name="agenda" value={JSON.stringify(editAgenda)} />
+
+          <SpeakerEditor speakers={editSpeakers} onChange={setEditSpeakers} />
+          <input type="hidden" name="speakers" value={JSON.stringify(editSpeakers)} />
+
+          <FAQEditor faqs={editFaqs} onChange={setEditFaqs} />
+          <input type="hidden" name="faqs" value={JSON.stringify(editFaqs)} />
 
           <div className="flex gap-3 pt-2 border-t-2 border-foreground/10">
             <Button type="submit" variant="signal" disabled={loading} className="gap-2 h-12 px-6 text-sm">
@@ -378,14 +416,14 @@ export default function EventOverviewPage() {
       <div className="lg:col-span-7 xl:col-span-8 space-y-6">
         <div className="brutalist-card">
         {/* Card header */}
-        <div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-foreground/20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-8 pb-6 border-b-2 border-foreground/20">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/70">EVENT_DETAILS</p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setReminderOpen(true)}
-              className="gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-4"
+              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-3 sm:px-4"
             >
               <Mail className="h-3.5 w-3.5" aria-hidden="true" />
               Remind
@@ -394,7 +432,7 @@ export default function EventOverviewPage() {
               variant="ghost"
               size="sm"
               onClick={() => setEditing(true)}
-              className="gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-4"
+              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-3 sm:px-4"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
               Edit
@@ -403,7 +441,7 @@ export default function EventOverviewPage() {
               variant="ghost"
               size="sm"
               onClick={handleDelete}
-              className="gap-2 font-mono text-xs uppercase tracking-widest text-denied/60 hover:text-denied border border-denied/20 hover:border-denied/50 h-9 px-4"
+              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-denied/60 hover:text-denied border border-denied/20 hover:border-denied/50 h-9 px-3 sm:px-4"
               aria-label={`Delete event ${event.name}`}
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />

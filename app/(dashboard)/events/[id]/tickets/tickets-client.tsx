@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Pencil, X, Ticket, AlertCircle } from 'lucide-react'
+import { Plus, Pencil, X, Ticket, AlertCircle, LayoutGrid, List, CreditCard } from 'lucide-react'
 import { createTier, updateTier, softDeleteTier } from '@/app/actions/ticket-tiers'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
@@ -43,6 +43,11 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [hasSubaccount, setHasSubaccount] = useState(false)
+
+  // Display options & filtering state
+  const [viewMode, setViewMode] = useState<'grid' | 'cards' | 'list'>('grid')
+  const [filter, setFilter] = useState<'all' | 'public' | 'private' | 'paid' | 'free'>('all')
+  const [sortBy, setSortBy] = useState<'default' | 'name' | 'price_asc' | 'price_desc' | 'allocated'>('default')
 
   const loadData = useCallback(async () => {
     try {
@@ -231,28 +236,104 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
 
-      {/* Main Content Grid */}
+      {/* Controls & Display Options Bar */}
+      {!loading && tiers.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-border/20">
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <span className="font-mono text-[9px] uppercase font-bold text-muted-foreground/70 mr-1 shrink-0">Filter:</span>
+            {(['all', 'public', 'private', 'paid', 'free'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`font-mono text-[10px] uppercase font-semibold px-2.5 py-1 rounded-full border transition-all shrink-0 cursor-pointer ${
+                  filter === f
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-stone-500/10 text-muted-foreground border-border/30 hover:text-foreground hover:bg-stone-500/20'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort & Display Options */}
+          <div className="flex items-center justify-between sm:justify-end gap-3">
+            {/* Sort Select */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'default' | 'name' | 'price_asc' | 'price_desc' | 'allocated')}
+              className="bg-card border border-border/40 px-2.5 py-1 rounded-lg font-mono text-[10px] uppercase text-foreground focus:outline-none focus:border-copper cursor-pointer h-8"
+            >
+              <option value="default">Default Sort</option>
+              <option value="name">Name A–Z</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="allocated">Most Allocated</option>
+            </select>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center border border-border/40 bg-card/60 p-0.5 rounded-lg shrink-0">
+              <button
+                onClick={() => setViewMode('grid')}
+                title="2-Column Grid (Mobile Optimized)"
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === 'grid'
+                    ? 'bg-foreground text-background shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                title="Detailed Cards"
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === 'cards'
+                    ? 'bg-foreground text-background shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                title="Compact List"
+                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                  viewMode === 'list'
+                    ? 'bg-foreground text-background shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <List className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Grid / Options */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="border border-border/40 bg-card/20 rounded-2xl p-6 flex flex-col justify-between h-48"
+              className="border border-border/40 bg-card/20 rounded-2xl p-4 flex flex-col justify-between h-40"
             >
               <div>
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
-                    <Skeleton className="h-4 w-14 mb-2 rounded-full" />
-                    <Skeleton className="h-7 w-36 rounded-lg" />
+                    <Skeleton className="h-3 w-12 mb-2 rounded-full" />
+                    <Skeleton className="h-6 w-28 rounded-lg" />
                   </div>
-                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-5 w-12 rounded-full" />
                 </div>
-                <div className="mt-6 space-y-2">
+                <div className="mt-4 space-y-2">
                   <div className="flex justify-between">
-                    <Skeleton className="h-3 w-28 rounded-md" />
-                    <Skeleton className="h-3 w-10 rounded-md" />
+                    <Skeleton className="h-3 w-20 rounded-md" />
+                    <Skeleton className="h-3 w-8 rounded-md" />
                   </div>
-                  <Skeleton className="h-3 w-full rounded-full" />
+                  <Skeleton className="h-2 w-full rounded-full" />
                 </div>
               </div>
             </div>
@@ -276,83 +357,243 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
             ) : null
           }
         />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-none">
-          {tiers.map((tier) => {
-            const hasLimit = tier.capacity !== null
-            const capValue = tier.capacity ?? 0
-            const percentFilled = hasLimit ? Math.min(100, Math.round((tier.allocatedCount / capValue) * 100)) : 0
+      ) : (() => {
+        const filteredTiers = tiers
+          .filter((tier) => {
+            if (filter === 'public') return tier.is_public
+            if (filter === 'private') return !tier.is_public
+            if (filter === 'paid') return tier.price > 0
+            if (filter === 'free') return tier.price === 0
+            return true
+          })
+          .sort((a, b) => {
+            if (sortBy === 'name') return a.name.localeCompare(b.name)
+            if (sortBy === 'price_asc') return a.price - b.price
+            if (sortBy === 'price_desc') return b.price - a.price
+            if (sortBy === 'allocated') return b.allocatedCount - a.allocatedCount
+            return 0
+          })
 
-            return (
-              <div
-                key={tier.id}
-                className="border border-border/40 bg-card/40 backdrop-blur-md rounded-2xl p-6 flex flex-col justify-between hover:border-copper/40 transition-all duration-300 relative group shadow-sm"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-4 mb-4">
+        if (filteredTiers.length === 0) {
+          return (
+            <div className="py-12 border border-dashed border-border/40 text-center rounded-2xl">
+              <p className="font-mono text-xs uppercase text-muted-foreground">No tiers match current filter</p>
+            </div>
+          )
+        }
+
+        {/* 1. 2-COLUMN GRID VIEW (MOBILE OPTIMIZED) */}
+        if (viewMode === 'grid') {
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 select-none">
+              {filteredTiers.map((tier) => {
+                const hasLimit = tier.capacity !== null
+                const capValue = tier.capacity ?? 0
+                const percentFilled = hasLimit ? Math.min(100, Math.round((tier.allocatedCount / capValue) * 100)) : 0
+
+                return (
+                  <div
+                    key={tier.id}
+                    className="border border-border/40 bg-card/40 backdrop-blur-md rounded-2xl p-3.5 sm:p-6 flex flex-col justify-between hover:border-copper/40 transition-all duration-300 relative group shadow-xs"
+                  >
                     <div>
-                      <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-stone-500/10 border border-border/30 text-muted-foreground px-2.5 py-0.5 rounded-full inline-block mb-2">
+                      <div className="flex items-start justify-between gap-1.5 mb-2 sm:mb-4">
+                        <span className="font-mono text-[8px] sm:text-[9px] font-bold uppercase tracking-wider bg-stone-500/10 border border-border/30 text-muted-foreground px-2 sm:px-2.5 py-0.5 rounded-full inline-block">
+                          {tier.is_public ? 'PUBLIC' : 'PRIVATE'}
+                        </span>
+                        
+                        {canEdit && (
+                          <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => setEditTier(tier)}
+                              className="p-1 text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded cursor-pointer"
+                              title="Edit Tier"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(tier)}
+                              className="p-1 text-denied/60 hover:text-denied hover:bg-denied/5 rounded cursor-pointer"
+                              title="Delete Tier"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <h3 className="font-display text-base sm:text-2xl uppercase text-foreground leading-tight truncate">
+                        {tier.name}
+                      </h3>
+
+                      <p className="font-mono text-sm sm:text-xl font-black text-copper mt-1">
+                        {tier.price === 0 ? 'FREE' : `₦${Math.ceil(tier.price / 100).toLocaleString('en-NG')}`}
+                      </p>
+
+                      <div className="mt-3 sm:mt-6">
+                        <div className="flex justify-between font-mono text-[8px] sm:text-[10px] uppercase font-bold text-muted-foreground/75 mb-1 tracking-wider">
+                          <span>ALLOCATED</span>
+                          <span>{tier.allocatedCount} / {hasLimit ? capValue : '∞'}</span>
+                        </div>
+                        {hasLimit ? (
+                          <div className="w-full h-1 sm:h-1.5 bg-stone-200/50 dark:bg-stone-900 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-copper rounded-full transition-all duration-500"
+                              style={{ width: `${percentFilled}%` }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full h-1 sm:h-1.5 bg-emerald-500/20 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 w-full rounded-full" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+
+        {/* 2. COMPACT LIST VIEW */}
+        if (viewMode === 'list') {
+          return (
+            <div className="flex flex-col gap-2.5 select-none">
+              {filteredTiers.map((tier) => {
+                const hasLimit = tier.capacity !== null
+                const capValue = tier.capacity ?? 0
+                return (
+                  <div
+                    key={tier.id}
+                    className="border border-border/40 bg-card/40 backdrop-blur-md rounded-xl p-3.5 flex items-center justify-between gap-3 hover:border-copper/40 transition-all shadow-xs group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="font-mono text-[8px] sm:text-[9px] font-bold uppercase tracking-wider bg-stone-500/10 border border-border/30 text-muted-foreground px-2 py-0.5 rounded-full shrink-0">
                         {tier.is_public ? 'PUBLIC' : 'PRIVATE'}
                       </span>
-                      <h3 className="font-display text-2xl uppercase text-foreground leading-tight">{tier.name}</h3>
+                      <div className="min-w-0">
+                        <h3 className="font-display text-sm sm:text-base uppercase text-foreground leading-none truncate">
+                          {tier.name}
+                        </h3>
+                        <p className="font-mono text-[10px] text-muted-foreground mt-1">
+                          Allocated: {tier.allocatedCount} / {hasLimit ? capValue : '∞'}
+                        </p>
+                      </div>
                     </div>
 
-                    <p className="font-mono text-xl font-black text-copper whitespace-nowrap">
-                      {tier.price === 0 ? 'FREE' : `₦${Math.ceil(tier.price / 100).toLocaleString('en-NG')}`}
-                    </p>
+                    <div className="flex items-center gap-4 shrink-0">
+                      <p className="font-mono text-xs sm:text-sm font-bold text-copper">
+                        {tier.price === 0 ? 'FREE' : `₦${Math.ceil(tier.price / 100).toLocaleString('en-NG')}`}
+                      </p>
+
+                      {canEdit && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-foreground/40 hover:text-foreground"
+                            onClick={() => setEditTier(tier)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-denied/50 hover:text-denied"
+                            onClick={() => setDeleteTarget(tier)}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+
+        {/* 3. DETAILED CARDS VIEW */}
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 select-none">
+            {filteredTiers.map((tier) => {
+              const hasLimit = tier.capacity !== null
+              const capValue = tier.capacity ?? 0
+              const percentFilled = hasLimit ? Math.min(100, Math.round((tier.allocatedCount / capValue) * 100)) : 0
+
+              return (
+                <div
+                  key={tier.id}
+                  className="border border-border/40 bg-card/40 backdrop-blur-md rounded-2xl p-6 flex flex-col justify-between hover:border-copper/40 transition-all duration-300 relative group shadow-sm"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div>
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-wider bg-stone-500/10 border border-border/30 text-muted-foreground px-2.5 py-0.5 rounded-full inline-block mb-2">
+                          {tier.is_public ? 'PUBLIC' : 'PRIVATE'}
+                        </span>
+                        <h3 className="font-display text-2xl uppercase text-foreground leading-tight">{tier.name}</h3>
+                      </div>
+
+                      <p className="font-mono text-xl font-black text-copper whitespace-nowrap">
+                        {tier.price === 0 ? 'FREE' : `₦${Math.ceil(tier.price / 100).toLocaleString('en-NG')}`}
+                      </p>
+                    </div>
+
+                    {/* Allocation statistics */}
+                    <div className="mt-6">
+                      <div className="flex justify-between font-mono text-[10px] uppercase font-bold text-muted-foreground/75 mb-1.5 tracking-wider">
+                        <span>ALLOCATED TICKETS</span>
+                        <span>
+                          {tier.allocatedCount} / {hasLimit ? capValue : '∞'}
+                        </span>
+                      </div>
+                      {hasLimit ? (
+                        <div className="w-full h-1.5 bg-stone-200/50 dark:bg-stone-900 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-copper rounded-full transition-all duration-500"
+                            style={{ width: `${percentFilled}%` }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-1.5 bg-emerald-500/20 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500 w-full rounded-full" />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Allocation statistics */}
-                  <div className="mt-6">
-                    <div className="flex justify-between font-mono text-[10px] uppercase font-bold text-muted-foreground/75 mb-1.5 tracking-wider">
-                      <span>ALLOCATED TICKETS</span>
-                      <span>
-                        {tier.allocatedCount} / {hasLimit ? capValue : '∞'}
-                      </span>
+                  {/* Edit/Delete controls */}
+                  {canEdit && (
+                    <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-foreground/5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-foreground/40 hover:text-foreground hover:bg-foreground/5 border border-foreground/10"
+                        onClick={() => setEditTier(tier)}
+                        aria-label={`Edit ${tier.name}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-denied/50 hover:text-denied hover:bg-denied/5 border border-denied/10"
+                        onClick={() => setDeleteTarget(tier)}
+                        aria-label={`Delete ${tier.name}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    {hasLimit ? (
-                      <div className="w-full h-1.5 bg-stone-200/50 dark:bg-stone-900 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-copper rounded-full transition-all duration-500"
-                          style={{ width: `${percentFilled}%` }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-full h-1.5 bg-emerald-500/20 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 w-full rounded-full" />
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
-
-                {/* Edit/Delete controls */}
-                {canEdit && (
-                  <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-foreground/5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 text-foreground/40 hover:text-foreground hover:bg-foreground/5 border border-foreground/10"
-                      onClick={() => setEditTier(tier)}
-                      aria-label={`Edit ${tier.name}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 text-denied/50 hover:text-denied hover:bg-denied/5 border border-denied/10"
-                      onClick={() => setDeleteTarget(tier)}
-                      aria-label={`Delete ${tier.name}`}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* Add Modal */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
