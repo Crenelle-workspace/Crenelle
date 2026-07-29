@@ -5,6 +5,29 @@ export type InvitationStatus = 'pending' | 'active' | 'cancelled' | 'checked_in'
 export type RegistrationStatus = 'pending' | 'accepted' | 'rejected' | 'waitlist'
 export type AttendeeSource = 'imported' | 'public_registration' | 'manual'
 
+export interface AgendaItem {
+  id: string
+  time: string
+  title: string
+  description?: string
+  speaker?: string
+}
+
+export interface SpeakerInfo {
+  id: string
+  name: string
+  role: string
+  company?: string
+  avatar_url?: string
+  bio?: string
+}
+
+export interface FAQItem {
+  id: string
+  question: string
+  answer: string
+}
+
 export interface Event {
   id: string
   organizer_id: string
@@ -21,7 +44,11 @@ export interface Event {
   banner_url?: string | null
   sender_profile_id?: string | null
   email_theme?: EmailTheme
-  timezone: string // NEW — default 'Africa/Lagos'
+  timezone: string // default 'Africa/Lagos'
+  agenda?: AgendaItem[] | null
+  speakers?: SpeakerInfo[] | null
+  faqs?: FAQItem[] | null
+  location_url?: string | null
   created_at: string
   updated_at: string
 }

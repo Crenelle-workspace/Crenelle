@@ -11,7 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import { toast } from 'sonner'
-import type { Event } from '@/lib/types'
+import { AgendaEditor } from '@/components/event-editor/AgendaEditor'
+import { SpeakerEditor } from '@/components/event-editor/SpeakerEditor'
+import { FAQEditor } from '@/components/event-editor/FAQEditor'
+import type { Event, AgendaItem, SpeakerInfo, FAQItem } from '@/lib/types'
 import { EventBannerInput } from '@/components/event-banner-input'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { EventStatusBadge } from './event-status-badge'
@@ -30,6 +33,12 @@ export default function EventOverviewPage() {
   const [editTimezone, setEditTimezone] = useState('Africa/Lagos')
   const [showTzPicker, setShowTzPicker] = useState(false)
   const isSubmitting = useRef(false)
+
+  // Rich description detail state
+  const [editAgenda, setEditAgenda] = useState<AgendaItem[]>([])
+  const [editSpeakers, setEditSpeakers] = useState<SpeakerInfo[]>([])
+  const [editFaqs, setEditFaqs] = useState<FAQItem[]>([])
+  const [editLocationUrl, setEditLocationUrl] = useState('')
 
   // Reminder dialog state
   const [reminderOpen, setReminderOpen] = useState(false)
@@ -57,6 +66,10 @@ export default function EventOverviewPage() {
         setEditEventType(data.event_type || 'closed')
         // Seed the edit timezone from the saved value
         setEditTimezone(data.timezone || 'Africa/Lagos')
+        setEditAgenda(data.agenda || [])
+        setEditSpeakers(data.speakers || [])
+        setEditFaqs(data.faqs || [])
+        setEditLocationUrl(data.location_url || '')
 
         // Resolve current user to check if they are the owner
         const { data: { user } } = await supabase.auth.getUser()
@@ -344,18 +357,43 @@ export default function EventOverviewPage() {
             </select>
           </div>
 
+          <div className="flex flex-col gap-2">
+            <label htmlFor="ev-location-url" className={labelCls}>Google Maps / Location Link</label>
+            <input
+              id="ev-location-url"
+              name="location_url"
+              defaultValue={event.location_url ?? ''}
+              placeholder="https://maps.google.com/..."
+              className={fieldCls}
+            />
+          </div>
+
           <EventBannerInput defaultValue={event.banner_url} />
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="ev-desc" className={labelCls}>Description</label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="ev-desc" className={labelCls}>Event Overview & Description</label>
+              <span className="font-mono text-[9px] uppercase text-signal">Supports Markdown (# Heading, - Bullet)</span>
+            </div>
             <textarea
               id="ev-desc"
               name="description"
               defaultValue={event.description ?? ''}
-              rows={3}
-              className={`${fieldCls} resize-none`}
+              rows={5}
+              placeholder="Tell attendees what to expect..."
+              className={`${fieldCls} font-mono text-xs`}
             />
           </div>
+
+          {/* Agenda, Speakers, FAQs Editors */}
+          <AgendaEditor agenda={editAgenda} onChange={setEditAgenda} />
+          <input type="hidden" name="agenda" value={JSON.stringify(editAgenda)} />
+
+          <SpeakerEditor speakers={editSpeakers} onChange={setEditSpeakers} />
+          <input type="hidden" name="speakers" value={JSON.stringify(editSpeakers)} />
+
+          <FAQEditor faqs={editFaqs} onChange={setEditFaqs} />
+          <input type="hidden" name="faqs" value={JSON.stringify(editFaqs)} />
 
           <div className="flex gap-3 pt-2 border-t-2 border-foreground/10">
             <Button type="submit" variant="signal" disabled={loading} className="gap-2 h-12 px-6 text-sm">
