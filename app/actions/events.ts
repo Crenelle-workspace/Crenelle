@@ -14,6 +14,7 @@ export async function createEvent(formData: FormData) {
 
   const eventType = (formData.get('event_type') as string) || 'closed'
   const name = formData.get('name') as string
+  const emailTheme = (formData.get('email_theme') as string) || 'classic'
 
   const { data, error } = await supabase
     .from('events')
@@ -31,6 +32,7 @@ export async function createEvent(formData: FormData) {
       max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
       banner_url: (formData.get('banner_url') as string) || null,
       sender_profile_id: (formData.get('sender_profile_id') as string) || null,
+      email_theme: emailTheme,
     })
     .select()
     .single()
@@ -77,23 +79,29 @@ export async function updateEvent(id: string, formData: FormData) {
     registrationSlug = null
   }
 
+  const updateData: Record<string, unknown> = {
+    name,
+    date: formData.get('date') as string,
+    time: (formData.get('time') as string) || null,
+    timezone: (formData.get('timezone') as string) || 'Africa/Lagos',
+    venue: formData.get('venue') as string,
+    description: (formData.get('description') as string) || null,
+    capacity: formData.get('capacity') ? Number(formData.get('capacity')) : null,
+    status: formData.get('status') as string,
+    event_type: eventType,
+    registration_slug: registrationSlug,
+    max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
+    banner_url: newBannerUrl,
+    sender_profile_id: (formData.get('sender_profile_id') as string) || null,
+  }
+
+  if (formData.has('email_theme')) {
+    updateData.email_theme = formData.get('email_theme') as string
+  }
+
   const { error } = await supabase
     .from('events')
-    .update({
-      name,
-      date: formData.get('date') as string,
-      time: (formData.get('time') as string) || null,
-      timezone: (formData.get('timezone') as string) || 'Africa/Lagos',
-      venue: formData.get('venue') as string,
-      description: (formData.get('description') as string) || null,
-      capacity: formData.get('capacity') ? Number(formData.get('capacity')) : null,
-      status: formData.get('status') as string,
-      event_type: eventType,
-      registration_slug: registrationSlug,
-      max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
-      banner_url: newBannerUrl,
-      sender_profile_id: (formData.get('sender_profile_id') as string) || null,
-    })
+    .update(updateData)
     .eq('id', id)
 
   if (error) return { error: error.message }
@@ -107,6 +115,21 @@ export async function updateEvent(id: string, formData: FormData) {
   }
 
   revalidatePath(`/events/${id}`)
+  return { success: true }
+}
+
+export async function updateEventEmailTheme(id: string, theme: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('events')
+    .update({ email_theme: theme })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/events/${id}`)
+  revalidatePath(`/events/${id}/email`)
   return { success: true }
 }
 

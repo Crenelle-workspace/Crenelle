@@ -1,5 +1,6 @@
 export type EventStatus = 'draft' | 'published' | 'live' | 'ended'
 export type EventType = 'closed' | 'open'
+export type EmailTheme = 'classic' | 'boarding_pass' | 'minimal_mono' | 'luxe_dark' | 'bold_poster'
 export type InvitationStatus = 'pending' | 'active' | 'cancelled' | 'checked_in' | 'expired'
 export type RegistrationStatus = 'pending' | 'accepted' | 'rejected' | 'waitlist'
 export type AttendeeSource = 'imported' | 'public_registration' | 'manual'
@@ -19,6 +20,7 @@ export interface Event {
   max_registrations: number | null
   banner_url?: string | null
   sender_profile_id?: string | null
+  email_theme?: EmailTheme
   timezone: string // NEW — default 'Africa/Lagos'
   created_at: string
   updated_at: string
