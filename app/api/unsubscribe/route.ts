@@ -29,19 +29,45 @@ export async function GET(request: NextRequest) {
     .eq('token', token)
     .maybeSingle()
 
-  if (existing) {
-    // Already unsubscribed — idempotent response
+  // Token not found — invalid, or from a pre-unsubscribe era email.
+  if (!existing) {
+    return htmlResponse(
+      'This unsubscribe link is no longer valid. Please contact support if you continue to receive emails.',
+      false,
+    )
+  }
+
+  // Already opted out — idempotent confirmation.
+  if (existing.unsubscribed_at) {
     return htmlResponse(
       `${maskEmail(existing.email)} has already been removed from our mailing list.`,
       true,
     )
   }
 
-  // Token not found — invalid or from a pre-unsubscribe era email.
-  // For safety, we can't proceed without a valid DB record.
+  // A token row exists but `unsubscribed_at` is still NULL: this is a
+  // PRE-SEEDED token (getUnsubscribeUrl inserts one before every send). The
+  // guest is still subscribed. Previously this branch wrongly reported
+  // "already removed" without ever setting the timestamp, so clicking the
+  // footer link did nothing and mail kept flowing. Actually perform the
+  // opt-out here. We only stamp rows where unsubscribed_at IS NULL so a
+  // concurrent/duplicate click can't overwrite an earlier timestamp.
+  const { error } = await supabase
+    .from('email_unsubscribes')
+    .update({ unsubscribed_at: new Date().toISOString(), source: 'guest_link' })
+    .eq('token', token)
+    .is('unsubscribed_at', null)
+
+  if (error) {
+    return htmlResponse(
+      'Something went wrong processing your request. Please try again or contact support.',
+      false,
+    )
+  }
+
   return htmlResponse(
-    'This unsubscribe link is no longer valid. Please contact support if you continue to receive emails.',
-    false,
+    `${maskEmail(existing.email)} has been removed from our mailing list. You will no longer receive these emails.`,
+    true,
   )
 }
 

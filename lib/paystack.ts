@@ -80,7 +80,15 @@ export function verifyPaystackSignature(
     .update(rawBody)
     .digest("hex");
 
-  return hash === signature;
+  // Constant-time comparison to avoid a timing side-channel that could let an
+  // attacker recover the expected signature byte-by-byte. timingSafeEqual
+  // throws on length mismatch, so guard on length first (the length of a
+  // rejected forgery is not secret — only the content comparison must be safe).
+  const hashBuf = Buffer.from(hash, "hex");
+  const sigBuf = Buffer.from(signature, "hex");
+  if (hashBuf.length !== sigBuf.length) return false;
+
+  return crypto.timingSafeEqual(hashBuf, sigBuf);
 }
 
 // ── Types ──────────────────────────────────────────────────────

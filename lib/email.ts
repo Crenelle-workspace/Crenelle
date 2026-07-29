@@ -44,6 +44,46 @@ if (SENDING_ADDRESS === 'onboarding@resend.dev') {
   )
 }
 
+/**
+ * Escapes the five HTML-significant characters so untrusted, user-supplied
+ * strings (custom reminder messages, event/venue names, guest names, tier
+ * labels, seat info, …) cannot break out of their text context and inject
+ * markup into the email body.
+ *
+ * Emails are a stored-XSS sink just like a web page: many clients render HTML,
+ * and even those that sandbox scripts will honour injected links/images.
+ * Interpolating raw user input into these template literals is unsafe.
+ */
+export function escapeHtml(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * Sanitises a banner image URL for safe interpolation into an `<img src="…">`
+ * attribute. The banner URL is organiser-supplied (it can be any arbitrary URL
+ * — see getOptimizedBannerUrl's fallback branch), so two guards apply:
+ *
+ *   1. Scheme allowlist — only http(s) URLs are permitted. This blocks
+ *      `javascript:` and `data:` payloads from ever reaching the markup.
+ *   2. HTML-attribute escaping — a value like `x" onerror="…` would otherwise
+ *      break out of the src attribute and inject an event handler.
+ *
+ * Returns '' for anything that is not a well-formed http(s) URL, which callers
+ * treat as "no banner" (the banner block is omitted entirely).
+ */
+export function safeImageUrl(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  const raw = String(value).trim()
+  if (!/^https?:\/\//i.test(raw)) return ''
+  return escapeHtml(raw)
+}
+
 /** Organisation/organiser identity used to personalise the From header and Reply-To. */
 export interface OrganizerDetails {
   /** Display name shown in the From field, e.g. "Acme Events" */
@@ -255,14 +295,14 @@ export async function sendInvitationEmail({
       .order('sort_order', { ascending: true })
 
     const perksText = perks && perks.length > 0
-      ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${perks.map(p => p.label).join(' · ')}</div>`
+      ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${perks.map(p => escapeHtml(p.label)).join(' · ')}</div>`
       : ''
 
     tierHtml = `
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">TICKET TIER</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              ${invitation.ticket_tier.name}
+              ${escapeHtml(invitation.ticket_tier.name)}
               ${perksText}
             </td>
           </tr>`
@@ -275,7 +315,7 @@ export async function sendInvitationEmail({
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">SEAT</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              ${invitation.seat_info}
+              ${escapeHtml(invitation.seat_info)}
             </td>
           </tr>`
   }
@@ -349,10 +389,10 @@ export async function sendInvitationEmail({
         </tr>
       </table>
 
-      ${event.banner_url ? `
+      ${event.banner_url && safeImageUrl(getOptimizedBannerUrl(event.banner_url, 'email')) ? `
       <!-- Banner Image -->
       <div style="margin-bottom:24px;border:1px solid rgba(12,11,9,0.08);border-radius:2px;overflow:hidden;background-color:#F4F1EC;">
-        <img src="${getOptimizedBannerUrl(event.banner_url, 'email')}" alt="${event.name} Banner" style="width:100%;height:auto;display:block;border:none;" />
+        <img src="${safeImageUrl(getOptimizedBannerUrl(event.banner_url, 'email'))}" alt="${escapeHtml(event.name)} Banner" style="width:100%;height:auto;display:block;border:none;" />
       </div>
       ` : ''}
 
@@ -362,7 +402,7 @@ export async function sendInvitationEmail({
           CONFIRMED ENTRY PASS
         </p>
         <h1 class="text-primary" style="font-size:32px;line-height:1.2;font-weight:800;color:#0C0B09;margin:0;text-transform:uppercase;letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          ${event.name}
+          ${escapeHtml(event.name)}
         </h1>
       </div>
 
@@ -383,11 +423,11 @@ export async function sendInvitationEmail({
           </tr>` : ''}
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">VENUE</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${event.venue}</td>
+            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${escapeHtml(event.venue)}</td>
           </tr>
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">GUEST</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${actualRecipientName}</td>
+            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${escapeHtml(actualRecipientName)}</td>
           </tr>
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">ADMITS</td>
@@ -533,14 +573,14 @@ export async function sendReminderEmailsDirect({
         .order('sort_order', { ascending: true })
 
       const perksText = perks && perks.length > 0
-        ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${perks.map(p => p.label).join(' · ')}</div>`
+        ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${perks.map(p => escapeHtml(p.label)).join(' · ')}</div>`
         : ''
 
       tierHtml = `
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">TICKET TIER</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              ${invitation.ticket_tier.name}
+              ${escapeHtml(invitation.ticket_tier.name)}
               ${perksText}
             </td>
           </tr>`
@@ -553,7 +593,7 @@ export async function sendReminderEmailsDirect({
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">SEAT</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              ${invitation.seat_info}
+              ${escapeHtml(invitation.seat_info)}
             </td>
           </tr>`
     }
@@ -632,10 +672,10 @@ export async function sendReminderEmailsDirect({
         </tr>
       </table>
 
-      ${event.banner_url ? `
+      ${event.banner_url && safeImageUrl(getOptimizedBannerUrl(event.banner_url, 'email')) ? `
       <!-- Banner Image -->
       <div style="margin-bottom:24px;border:1px solid rgba(12,11,9,0.08);border-radius:2px;overflow:hidden;background-color:#F4F1EC;">
-        <img src="${getOptimizedBannerUrl(event.banner_url, 'email')}" alt="${event.name} Banner" style="width:100%;height:auto;display:block;border:none;" />
+        <img src="${safeImageUrl(getOptimizedBannerUrl(event.banner_url, 'email'))}" alt="${escapeHtml(event.name)} Banner" style="width:100%;height:auto;display:block;border:none;" />
       </div>
       ` : ''}
 
@@ -645,7 +685,7 @@ export async function sendReminderEmailsDirect({
           EVENT REMINDER & PASS
         </p>
         <h1 class="text-primary" style="font-size:32px;line-height:1.2;font-weight:800;color:#0C0B09;margin:0;text-transform:uppercase;letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          ${event.name}
+          ${escapeHtml(event.name)}
         </h1>
       </div>
 
@@ -655,7 +695,7 @@ export async function sendReminderEmailsDirect({
       <!-- Custom message callout -->
       ${customMessage ? `
       <div class="message-callout" style="background-color:rgba(191,132,48,0.04);border:1px solid rgba(191,132,48,0.2);border-radius:2px;padding:20px;margin-bottom:30px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#0C0B09;">
-        ${customMessage}
+        ${escapeHtml(customMessage)}
       </div>` : ''}
 
       <!-- Details Table -->
@@ -672,11 +712,11 @@ export async function sendReminderEmailsDirect({
           </tr>` : ''}
            <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">VENUE</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${event.venue}</td>
+            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${escapeHtml(event.venue)}</td>
           </tr>
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">GUEST</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${actualRecipientName}</td>
+            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${escapeHtml(actualRecipientName)}</td>
           </tr>
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">ADMITS</td>
@@ -815,7 +855,7 @@ export async function sendCoHostInviteEmail({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You've been invited to co-host ${eventName}</title>
+  <title>You've been invited to co-host ${escapeHtml(eventName)}</title>
 </head>
 <body style="margin:0;padding:0;background:#F4F1EC;font-family:'Courier New',Courier,monospace;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F1EC;padding:48px 16px;">
@@ -839,12 +879,12 @@ export async function sendCoHostInviteEmail({
                 You've been invited to co-host
               </h1>
               <h2 style="margin:0 0 32px;font-family:Georgia,serif;font-size:22px;font-weight:400;color:#BF8430;line-height:1.2;">
-                ${eventName}
+                ${escapeHtml(eventName)}
               </h2>
 
               <p style="margin:0 0 24px;font-size:13px;color:#5C5850;line-height:1.7;">
-                <strong style="color:#0C0B09;">${inviterName}</strong> has invited you to collaborate on this event.
-                You have been granted <strong style="color:#0C0B09;">${roleDesc}</strong>.
+                <strong style="color:#0C0B09;">${escapeHtml(inviterName)}</strong> has invited you to collaborate on this event.
+                You have been granted <strong style="color:#0C0B09;">${escapeHtml(roleDesc)}</strong>.
               </p>
 
               <!-- Event details -->
@@ -852,7 +892,7 @@ export async function sendCoHostInviteEmail({
                 <tr>
                   <td style="padding:16px 20px;">
                     <p style="margin:0 0 4px;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#BF8430;">EVENT</p>
-                    <p style="margin:0 0 12px;font-size:16px;font-family:Georgia,serif;font-weight:600;color:#0C0B09;">${eventName}</p>
+                    <p style="margin:0 0 12px;font-size:16px;font-family:Georgia,serif;font-weight:600;color:#0C0B09;">${escapeHtml(eventName)}</p>
                     <p style="margin:0;font-size:12px;color:#5C5850;">${formattedDate}</p>
                   </td>
                 </tr>
@@ -872,7 +912,7 @@ export async function sendCoHostInviteEmail({
 
               <p style="margin:0;font-size:12px;color:#5C5850;line-height:1.6;">
                 If you did not expect this invitation, you can safely ignore this email.
-                Contact <a href="mailto:${inviterEmail}" style="color:#BF8430;">${inviterEmail}</a> if you have questions.
+                Contact <a href="mailto:${escapeHtml(inviterEmail)}" style="color:#BF8430;">${escapeHtml(inviterEmail)}</a> if you have questions.
               </p>
             </td>
           </tr>

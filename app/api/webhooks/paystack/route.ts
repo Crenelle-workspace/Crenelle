@@ -166,7 +166,7 @@ async function handleChargeSuccess(
     }
 
     const result = rpcResult as {
-      outcome: 'created' | 'updated' | 'already_processed' | 'not_found' | 'amount_mismatch' | 'error'
+      outcome: 'created' | 'updated' | 'already_processed' | 'not_found' | 'amount_mismatch' | 'business_error' | 'error'
       invitation_id?: string | null
       attendee_id?: string | null
       event_id?: string | null
@@ -275,6 +275,17 @@ async function handleChargeSuccess(
           extra: { reference, expected: result.message },
         })
         return NextResponse.json({ error: 'Amount mismatch' }, { status: 200 }) // 200 stops retries
+
+      case 'business_error':
+        // Permanent business-rule failure (capacity full / tier removed / illegal
+        // status transition). The customer paid but cannot be seated. Retrying will
+        // never succeed, so acknowledge (200) to stop Paystack retries and alert an
+        // operator to issue a refund. The RPC already rolled back its own writes.
+        Sentry.captureMessage('[Paystack Webhook] Unseatable paid charge — manual refund required', {
+          level: 'error',
+          extra: { reference, sqlstate: result.sqlstate, message: result.message },
+        })
+        return NextResponse.json({ received: true, business_error: result.message }, { status: 200 })
 
       case 'error':
         Sentry.captureMessage('[Paystack Webhook] RPC returned DB error', {

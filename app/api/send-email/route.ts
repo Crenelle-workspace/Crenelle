@@ -47,12 +47,41 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ success: true })
     } else if (type === 'reminder') {
-      const { recipients, customMessage } = body
+      // SECURITY: never trust a client-supplied recipient list here.
+      // Accepting `recipients` from the body turns this authenticated endpoint
+      // into an open mail relay — any logged-in user could blast arbitrary
+      // addresses using our Resend key and domain reputation. Derive the
+      // recipients server-side from the event's own non-cancelled invitations
+      // (RLS on the event fetch above already proved the caller owns it).
+      const { customMessage } = body
+
+      const { data: invitations } = await supabase
+        .from('invitations')
+        .select('id, status, attendee:attendees(email, name)')
+        .eq('event_id', eventId)
+        .neq('status', 'cancelled')
+
+      const invList = (invitations ?? []) as unknown as {
+        id: string
+        status: string
+        attendee: { email?: string; name?: string } | { email?: string; name?: string }[]
+      }[]
+      const recipients = invList
+        .map((inv) => {
+          const attendee = Array.isArray(inv.attendee) ? inv.attendee[0] : inv.attendee
+          return { email: attendee?.email, name: attendee?.name ?? 'Guest', invitationId: inv.id }
+        })
+        .filter((r): r is { email: string; name: string; invitationId: string } => Boolean(r.email))
+
+      if (recipients.length === 0) {
+        return NextResponse.json({ error: 'No confirmed guests with emails to send to' }, { status: 400 })
+      }
+
       const res = await sendReminderEmailsDirect({
         eventId,
         recipients,
         event,
-        customMessage,
+        customMessage: typeof customMessage === 'string' ? customMessage : '',
       })
 
       return NextResponse.json({

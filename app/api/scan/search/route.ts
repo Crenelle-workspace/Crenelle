@@ -5,6 +5,30 @@ import { createEphemeralSearchToken } from '@/lib/ephemeral-token'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Escape PostgREST `ilike` pattern metacharacters so a caller-supplied query
+ * is treated as a literal substring rather than a wildcard pattern.
+ *
+ * Without this, a scanner-token holder could send `q=%` (or `q=__`, `q=**`)
+ * which passes the length gate yet matches EVERY attendee, turning the
+ * damaged-QR fallback into a full guest-list enumeration oracle.
+ *
+ * We backslash-escape the SQL LIKE wildcards (`%`, `_`) and the escape char
+ * (`\`) itself — Postgres' default ESCAPE is backslash, so this makes them
+ * match literally. PostgREST additionally aliases `*` to `%` with no documented
+ * escape, so we strip `*` outright (a literal asterisk is meaningless in a name
+ * search). The caller must independently ensure enough non-wildcard characters
+ * remain — see `countLiteralChars`.
+ */
+function escapeLikePattern(input: string): string {
+  return input.replace(/\*/g, '').replace(/[\\%_]/g, (ch) => `\\${ch}`)
+}
+
+/** Number of characters left once wildcard metacharacters are removed. */
+function countLiteralChars(input: string): number {
+  return input.replace(/[%_*]/g, '').length
+}
+
 /** Mask phone numbers to prevent full PII exposure in search results */
 function maskPhone(phone: string | null | undefined): string | null {
   if (!phone) return null
@@ -35,7 +59,10 @@ export async function GET(request: NextRequest) {
   if (!token) {
     return NextResponse.json({ error: 'Missing scanner token' }, { status: 400 })
   }
-  if (!q || q.length < 2) {
+  // Require at least 2 *literal* (non-wildcard) characters. This blocks
+  // all-wildcard probes like `%%`, `__` or `**` that would otherwise match the
+  // entire guest list.
+  if (!q || countLiteralChars(q) < 2) {
     return NextResponse.json({ results: [] })
   }
 
@@ -70,7 +97,7 @@ export async function GET(request: NextRequest) {
     .from('attendees')
     .select('id, name, phone, invitations(id, party_size, seat_info, status)')
     .eq('event_id', link.event_id)
-    .ilike('name', `%${q}%`)
+    .ilike('name', `%${escapeLikePattern(q)}%`)
     .limit(10)
 
   const results = (attendees ?? [])

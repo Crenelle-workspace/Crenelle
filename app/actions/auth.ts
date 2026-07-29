@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signupSchema, loginSchema } from "@/lib/validations/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { headers } from "next/headers";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -89,10 +88,10 @@ export async function sendPasswordResetEmailAction() {
     return { error: "Not authenticated" };
   }
 
-  const headersList = await headers();
-  const host = headersList.get("host");
-  const protocol = headersList.get("x-forwarded-proto") ?? "http";
-  const origin = `${protocol}://${host}`;
+  // Build the reset link from the trusted, server-configured app URL — NEVER
+  // from the request Host header, which an attacker can spoof to point the
+  // password-reset link at a domain they control (host-header poisoning).
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://crenelle.org";
 
   const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
     redirectTo: `${origin}/auth/callback?next=/settings/account`,

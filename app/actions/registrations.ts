@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendInvitationEmail, sendReminderEmailsDirect, type ReminderEmailRecipient } from '@/lib/email'
 import { checkRateLimitAsync } from '@/lib/rate-limit'
 import { sendInvitationWhatsApp } from '@/lib/whatsapp'
+import { RegistrationInputSchema } from '@/lib/validations/registration'
 import * as Sentry from '@sentry/nextjs'
 
 /**
@@ -23,12 +24,30 @@ export async function submitRegistration(eventId: string, formData: FormData) {
     headerStore.get('x-real-ip') ??
     'unknown'
 
-  const email = (formData.get('email') as string)?.trim().toLowerCase() ?? ''
-
+  // IP rate limit runs first — it is the cheapest gate and does not depend on
+  // any user-supplied field, so a garbage payload can't bypass it.
   const ipLimit = await checkRateLimitAsync({ key: `reg_ip:${ip}`, limit: 10, windowMs: 15 * 60 * 1000 })
   if (!ipLimit.allowed) {
     return { error: 'Too many registration attempts from your network. Please try again later.' }
   }
+
+  // ── Validate & normalise the visitor-supplied fields ──────────────
+  //
+  // These arrive unauthenticated from the public form. Validate the email
+  // FORMAT and length-cap every field BEFORE using any of them — in
+  // particular before `email` becomes a rate-limit key below. An unbounded or
+  // malformed value must never reach the key space or the DB insert.
+  const parsed = RegistrationInputSchema.safeParse({
+    name: (formData.get('full_name') as string) ?? '',
+    email: (formData.get('email') as string) ?? '',
+    phone: (formData.get('phone') as string) ?? undefined,
+  })
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Please check your details and try again.' }
+  }
+
+  const { name, email, phone } = parsed.data
 
   const emailLimit = await checkRateLimitAsync({ key: `reg_email:${email}`, limit: 3, windowMs: 60 * 60 * 1000 })
   if (!emailLimit.allowed) {
@@ -75,11 +94,38 @@ export async function submitRegistration(eventId: string, formData: FormData) {
   }
 
   // 4. Insert attendee with source = 'public_registration'
-  const name = (formData.get('full_name') as string)?.trim()
-  const phone = (formData.get('phone') as string)?.trim() || null
-  const ticketTierId = (formData.get('ticket_tier_id') as string) || null
+  //    (name / email / phone were validated & normalised above)
+  const rawTierId = (formData.get('ticket_tier_id') as string) || null
 
-  if (!email || !name) return { error: 'Name and email are required' }
+  // 4a. Validate the ticket tier server-side.
+  //
+  // The tier id arrives from a hidden form field, so it is fully
+  // attacker-controlled. Without this check a visitor could:
+  //   - claim a PAID tier for free through this (payment-less) path, and
+  //   - assign themselves a tier belonging to a DIFFERENT event, a private
+  //     tier, or a soft-deleted tier (IDOR).
+  //
+  // The payment flow (/api/payments/initialize) is the only sanctioned way to
+  // acquire a paid tier, so any tier with price > 0 is rejected here.
+  let ticketTierId: string | null = null
+  if (rawTierId) {
+    const { data: tier } = await supabase
+      .from('ticket_tiers')
+      .select('id, price, is_public, deleted_at')
+      .eq('id', rawTierId)
+      .eq('event_id', eventId)
+      .maybeSingle()
+
+    if (!tier || tier.deleted_at !== null || tier.is_public !== true) {
+      return { error: 'Selected ticket tier is not available' }
+    }
+
+    if (tier.price > 0) {
+      return { error: 'This ticket tier requires payment. Please complete checkout to register.' }
+    }
+
+    ticketTierId = tier.id
+  }
 
   const { error: insertError } = await supabase
     .from('attendees')
