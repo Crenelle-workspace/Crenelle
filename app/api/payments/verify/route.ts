@@ -54,63 +54,77 @@ export async function GET(request: NextRequest) {
   // The webhook handler sends it fire-and-forget — if it silently failed
   // (Resend error, QR timeout, etc.) we catch it here via email_logs dedup.
   if (payment?.status === 'paid') {
-    // Run the notification check in the background — don't block the redirect
+    // Safety net: the webhook may have recorded the payment but failed to deliver
+    // the pass. This whole block is AWAITED deliberately.
+    //
+    // It previously ran as a detached `Promise.all(...).then(...)` so as not to
+    // block the redirect — but on Vercel the function instance is frozen the
+    // moment the redirect is returned, so the detached work was killed before
+    // Resend was ever called. That made this safety net a no-op and left paid
+    // guests without a ticket. Awaiting costs the guest ~1s on the success
+    // redirect, which is a fair price for actually receiving the pass.
     if (payment.attendee_id && payment.event_id) {
       const attendeeId = payment.attendee_id
       const eventId    = payment.event_id
 
-      // Fetch attendee + invitation in parallel (needed for dedup check and send)
-      Promise.all([
-        supabase.from('attendees').select('name, email, phone').eq('id', attendeeId).single(),
-        supabase.from('invitations').select('id').eq('attendee_id', attendeeId).eq('event_id', eventId).maybeSingle(),
-      ]).then(async ([{ data: attendee }, { data: inv }]) => {
-        if (!attendee?.email || !inv?.id) return
+      try {
+        const [{ data: attendee }, { data: inv }] = await Promise.all([
+          supabase.from('attendees').select('name, email, phone').eq('id', attendeeId).single(),
+          supabase.from('invitations').select('id').eq('attendee_id', attendeeId).eq('event_id', eventId).maybeSingle(),
+        ])
 
-        // Dedup: only send if no invitation email has been logged for this recipient yet
-        const { data: existingLog } = await supabase
-          .from('email_logs')
-          .select('id')
-          .eq('event_id', eventId)
-          .eq('email_type', 'invitation')
-          .ilike('recipient_email', attendee.email)
-          .maybeSingle()
+        if (attendee?.email && inv?.id) {
+          // Dedup: only send if no invitation email has been logged for this recipient yet
+          const { data: existingLog } = await supabase
+            .from('email_logs')
+            .select('id')
+            .eq('event_id', eventId)
+            .eq('email_type', 'invitation')
+            .ilike('recipient_email', attendee.email)
+            .maybeSingle()
 
-        if (existingLog) return // already sent — nothing to do
+          if (!existingLog) {
+            const { data: eventData } = await supabase
+              .from('events')
+              .select('name, date, time, venue, description, banner_url')
+              .eq('id', eventId)
+              .single()
 
-        const { data: eventData } = await supabase
-          .from('events')
-          .select('name, date, time, venue, description, banner_url')
-          .eq('id', eventId)
-          .single()
+            if (eventData) {
+              try {
+                await sendInvitationEmail({
+                  eventId,
+                  recipientEmail: attendee.email,
+                  recipientName:  attendee.name,
+                  invitationId:   inv.id,
+                  event:          eventData,
+                })
+              } catch (e) {
+                console.error('[Payment Verify] fast-path invitation email failed', { reference }, e)
+                Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_email' } })
+              }
 
-        if (!eventData) return
-
-        if (attendee.email) {
-          sendInvitationEmail({
-            eventId,
-            recipientEmail: attendee.email,
-            recipientName:  attendee.name,
-            invitationId:   inv.id,
-            event:          eventData,
-          }).catch((e) =>
-            Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_email' } })
-          )
+              if (attendee.phone) {
+                try {
+                  await sendInvitationWhatsApp({
+                    eventId,
+                    recipientPhone: attendee.phone,
+                    recipientName:  attendee.name,
+                    invitationId:   inv.id,
+                    event:          eventData,
+                  })
+                } catch (e) {
+                  console.error('[Payment Verify] fast-path invitation WhatsApp failed', { reference }, e)
+                  Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_whatsapp' } })
+                }
+              }
+            }
+          }
         }
-
-        if (attendee.phone) {
-          sendInvitationWhatsApp({
-            eventId,
-            recipientPhone: attendee.phone,
-            recipientName:  attendee.name,
-            invitationId:   inv.id,
-            event:          eventData,
-          }).catch((e) =>
-            Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_whatsapp' } })
-          )
-        }
-      }).catch((e) =>
+      } catch (e) {
+        console.error('[Payment Verify] fast-path notification check failed', { reference }, e)
         Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_notification_check' } })
-      )
+      }
     }
 
     const meta = payment.metadata as Record<string, string> | null
@@ -236,33 +250,41 @@ export async function GET(request: NextRequest) {
                 .eq('id', payment.attendee_id)
                 .single()
 
+              // Awaited, non-fatal. This runs when the webhook has not arrived yet,
+              // so it may be the guest's ONLY chance to receive their pass — a
+              // detached promise here does not survive the redirect.
               if (attendee?.email && eventData) {
-                // Non-fatal: log errors but don't block the redirect
-                sendInvitationEmail({
-                  eventId: payment.event_id,
-                  recipientEmail: attendee.email,
-                  recipientName: attendee.name,
-                  invitationId,
-                  event: eventData,
-                }).catch((e) =>
+                try {
+                  await sendInvitationEmail({
+                    eventId: payment.event_id,
+                    recipientEmail: attendee.email,
+                    recipientName: attendee.name,
+                    invitationId,
+                    event: eventData,
+                  })
+                } catch (e) {
+                  console.error('[Payment Verify] fallback invitation email failed', { reference }, e)
                   Sentry.captureException(e, {
                     extra: { reference, context: 'payment_verify_fallback_send_email' },
                   })
-                )
+                }
               }
 
               if (attendee?.phone && eventData) {
-                sendInvitationWhatsApp({
-                  eventId: payment.event_id,
-                  recipientPhone: attendee.phone,
-                  recipientName: attendee.name,
-                  invitationId,
-                  event: eventData,
-                }).catch((e) =>
+                try {
+                  await sendInvitationWhatsApp({
+                    eventId: payment.event_id,
+                    recipientPhone: attendee.phone,
+                    recipientName: attendee.name,
+                    invitationId,
+                    event: eventData,
+                  })
+                } catch (e) {
+                  console.error('[Payment Verify] fallback invitation WhatsApp failed', { reference }, e)
                   Sentry.captureException(e, {
                     extra: { reference, context: 'payment_verify_fallback_send_whatsapp' },
                   })
-                )
+                }
               }
             }
           }

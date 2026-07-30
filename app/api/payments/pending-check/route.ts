@@ -193,24 +193,37 @@ async function sendNotifications({
     supabase.from('attendees').select('name, email, phone').eq('id', attendeeId).single(),
   ])
 
+  // Awaited. This job exists specifically to rescue guests whose pass was never
+  // delivered, so a detached promise here — killed when the response returns —
+  // would make the recovery path silently useless.
   if (attendee?.email && eventData) {
-    sendInvitationEmail({
-      eventId,
-      recipientEmail: attendee.email,
-      recipientName:  attendee.name,
-      invitationId,
-      event:          eventData,
-    }).catch(e => Sentry.captureException(e, { extra: { reference, context: 'pending_check_email' } }))
+    try {
+      await sendInvitationEmail({
+        eventId,
+        recipientEmail: attendee.email,
+        recipientName:  attendee.name,
+        invitationId,
+        event:          eventData,
+      })
+    } catch (e) {
+      console.error('[Pending Check] invitation email failed', { reference, attendeeId }, e)
+      Sentry.captureException(e, { extra: { reference, context: 'pending_check_email' } })
+    }
   }
 
   if (attendee?.phone && eventData) {
-    sendInvitationWhatsApp({
-      eventId,
-      recipientPhone: attendee.phone,
-      recipientName:  attendee.name,
-      invitationId,
-      event:          eventData,
-    }).catch(e => Sentry.captureException(e, { extra: { reference, context: 'pending_check_whatsapp' } }))
+    try {
+      await sendInvitationWhatsApp({
+        eventId,
+        recipientPhone: attendee.phone,
+        recipientName:  attendee.name,
+        invitationId,
+        event:          eventData,
+      })
+    } catch (e) {
+      console.error('[Pending Check] invitation WhatsApp failed', { reference, attendeeId }, e)
+      Sentry.captureException(e, { extra: { reference, context: 'pending_check_whatsapp' } })
+    }
   }
 }
 

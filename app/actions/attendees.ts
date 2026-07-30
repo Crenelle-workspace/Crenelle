@@ -198,17 +198,23 @@ export async function addMultipleAttendees(eventId: string, emailsText: string, 
 
       addedCount++
 
-      // Send email invitation asynchronously
+      // Awaited. Previously detached: a Server Action's instance is frozen when it
+      // returns, so the last sends in a batch were killed mid-flight and those
+      // guests silently never received their pass. Awaiting also makes the throttle
+      // below meaningful — it now paces actual Resend calls rather than overlapping.
       if (event) {
-        sendInvitationEmail({
-          eventId,
-          recipientEmail: email,
-          recipientName: name,
-          invitationId: invitation.id,
-          event,
-        }).catch(err => {
+        try {
+          await sendInvitationEmail({
+            eventId,
+            recipientEmail: email,
+            recipientName: name,
+            invitationId: invitation.id,
+            event,
+          })
+        } catch (err) {
           console.error(`Failed to send bulk invitation to ${email}:`, err)
-        })
+          Sentry.captureException(err, { extra: { eventId, email, context: 'add_multiple_attendees_email' } })
+        }
 
         // Throttle slightly
         await new Promise(resolve => setTimeout(resolve, 100))
