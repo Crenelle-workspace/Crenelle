@@ -328,8 +328,8 @@ export function calculatePaymentBreakdown(
 ): PaymentBreakdown {
   const crenelleChargeKobo = Math.round((ticketFeeKobo * platformFeePercent) / 100);
   const paystackFeeKobo = calculatePaystackFee(ticketFeeKobo);
-  const totalAmountKobo = ticketFeeKobo + crenelleChargeKobo + paystackFeeKobo;
-  const organiserPayoutKobo = ticketFeeKobo;
+  const totalAmountKobo = ticketFeeKobo;
+  const organiserPayoutKobo = Math.max(0, ticketFeeKobo - crenelleChargeKobo);
 
   return {
     ticketFeeKobo,

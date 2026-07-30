@@ -478,27 +478,16 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                         </div>
 
                         <div className="flex justify-between font-mono text-xs py-1 border-t border-border/30">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            Crenelle Charge
-                            <span className="text-[10px] text-copper">({breakdown.platformFeePercent}%)</span>
+                          <span className="text-muted-foreground">
+                            Crenelle Processing Fee
                           </span>
                           <span className="font-mono text-muted-foreground">
                             {formatKoboAsNGN(breakdown.crenelleChargeKobo)}
                           </span>
                         </div>
 
-                        <div className="flex justify-between font-mono text-xs py-1 border-t border-border/30">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            Paystack Processing Fee
-                            <span className="text-[10px] text-muted-foreground/60">(1.5% + ₦100)</span>
-                          </span>
-                          <span className="font-mono text-muted-foreground">
-                            {formatKoboAsNGN(breakdown.paystackFeeKobo)}
-                          </span>
-                        </div>
-
                         <div className="flex justify-between items-center font-mono text-sm font-semibold py-2.5 px-3 border-t border-copper/30 bg-copper/5 rounded-lg mt-2 text-foreground">
-                          <span className="uppercase tracking-wider text-[11px] text-copper">Total Breakdown</span>
+                          <span className="uppercase tracking-wider text-[11px] text-copper">Total Amount</span>
                           <span className="text-copper text-base font-bold">
                             {formatKoboAsNGN(breakdown.totalAmountKobo)}
                           </span>

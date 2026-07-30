@@ -36,15 +36,15 @@ describe('calculatePaystackFee', () => {
 })
 
 describe('calculatePaymentBreakdown', () => {
-  it('computes ticket fee, Crenelle charge, Paystack fee, total amount, and organiser payout', () => {
+  it('computes ticket fee, Crenelle processing fee, total amount, and net organiser payout', () => {
     // ₦10,000 ticket (1,000,000 kobo) with default 5% Crenelle charge
     const breakdown = calculatePaymentBreakdown(1000000, 5)
 
     expect(breakdown.ticketFeeKobo).toBe(1000000)
     expect(breakdown.crenelleChargeKobo).toBe(50000) // ₦500
-    expect(breakdown.paystackFeeKobo).toBe(25000) // ₦250
-    expect(breakdown.totalAmountKobo).toBe(1075000) // ₦10,750 (10,000 + 500 + 250)
-    expect(breakdown.organiserPayoutKobo).toBe(1000000) // ₦10,000 (100% ticket fee)
+    expect(breakdown.paystackFeeKobo).toBe(25000) // ₦250 (absorbed by Crenelle)
+    expect(breakdown.totalAmountKobo).toBe(1000000) // ₦10,000
+    expect(breakdown.organiserPayoutKobo).toBe(950000) // ₦9,500 net
     expect(breakdown.platformFeePercent).toBe(5)
   })
 
@@ -53,7 +53,7 @@ describe('calculatePaymentBreakdown', () => {
     const breakdown = calculatePaymentBreakdown(2000000, 10)
 
     expect(breakdown.crenelleChargeKobo).toBe(200000) // ₦2,000
-    expect(breakdown.organiserPayoutKobo).toBe(2000000) // ₦20,000 (100% ticket fee)
+    expect(breakdown.organiserPayoutKobo).toBe(1800000) // ₦18,000 net
     expect(breakdown.platformFeePercent).toBe(10)
   })
 })
