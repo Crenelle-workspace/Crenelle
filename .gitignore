@@ -115,3 +115,5 @@ sentry.properties
 # Internal architecture / design docs — keep local only
 ARCHITECTURE.md
 *.pdf
+# Sentry Config File
+.env.sentry-build-plugin

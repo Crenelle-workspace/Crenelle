@@ -1,16 +1,22 @@
-/**
- * sentry.server.config.ts
- *
- * Sentry Node.js server-side initialisation (Next.js App Router RSC / Route Handlers / Server Actions).
- * Use SENTRY_DSN (not NEXT_PUBLIC_) so the key is never shipped to the browser.
- */
-import * as Sentry from '@sentry/nextjs'
+// This file configures the initialization of Sentry on the server.
+// The config you add here will be used whenever the server handles a request.
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+
+import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: process.env.SENTRY_DSN,
+  dsn: process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN || "https://0446c50b40e631ef951d00c6033743e9@o4511824794157056.ingest.de.sentry.io/4511824801431632",
 
-  // Capture 20% of server transactions for performance monitoring
-  tracesSampleRate: 0.2,
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
+  tracesSampleRate: 1,
 
-  debug: false,
-})
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
+
+  dataCollection: {
+    // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#dataCollection
+    // userInfo: false,
+    // httpBodies: [],
+  },
+});
