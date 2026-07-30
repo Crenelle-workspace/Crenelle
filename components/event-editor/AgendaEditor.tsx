@@ -13,12 +13,18 @@ interface AgendaEditorProps {
 
 export function AgendaEditor({ agenda, onChange }: AgendaEditorProps) {
   const [items, setItems] = useState<AgendaItem[]>(agenda || [])
+  const [prevAgenda, setPrevAgenda] = useState(agenda)
+
+  if (agenda !== prevAgenda) {
+    setPrevAgenda(agenda)
+    setItems(agenda || [])
+  }
 
   const handleAdd = () => {
     const newItem: AgendaItem = {
       id: crypto.randomUUID(),
-      time: '09:00 AM',
-      title: 'New Session',
+      time: '',
+      title: '',
       description: '',
       speaker: '',
     }

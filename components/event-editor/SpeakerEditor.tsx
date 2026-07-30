@@ -13,12 +13,18 @@ interface SpeakerEditorProps {
 
 export function SpeakerEditor({ speakers, onChange }: SpeakerEditorProps) {
   const [items, setItems] = useState<SpeakerInfo[]>(speakers || [])
+  const [prevSpeakers, setPrevSpeakers] = useState(speakers)
+
+  if (speakers !== prevSpeakers) {
+    setPrevSpeakers(speakers)
+    setItems(speakers || [])
+  }
 
   const handleAdd = () => {
     const newItem: SpeakerInfo = {
       id: crypto.randomUUID(),
-      name: 'Speaker Name',
-      role: 'Keynote Speaker',
+      name: '',
+      role: '',
       company: '',
       avatar_url: '',
       bio: '',

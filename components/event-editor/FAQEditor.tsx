@@ -13,12 +13,18 @@ interface FAQEditorProps {
 
 export function FAQEditor({ faqs, onChange }: FAQEditorProps) {
   const [items, setItems] = useState<FAQItem[]>(faqs || [])
+  const [prevFaqs, setPrevFaqs] = useState(faqs)
+
+  if (faqs !== prevFaqs) {
+    setPrevFaqs(faqs)
+    setItems(faqs || [])
+  }
 
   const handleAdd = () => {
     const newItem: FAQItem = {
       id: crypto.randomUUID(),
-      question: 'What is the dress code?',
-      answer: 'Smart Casual.',
+      question: '',
+      answer: '',
     }
     const updated = [...items, newItem]
     setItems(updated)
