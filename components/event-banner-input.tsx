@@ -87,6 +87,7 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
 
   return (
     <div className="flex flex-col gap-3 border-2 border-foreground/20 bg-foreground/5 p-4 rounded-sm">
+      <input type="hidden" name="banner_url" value={bannerUrl} />
       <div className="flex items-center justify-between">
         <label className={labelCls}>Event Banner Image</label>
         {bannerUrl && (
