@@ -15,6 +15,12 @@ export async function createEvent(formData: FormData) {
   const eventType = (formData.get('event_type') as string) || 'closed'
   const name = formData.get('name') as string
   const emailTheme = (formData.get('email_theme') as string) || 'classic'
+  const eventDate = formData.get('date') as string
+
+  const today = new Date().toISOString().split('T')[0]
+  if (eventDate && eventDate < today) {
+    return { error: 'Event date cannot be in the past. Please select today or a future date.' }
+  }
 
   let agenda: unknown[] = []
   if (formData.has('agenda')) {

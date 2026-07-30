@@ -282,7 +282,15 @@ export default function EventOverviewPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label htmlFor="ev-date" className={labelCls}>Date *</label>
-              <input id="ev-date" name="date" type="date" defaultValue={event.date} required className={fieldCls} />
+              <input
+                id="ev-date"
+                name="date"
+                type="date"
+                min={new Date().toISOString().split('T')[0]}
+                defaultValue={event.date}
+                required
+                className={fieldCls}
+              />
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="ev-time" className={labelCls}>Time</label>

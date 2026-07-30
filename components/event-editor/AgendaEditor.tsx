@@ -100,10 +100,9 @@ export function AgendaEditor({ agenda, onChange }: AgendaEditorProps) {
                     <Clock className="mr-1 inline-block h-3 w-3" /> Time
                   </label>
                   <input
-                    type="text"
+                    type="time"
                     value={item.time}
                     onChange={(e) => handleChange(item.id, 'time', e.target.value)}
-                    placeholder="e.g. 10:00 AM - 11:30 AM"
                     className={fieldCls}
                   />
                 </div>

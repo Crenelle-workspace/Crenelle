@@ -190,7 +190,14 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
             <label htmlFor="new-ev-date" className={labelCls}>Date *</label>
-            <input id="new-ev-date" name="date" type="date" required className={fieldCls} />
+            <input
+              id="new-ev-date"
+              name="date"
+              type="date"
+              min={new Date().toISOString().split('T')[0]}
+              required
+              className={fieldCls}
+            />
           </div>
           <div className="flex flex-col gap-2">
             <label htmlFor="new-ev-time" className={labelCls}>Time</label>
