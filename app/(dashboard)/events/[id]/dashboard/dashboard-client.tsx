@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Users, UserCheck, Clock, BarChart3, DoorOpen, FileText } from 'lucide-react'
+import { Users, UserCheck, Clock, TrendingUp, DoorOpen, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { StatCard } from '@/components/stat-card'
 import { SectionHeader } from '@/components/section-header'
@@ -207,8 +207,10 @@ export default function LiveDashboardPage() {
 
     loadData()
 
-    // Poll every 5s — guarantees updates even without Supabase Realtime
-    const poll = setInterval(loadData, 5000)
+    // Realtime subscriptions below drive live updates. The interval is only a
+    // slow safety net for the rare case Realtime drops (was 5s, which double-
+    // refetched on top of every realtime event — pure redundant DB egress).
+    const poll = setInterval(loadData, 60000)
 
     const channel = supabase
       .channel(`entry-logs-${eventId}`)

@@ -145,7 +145,7 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
   }
 
   async function handleSubmit(formData: FormData) {
-    if (isSubmitting.current || !event) return
+    if (isSubmitting.current) return
     isSubmitting.current = true
     setSubmitting(true)
     setError(null)
@@ -191,35 +191,6 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
       isSubmitting.current = false
       setSubmitting(false)
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="flex flex-col items-center text-center">
-          <Loader2 size={28} strokeWidth={1.75} className="mb-4 animate-spin text-copper" />
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-            Loading event
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  if (notFound || !event) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="w-full max-w-md border border-border bg-card p-10 text-center">
-          <XCircle size={40} strokeWidth={1.5} className="mx-auto mb-5 text-ember" />
-          <h1 className="font-display text-3xl font-medium tracking-tight text-foreground">
-            Event not found
-          </h1>
-          <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
-            This registration page doesn&apos;t exist, or registration has since closed.
-          </p>
-        </div>
-      </div>
-    )
   }
 
   // Payment Verification Polling Screen
@@ -477,7 +448,7 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                     </div>
                     <div className="flex justify-between text-muted-foreground">
                       <span>Email</span>
-                      <span className="truncate max-w-[200px] text-foreground">{previewDetails.email}</span>
+                      <span className="truncate max-w-50 text-foreground">{previewDetails.email}</span>
                     </div>
                     {previewDetails.phone && (
                       <div className="flex justify-between text-muted-foreground">

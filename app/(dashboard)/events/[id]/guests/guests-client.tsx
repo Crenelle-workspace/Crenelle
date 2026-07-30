@@ -130,7 +130,8 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
     }
     init()
 
-    const poll = setInterval(() => { loadGuests(); loadTiers() }, 10000)
+    // Realtime subscriptions below drive updates; poll is a slow safety net (was 10s, 2 queries/tick).
+    const poll = setInterval(() => { loadGuests(); loadTiers() }, 60000)
 
     const channel = supabase
       .channel(`guests-${eventId}`)

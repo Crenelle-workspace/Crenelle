@@ -2,11 +2,13 @@ interface StatCardProps {
   icon: React.ReactNode
   label: string
   value: string | number
-  sub: string
+  sub?: string
+  subtext?: string
   accent?: 'admitted' | 'signal' | 'copper'
 }
 
-export function StatCard({ icon, label, value, sub, accent }: StatCardProps) {
+export function StatCard({ icon, label, value, sub, subtext, accent }: StatCardProps) {
+  const subtitle = sub ?? subtext ?? ''
   const valueColor =
     accent === 'admitted'
       ? 'text-admitted'
@@ -32,9 +34,11 @@ export function StatCard({ icon, label, value, sub, accent }: StatCardProps) {
       >
         {value}
       </p>
-      <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
-        {sub}
-      </p>
+      {subtitle && (
+        <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60">
+          {subtitle}
+        </p>
+      )}
     </div>
   )
 }

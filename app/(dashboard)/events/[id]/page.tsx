@@ -113,8 +113,8 @@ export default function EventOverviewPage() {
     }
     loadRevenue()
 
-    // Poll every 10s — guarantees status badge updates without Supabase Realtime
-    const poll = setInterval(() => { loadEvent(); loadRegCounts() }, 10000)
+    // Realtime subscription below drives updates; poll is a slow safety net (was 10s).
+    const poll = setInterval(() => { loadEvent(); loadRegCounts() }, 60000)
 
     const channel = supabase
       .channel(`event-detail-${id}`)

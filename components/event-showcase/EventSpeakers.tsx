@@ -32,6 +32,7 @@ export function EventSpeakers({ speakers }: EventSpeakersProps) {
             <div className="flex items-start gap-4">
               {speaker.avatar_url ? (
                 <div className="relative h-16 w-16 shrink-0 overflow-hidden border border-border">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={speaker.avatar_url}
                     alt={speaker.name}

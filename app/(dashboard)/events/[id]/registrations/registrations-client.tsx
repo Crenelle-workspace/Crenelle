@@ -113,7 +113,8 @@ export default function RegistrationsPage() {
   useEffect(() => {
     loadData()
 
-    const poll = setInterval(loadData, 10000)
+    // Realtime subscription below drives updates; poll is a slow safety net (was 10s).
+    const poll = setInterval(loadData, 60000)
 
     const supabase = createClient()
     const channel = supabase

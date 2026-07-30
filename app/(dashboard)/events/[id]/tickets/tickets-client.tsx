@@ -118,8 +118,8 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
 
     loadData()
 
-    // Poll every 10 seconds as a fallback
-    const poll = setInterval(loadData, 10000)
+    // Realtime subscription below drives updates; poll is a slow safety net (was 10s).
+    const poll = setInterval(loadData, 60000)
 
     // Listen to real-time updates on ticket_tiers and invitations
     const channel = supabase

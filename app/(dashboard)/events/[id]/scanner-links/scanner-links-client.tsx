@@ -41,7 +41,8 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
   useEffect(() => {
     loadLinks()
 
-    const poll = setInterval(loadLinks, 10000)
+    // Realtime subscription below drives updates; poll is a slow safety net (was 10s).
+    const poll = setInterval(loadLinks, 60000)
 
     const supabase = createClient()
     const channel = supabase
