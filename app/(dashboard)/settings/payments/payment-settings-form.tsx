@@ -321,7 +321,7 @@ export function PaymentSettingsForm({ settings }: Props) {
           </div>
 
           {/* Breakdown results */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2">
             <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-1 font-mono">
               <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Ticket Fee</span>
               <span className="text-sm font-semibold text-foreground">{formatKoboAsNGN(breakdown.ticketFeeKobo)}</span>
@@ -337,8 +337,13 @@ export function PaymentSettingsForm({ settings }: Props) {
               <span className="text-sm font-semibold text-muted-foreground">{formatKoboAsNGN(breakdown.paystackFeeKobo)}</span>
             </div>
 
+            <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-1 font-mono">
+              <span className="text-[10px] text-foreground uppercase tracking-wider block font-medium">Guest Total</span>
+              <span className="text-sm font-bold text-foreground">{formatKoboAsNGN(breakdown.totalAmountKobo)}</span>
+            </div>
+
             <div className="p-3.5 rounded-xl bg-copper/10 border border-copper/30 space-y-1 font-mono">
-              <span className="text-[10px] text-copper uppercase tracking-wider block font-bold">Your Net Payout</span>
+              <span className="text-[10px] text-copper uppercase tracking-wider block font-bold">Your Payout</span>
               <span className="text-sm font-bold text-copper">{formatKoboAsNGN(breakdown.organiserPayoutKobo)}</span>
             </div>
           </div>
@@ -357,9 +362,9 @@ export function PaymentSettingsForm({ settings }: Props) {
           <div className="grid grid-cols-1 gap-3 font-mono text-[11px] text-muted-foreground">
             {[
               { step: '01', text: 'Guest previews ticket fee + Crenelle charge + Paystack fee breakdown before paying.' },
-              { step: '02', text: 'Paystack processes the payment (1.5% + ₦100 fee, waived under ₦2,500, capped ₦2,000).' },
-              { step: '03', text: `Crenelle retains ${platformPercent}% as a platform fee from the gross ticket amount.` },
-              { step: '04', text: `You receive ${100 - platformPercent}% net ticket price direct to your bank account.` },
+              { step: '02', text: 'Total amount charged to guest is ticket fee + Crenelle charge + Paystack fee.' },
+              { step: '03', text: `Crenelle retains the ${platformPercent}% platform charge while Paystack processes gateway fees.` },
+              { step: '04', text: 'You receive 100% of your listed ticket price direct to your bank account.' },
               { step: '05', text: 'Paystack settles funds to your bank account on the next business day (T+1).' },
             ].map(({ step, text }) => (
               <div key={step} className="flex items-start gap-4">
@@ -371,7 +376,7 @@ export function PaymentSettingsForm({ settings }: Props) {
 
           <div className="p-3.5 border border-border/40 bg-muted/30 rounded-xl">
             <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-wide font-medium">
-              Sample Breakdown ({formatKoboAsNGN(breakdown.ticketFeeKobo)} Ticket): Crenelle Charge ({platformPercent}%) = {formatKoboAsNGN(breakdown.crenelleChargeKobo)} · Paystack Fee = {formatKoboAsNGN(breakdown.paystackFeeKobo)} · You Receive = {formatKoboAsNGN(breakdown.organiserPayoutKobo)}
+              Sample Breakdown ({formatKoboAsNGN(breakdown.ticketFeeKobo)} Ticket): Guest Pays = {formatKoboAsNGN(breakdown.totalAmountKobo)} ({formatKoboAsNGN(breakdown.ticketFeeKobo)} Ticket + {formatKoboAsNGN(breakdown.crenelleChargeKobo)} Crenelle Charge + {formatKoboAsNGN(breakdown.paystackFeeKobo)} Paystack Fee) · You Receive = {formatKoboAsNGN(breakdown.organiserPayoutKobo)} (100% of Ticket Price)
             </p>
           </div>
         </div>

@@ -72,11 +72,11 @@ export function EventHero({
   })()
 
   return (
-    <section className="overflow-hidden border border-border bg-card">
+    <section className="border border-border bg-card">
       {/* ── Cinematic banner ── */}
       <div className="relative w-full">
         {optimizedBanner ? (
-          <div className="relative h-[52vh] min-h-[380px] w-full overflow-hidden sm:h-[62vh] sm:min-h-[460px]">
+          <div className="relative h-[52vh] min-h-95 w-full overflow-hidden sm:h-[62vh] sm:min-h-115">
             <motion.img
               initial={{ scale: 1.08, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -86,15 +86,15 @@ export function EventHero({
               className="h-full w-full object-cover object-center"
             />
             {/* Editorial gradient: heavy floor, clean top */}
-            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/10" />
-            <div className="absolute inset-0 bg-gradient-to-r from-ink/60 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-ink via-ink/70 to-ink/10" />
+            <div className="absolute inset-0 bg-linear-to-r from-ink/60 via-transparent to-transparent" />
           </div>
         ) : (
-          <div className="relative h-[40vh] min-h-[320px] w-full overflow-hidden">
+          <div className="relative h-[40vh] min-h-80 w-full overflow-hidden">
             {/* Fallback: architectural grid on deep ink, no banner */}
-            <div className="absolute inset-0 bg-gradient-to-br from-graphite via-lead to-ink" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:2.5rem_2.5rem] opacity-30" />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-br from-graphite via-lead to-ink" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[2.5rem_2.5rem] opacity-30" />
+            <div className="absolute inset-0 bg-linear-to-t from-ink via-ink/70 to-transparent" />
           </div>
         )}
 

@@ -1,9 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { CalendarPlus, ChevronDown, ArrowUpRight, Download } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 
 interface AddToCalendarProps {
   eventName: string
@@ -82,75 +87,54 @@ export function AddToCalendar({
   }
 
   return (
-    <div className="relative inline-block text-left">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setOpen(!open)}
-        className="group flex items-center gap-2.5 rounded-none border border-copper/40 bg-copper/5 px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.15em] font-medium text-copper shadow-none transition-colors hover:bg-copper hover:text-white"
-      >
-        <CalendarPlus size={15} strokeWidth={1.75} />
-        <span>Add to Calendar</span>
-        <ChevronDown
-          size={13}
-          strokeWidth={2}
-          className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
-      </Button>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="group flex items-center gap-2.5 rounded-none border border-copper/40 bg-copper/5 px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.15em] font-medium text-copper shadow-none transition-colors hover:bg-copper hover:text-white cursor-pointer"
+        >
+          <CalendarPlus size={15} strokeWidth={1.75} />
+          <span>Add to Calendar</span>
+          <ChevronDown
+            size={13}
+            strokeWidth={2}
+            className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          />
+        </Button>
+      </DropdownMenuTrigger>
 
-      <AnimatePresence>
-        {open && (
-          <>
-            {/* Click-away backdrop */}
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setOpen(false)}
-              aria-hidden="true"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.15 }}
-              className="absolute left-0 z-50 mt-2 w-60 overflow-hidden border border-border bg-popover shadow-2xl"
-            >
-              <a
-                href={googleUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-between border-b border-border px-4 py-3 font-mono text-[11px] uppercase tracking-[0.12em] text-foreground/80 transition-colors hover:bg-copper/10 hover:text-copper"
-              >
-                <span>Google Calendar</span>
-                <ArrowUpRight size={13} strokeWidth={1.75} className="opacity-50" />
-              </a>
+      <DropdownMenuContent align="start" side="bottom" sideOffset={6} className="w-60">
+        <DropdownMenuItem asChild>
+          <a
+            href={googleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+          >
+            <span>Google Calendar</span>
+            <ArrowUpRight size={13} strokeWidth={1.75} className="opacity-50" />
+          </a>
+        </DropdownMenuItem>
 
-              <button
-                type="button"
-                onClick={() => {
-                  downloadIcs()
-                  setOpen(false)
-                }}
-                className="flex w-full items-center justify-between border-b border-border px-4 py-3 font-mono text-[11px] uppercase tracking-[0.12em] text-foreground/80 transition-colors hover:bg-copper/10 hover:text-copper"
-              >
-                <span>Apple / Outlook</span>
-                <Download size={13} strokeWidth={1.75} className="opacity-50" />
-              </button>
+        <DropdownMenuItem onClick={downloadIcs}>
+          <span>Apple / Outlook</span>
+          <Download size={13} strokeWidth={1.75} className="opacity-50" />
+        </DropdownMenuItem>
 
-              <a
-                href={yahooUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-between px-4 py-3 font-mono text-[11px] uppercase tracking-[0.12em] text-foreground/80 transition-colors hover:bg-copper/10 hover:text-copper"
-              >
-                <span>Yahoo Calendar</span>
-                <ArrowUpRight size={13} strokeWidth={1.75} className="opacity-50" />
-              </a>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
+        <DropdownMenuItem asChild>
+          <a
+            href={yahooUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setOpen(false)}
+          >
+            <span>Yahoo Calendar</span>
+            <ArrowUpRight size={13} strokeWidth={1.75} className="opacity-50" />
+          </a>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
+

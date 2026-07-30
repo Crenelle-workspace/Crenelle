@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import {
   initializeTransaction,
   generatePaystackReference,
-  calculateSplit,
+  calculatePaymentBreakdown,
 } from '@/lib/paystack'
 import { checkRateLimitAsync } from '@/lib/rate-limit'
 import * as Sentry from '@sentry/nextjs'
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
     paymentSettings?.platform_fee_percent ??
     parseFloat(process.env.PAYSTACK_PLATFORM_FEE_PERCENT ?? '5')
 
-  const { platformFeeKobo, organiserAmountKobo } = calculateSplit(tier.price, platformFeePercent)
+  const breakdown = calculatePaymentBreakdown(tier.price, platformFeePercent)
 
   // 7. Create or reuse the attendee record (pending, will be accepted on payment success)
   const { data: existingPendingAttendee } = await supabase
@@ -256,9 +256,9 @@ export async function POST(request: NextRequest) {
       attendee_id: attendeeId,
       ticket_tier_id,
       paystack_reference: reference,
-      amount_kobo: tier.price,
-      platform_fee_kobo: platformFeeKobo,
-      organiser_amount_kobo: organiserAmountKobo,
+      amount_kobo: breakdown.totalAmountKobo,
+      platform_fee_kobo: breakdown.crenelleChargeKobo,
+      organiser_amount_kobo: breakdown.organiserPayoutKobo,
       currency: tier.currency,
       status: 'pending',
       payer_email,
@@ -268,6 +268,9 @@ export async function POST(request: NextRequest) {
         event_slug: event.registration_slug,
         tier_name: tier.name,
         organiser_id: event.organizer_id,
+        ticket_fee_kobo: breakdown.ticketFeeKobo,
+        crenelle_charge_kobo: breakdown.crenelleChargeKobo,
+        paystack_fee_kobo: breakdown.paystackFeeKobo,
       },
     })
 
@@ -291,15 +294,16 @@ export async function POST(request: NextRequest) {
     (process.env.APP_URL || request.nextUrl.origin)
   const { data: paystackData, error: paystackError } = await initializeTransaction({
     email: payer_email,
-    amount: tier.price,
+    amount: breakdown.totalAmountKobo,
     reference,
     subaccount: paymentSettings?.paystack_subaccount_code ?? undefined,
     bearer: 'account', // Crenelle bears the Paystack processing fee
     // transaction_charge explicitly sets the flat kobo amount Crenelle retains.
-    // This overrides the subaccount's default percentage_charge for this transaction,
-    // guaranteeing the correct split (Crenelle gets platformFeeKobo, organiser gets the rest).
-    // Only set when there is a subaccount — no split needed if organiser has no subaccount.
-    transaction_charge: paymentSettings?.paystack_subaccount_code ? platformFeeKobo : undefined,
+    // Crenelle retains platform fee + Paystack fee so that after Paystack deducts
+    // Paystack fee from main account, Crenelle keeps platform fee and subaccount gets 100% of ticket price.
+    transaction_charge: paymentSettings?.paystack_subaccount_code
+      ? breakdown.crenelleChargeKobo + breakdown.paystackFeeKobo
+      : undefined,
     callback_url: `${appUrl}/api/payments/verify?reference=${reference}`,
     channels: ['card', 'bank', 'ussd', 'bank_transfer'],
     metadata: {
@@ -335,7 +339,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     authorization_url: paystackData.authorization_url,
     reference,
-    amount_kobo: tier.price,
+    amount_kobo: breakdown.totalAmountKobo,
     currency: tier.currency,
   })
 }
