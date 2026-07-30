@@ -223,48 +223,55 @@ export async function acceptRegistration(attendeeId: string, eventId: string, se
 
   if (!event) return { error: 'Event not found' }
 
-  // 5. Trigger invitation email and WhatsApp
-  let emailWarning: string | undefined = undefined
-  if (attendee.email) {
-    try {
-      const emailResult = await sendInvitationEmail({
-        eventId,
-        recipientEmail: attendee.email,
-        recipientName: attendee.name,
-        invitationId: invitation.id,
-        event,
-      })
-      if (emailResult && 'error' in emailResult && emailResult.error) {
-        console.error('Failed to send invitation email:', emailResult.error)
-        emailWarning = emailResult.error
-      }
-    } catch (e: unknown) {
-      console.error('Failed to send invitation email:', e)
-      Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_email' } })
-      emailWarning = e instanceof Error ? e.message : 'Unknown email dispatch error'
-    }
-  }
-
-  let whatsappWarning: string | undefined = undefined
-  if (attendee.phone) {
-    try {
-      const whatsappResult = await sendInvitationWhatsApp({
-        eventId,
-        recipientPhone: attendee.phone,
-        recipientName: attendee.name,
-        invitationId: invitation.id,
-        event,
-      })
-      if (whatsappResult && 'error' in whatsappResult && whatsappResult.error) {
-        console.error('Failed to send WhatsApp invitation:', whatsappResult.error)
-        whatsappWarning = whatsappResult.error
-      }
-    } catch (e: unknown) {
-      console.error('Failed to send WhatsApp invitation:', e)
-      Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_whatsapp' } })
-      whatsappWarning = e instanceof Error ? e.message : 'Unknown WhatsApp dispatch error'
-    }
-  }
+  // 5. Trigger invitation email and WhatsApp — independent, so run concurrently.
+  // Each task resolves to a warning string (or undefined) rather than throwing,
+  // so one failing send never blocks the other and both warnings surface.
+  const [emailWarning, whatsappWarning] = await Promise.all([
+    attendee.email
+      ? (async (): Promise<string | undefined> => {
+          try {
+            const emailResult = await sendInvitationEmail({
+              eventId,
+              recipientEmail: attendee.email,
+              recipientName: attendee.name,
+              invitationId: invitation.id,
+              event,
+            })
+            if (emailResult && 'error' in emailResult && emailResult.error) {
+              console.error('Failed to send invitation email:', emailResult.error)
+              return emailResult.error
+            }
+          } catch (e: unknown) {
+            console.error('Failed to send invitation email:', e)
+            Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_email' } })
+            return e instanceof Error ? e.message : 'Unknown email dispatch error'
+          }
+          return undefined
+        })()
+      : Promise.resolve<string | undefined>(undefined),
+    attendee.phone
+      ? (async (): Promise<string | undefined> => {
+          try {
+            const whatsappResult = await sendInvitationWhatsApp({
+              eventId,
+              recipientPhone: attendee.phone,
+              recipientName: attendee.name,
+              invitationId: invitation.id,
+              event,
+            })
+            if (whatsappResult && 'error' in whatsappResult && whatsappResult.error) {
+              console.error('Failed to send WhatsApp invitation:', whatsappResult.error)
+              return whatsappResult.error
+            }
+          } catch (e: unknown) {
+            console.error('Failed to send WhatsApp invitation:', e)
+            Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_whatsapp' } })
+            return e instanceof Error ? e.message : 'Unknown WhatsApp dispatch error'
+          }
+          return undefined
+        })()
+      : Promise.resolve<string | undefined>(undefined),
+  ])
 
   revalidatePath(`/events/${eventId}/registrations`)
   revalidatePath(`/events/${eventId}/guests`)

@@ -2,6 +2,11 @@ import type { NextConfig } from 'next'
 import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig: NextConfig = {
+  // Optimize barrel-import heavy packages: Next rewrites `import { X } from 'pkg'`
+  // to deep imports so unused exports are tree-shaken out of the bundle.
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion', 'radix-ui'],
+  },
   images: {
     remotePatterns: [
       {

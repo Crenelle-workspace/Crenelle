@@ -38,7 +38,11 @@ export default async function EventsPage() {
     }))
   }
 
-  // Workspace setup status indicators
+  // Workspace setup status indicators.
+  // Resolve the user once and reuse the id — previously getUser() ran twice here.
+  const { data: { user } } = await supabase.auth.getUser()
+  const userId = user?.id ?? ''
+
   const [
     { data: profilesData },
     { data: paymentData },
@@ -51,12 +55,12 @@ export default async function EventsPage() {
     supabase
       .from('organizer_payment_settings')
       .select('is_verified, paystack_subaccount_code')
-      .eq('organizer_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+      .eq('organizer_id', userId)
       .maybeSingle(),
     supabase
       .from('organizer_settings')
       .select('org_name, email_footer')
-      .eq('organizer_id', (await supabase.auth.getUser()).data.user?.id ?? '')
+      .eq('organizer_id', userId)
       .maybeSingle(),
   ])
 

@@ -262,7 +262,7 @@ export default function TeamPage() {
                     onChange={e => handleRoleChange(member, e.target.value as MemberRole)}
                     disabled={isUpdatingRole}
                     aria-label={`Change role for ${member.member_email}`}
-                    className={`font-sans text-xs font-semibold uppercase tracking-widest px-3 py-1.5 border appearance-none cursor-pointer bg-background disabled:opacity-50 ${rc.cls}`}
+                    className={`font-sans text-xs font-semibold px-3 py-1.5 border border-border/40 rounded-full appearance-none cursor-pointer bg-background disabled:opacity-50 ${rc.cls}`}
                   >
                     {(Object.keys(roleConfig) as MemberRole[]).map(r => (
                       <option key={r} value={r}>{roleConfig[r].label}</option>
@@ -273,7 +273,7 @@ export default function TeamPage() {
                   <button
                     onClick={() => setRemoveTarget(member)}
                     aria-label={`Remove ${member.member_email} as co-host`}
-                    className="inline-flex items-center justify-center h-9 w-9 border border-destructive/20 text-destructive/50 hover:border-destructive/50 hover:text-destructive hover:bg-destructive/6 transition-all"
+                    className="inline-flex items-center justify-center h-8 w-8 border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-full transition-all cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -288,12 +288,12 @@ export default function TeamPage() {
       <ConfirmDialog
         open={!!removeTarget}
         onOpenChange={open => !open && setRemoveTarget(null)}
-        title="REMOVE_CO-HOST"
-        description="THIS_ACTION_IS_REVERSIBLE"
+        title="Remove Collaborator"
+        description="Confirm access removal"
         subject={removeTarget?.member_email}
-        subjectLabel="CO-HOST"
+        subjectLabel="Collaborator"
         body="This person will immediately lose access to this event. You can re-invite them at any time."
-        confirmLabel="REMOVE_ACCESS"
+        confirmLabel="Remove Access"
         isPending={isRemoving}
         onConfirm={() => {
           if (!removeTarget) return

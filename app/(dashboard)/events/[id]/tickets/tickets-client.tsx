@@ -725,7 +725,7 @@ function TierForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border border-foreground/10 p-4 bg-secondary/10">
+      <div className="flex flex-col gap-3 border border-border/40 p-4 bg-card/40 rounded-xl">
         <div className="flex items-center gap-2">
           <input
             id={`${prefix}-t-has-cap`}
@@ -734,8 +734,8 @@ function TierForm({
             onChange={(e) => setHasCap(e.target.checked)}
             className="h-4 w-4 accent-copper cursor-pointer"
           />
-          <label htmlFor={`${prefix}-t-has-cap`} className="font-mono text-[10px] uppercase font-bold tracking-wider text-foreground cursor-pointer">
-            Limit Tickets Capacity
+          <label htmlFor={`${prefix}-t-has-cap`} className="font-sans text-xs font-semibold text-foreground cursor-pointer">
+            Limit Ticket Capacity
           </label>
         </div>
 
@@ -756,8 +756,8 @@ function TierForm({
         )}
       </div>
 
-      <Button type="submit" variant="signal" className="w-full h-12 text-sm mt-2" disabled={loading}>
-        {loading ? 'SAVING...' : 'SAVE TICKET TIER'}
+      <Button type="submit" variant="copper" className="w-full h-11 text-xs font-bold mt-2 rounded-full" disabled={loading}>
+        {loading ? 'Saving...' : 'Save Ticket Tier'}
       </Button>
     </form>
   )

@@ -244,41 +244,43 @@ async function handleChargeSuccess(
         // receives the request. That is why paid guests never got their pass while
         // the free path — which awaits (app/actions/registrations.ts) — worked.
         // Paystack allows 30s for a webhook response; a send takes ~1s.
-        if (attendee.email && eventData) {
-          try {
-            await sendInvitationEmail({
-              eventId,
-              recipientEmail: attendee.email,
-              recipientName: attendee.name,
-              invitationId: existingInv.id,
-              event: eventData,
-            })
-          } catch (e) {
-            // console.error alongside Sentry on purpose: Sentry.init() is a silent
-            // no-op when SENTRY_DSN is unset, which is how this failure stayed
-            // invisible. A guest not receiving a paid ticket must always hit the log.
-            console.error('[Paystack Webhook] invitation email failed (retry path)', { reference, attendeeId }, e)
-            Sentry.captureException(e, {
-              extra: { reference, attendeeId, context: 'paystack_webhook_resend_email_on_retry' },
-            })
-          }
-        }
-
-        if (attendee.phone && eventData) {
-          try {
-            await sendInvitationWhatsApp({
-              eventId,
-              recipientPhone: attendee.phone,
-              recipientName: attendee.name,
-              invitationId: existingInv.id,
-              event: eventData,
-            })
-          } catch (e) {
-            console.error('[Paystack Webhook] invitation WhatsApp failed (retry path)', { reference, attendeeId }, e)
-            Sentry.captureException(e, {
-              extra: { reference, attendeeId, context: 'paystack_webhook_resend_whatsapp_on_retry' },
-            })
-          }
+        // Email + WhatsApp are independent — dispatch concurrently. Both stay
+        // awaited (see note above); each swallows its own error so one failing
+        // can't block the other. console.error alongside Sentry on purpose:
+        // Sentry.init() is a silent no-op when SENTRY_DSN is unset, which is how
+        // this failure stayed invisible. A guest not receiving a paid ticket must
+        // always hit the log.
+        if (eventData) {
+          await Promise.all([
+            attendee.email
+              ? sendInvitationEmail({
+                  eventId,
+                  recipientEmail: attendee.email,
+                  recipientName: attendee.name,
+                  invitationId: existingInv.id,
+                  event: eventData,
+                }).catch((e) => {
+                  console.error('[Paystack Webhook] invitation email failed (retry path)', { reference, attendeeId }, e)
+                  Sentry.captureException(e, {
+                    extra: { reference, attendeeId, context: 'paystack_webhook_resend_email_on_retry' },
+                  })
+                })
+              : Promise.resolve(),
+            attendee.phone
+              ? sendInvitationWhatsApp({
+                  eventId,
+                  recipientPhone: attendee.phone,
+                  recipientName: attendee.name,
+                  invitationId: existingInv.id,
+                  event: eventData,
+                }).catch((e) => {
+                  console.error('[Paystack Webhook] invitation WhatsApp failed (retry path)', { reference, attendeeId }, e)
+                  Sentry.captureException(e, {
+                    extra: { reference, attendeeId, context: 'paystack_webhook_resend_whatsapp_on_retry' },
+                  })
+                })
+              : Promise.resolve(),
+          ])
         }
 
         return NextResponse.json({ received: true, skipped: 'already_processed' }, { status: 200 })
@@ -340,45 +342,42 @@ async function handleChargeSuccess(
         .single(),
     ])
 
-    // Send invitation email — awaited, non-fatal on failure.
-    //
-    // This is the primary delivery path for a paid ticket. It must be awaited:
-    // an un-awaited promise here is terminated when the response returns, which
-    // silently dropped every paid guest's pass. See the note in the
-    // already_processed branch above for the full explanation.
-    if (attendee?.email && eventData) {
-      try {
-        await sendInvitationEmail({
-          eventId,
-          recipientEmail: attendee.email,
-          recipientName: attendee.name,
-          invitationId,
-          event: eventData,
-        })
-      } catch (e) {
-        console.error('[Paystack Webhook] invitation email failed', { reference, attendeeId }, e)
-        Sentry.captureException(e, {
-          extra: { reference, attendeeId, context: 'paystack_webhook_send_email' },
-        })
-      }
-    }
-
-    // Send WhatsApp invitation — awaited, non-fatal on failure.
-    if (attendee?.phone && eventData) {
-      try {
-        await sendInvitationWhatsApp({
-          eventId,
-          recipientPhone: attendee.phone,
-          recipientName: attendee.name,
-          invitationId,
-          event: eventData,
-        })
-      } catch (e) {
-        console.error('[Paystack Webhook] invitation WhatsApp failed', { reference, attendeeId }, e)
-        Sentry.captureException(e, {
-          extra: { reference, attendeeId, context: 'paystack_webhook_send_whatsapp' },
-        })
-      }
+    // Send invitation notifications — email + WhatsApp are independent, so
+    // dispatch them concurrently. Both stay awaited: an un-awaited promise here
+    // is terminated when the response returns, which silently dropped every paid
+    // guest's pass. Each swallows its own error so one failure can't block the
+    // other. This is the primary delivery path for a paid ticket.
+    if (eventData) {
+      await Promise.all([
+        attendee?.email
+          ? sendInvitationEmail({
+              eventId,
+              recipientEmail: attendee.email,
+              recipientName: attendee.name,
+              invitationId,
+              event: eventData,
+            }).catch((e) => {
+              console.error('[Paystack Webhook] invitation email failed', { reference, attendeeId }, e)
+              Sentry.captureException(e, {
+                extra: { reference, attendeeId, context: 'paystack_webhook_send_email' },
+              })
+            })
+          : Promise.resolve(),
+        attendee?.phone
+          ? sendInvitationWhatsApp({
+              eventId,
+              recipientPhone: attendee.phone,
+              recipientName: attendee.name,
+              invitationId,
+              event: eventData,
+            }).catch((e) => {
+              console.error('[Paystack Webhook] invitation WhatsApp failed', { reference, attendeeId }, e)
+              Sentry.captureException(e, {
+                extra: { reference, attendeeId, context: 'paystack_webhook_send_whatsapp' },
+              })
+            })
+          : Promise.resolve(),
+      ])
     }
 
     return NextResponse.json({ received: true }, { status: 200 })

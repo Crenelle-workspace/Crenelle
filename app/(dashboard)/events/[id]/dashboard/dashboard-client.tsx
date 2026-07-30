@@ -307,12 +307,12 @@ export default function LiveDashboardPage() {
 
         {!isMounted || !event ? (
           <Button
-            variant="primary"
-            className="gap-2 h-12 px-6 text-sm shrink-0 opacity-50 cursor-not-allowed"
+            variant="ghost"
+            className="gap-2 h-10 px-4 text-xs font-semibold text-foreground/70 shrink-0 opacity-50 cursor-not-allowed border border-border/40 rounded-full"
             disabled
           >
             <FileText className="h-4 w-4" aria-hidden="true" />
-            SUMMARY_REPORT
+            Download Report
           </Button>
         ) : (
           <PDFDownloadLink
@@ -341,12 +341,12 @@ export default function LiveDashboardPage() {
           >
             {({ loading: pdfLoading }) => (
               <Button
-                variant="primary"
-                className="gap-2 h-12 px-6 text-sm shrink-0"
+                variant="copper"
+                className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full"
                 disabled={pdfLoading}
               >
                 <FileText className="h-4 w-4" aria-hidden="true" />
-                {pdfLoading ? 'GENERATING...' : 'SUMMARY_REPORT'}
+                {pdfLoading ? 'Generating PDF...' : 'Download Report'}
               </Button>
             )}
           </PDFDownloadLink>
@@ -354,43 +354,41 @@ export default function LiveDashboardPage() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-foreground/20" role="list" aria-label="Attendance statistics">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border/40 rounded-2xl overflow-hidden" role="list" aria-label="Attendance statistics">
         <StatCard
-          icon={<Users className="h-5 w-5 text-foreground/60" aria-hidden="true" />}
+          icon={<Users className="h-5 w-5 text-copper" aria-hidden="true" />}
           label="Total Seats"
           value={totalSeats}
-          sub={`${totalInvited} invitations`}
+          subtext="Configured capacity"
         />
         <StatCard
-          icon={<UserCheck className="h-5 w-5 text-admitted" aria-hidden="true" />}
-          label="People In"
+          icon={<UserCheck className="h-5 w-5 text-copper" aria-hidden="true" />}
+          label="Invited Guests"
+          value={totalInvited}
+          subtext="Cards generated"
+        />
+        <StatCard
+          icon={<TrendingUp className="h-5 w-5 text-emerald-500" aria-hidden="true" />}
+          label="Admitted"
           value={arrived}
-          sub={`${arrivedSeats} groups arrived`}
-          accent="admitted"
+          subtext={`${arrivedSeats} seats represented`}
         />
         <StatCard
-          icon={<Clock className="h-5 w-5 text-signal" aria-hidden="true" />}
-          label="Pending"
-          value={totalSeats - arrived}
-          sub={`${totalInvited - arrivedSeats} groups waiting`}
-          accent="signal"
-        />
-        <StatCard
-          icon={<BarChart3 className="h-5 w-5 text-foreground/60" aria-hidden="true" />}
-          label="Arrival Rate"
+          icon={<Clock className="h-5 w-5 text-amber-500" aria-hidden="true" />}
+          label="Attendance Rate"
           value={`${arrivalRate}%`}
-          sub="of total seats filled"
+          subtext="Of capacity filled"
         />
       </div>
 
       {/* Capacity bar */}
       <div>
         <div className="flex justify-between items-end mb-2">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/70">OVERALL_CAPACITY_LOAD</span>
-          <span className="font-mono text-xs text-signal uppercase">{arrived} / {totalSeats}</span>
+          <span className="font-sans text-xs font-semibold text-muted-foreground">Capacity Usage</span>
+          <span className="font-sans text-xs font-bold text-copper">{arrived} / {totalSeats}</span>
         </div>
         <div
-          className="w-full h-5 bg-background border-2 border-foreground/40 relative p-0.5"
+          className="w-full h-4 bg-card border border-border/40 rounded-full relative p-0.5 overflow-hidden"
           role="progressbar"
           aria-valuenow={arrivalRate}
           aria-valuemin={0}
@@ -398,7 +396,7 @@ export default function LiveDashboardPage() {
           aria-label={`Arrival rate: ${arrivalRate}%`}
         >
           <div
-            className="h-full bg-signal transition-all duration-1000 ease-out"
+            className="h-full bg-copper rounded-full transition-all duration-1000 ease-out"
             style={{ width: `${arrivalRate}%` }}
           />
         </div>
@@ -407,8 +405,8 @@ export default function LiveDashboardPage() {
       {/* Per-entrance breakdown */}
       {entranceStats.length > 1 && (
         <div>
-          <h3 className="font-display text-2xl uppercase text-foreground mb-4 flex items-center gap-2">
-            <DoorOpen className="h-5 w-5 text-foreground/50" aria-hidden="true" />
+          <h3 className="font-sans text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+            <DoorOpen className="h-5 w-5 text-copper" aria-hidden="true" />
             Per Entrance
           </h3>
           <div className="flex flex-col gap-3">
@@ -417,12 +415,12 @@ export default function LiveDashboardPage() {
               return (
                 <div key={gate.label}>
                   <div className="flex justify-between items-end mb-1">
-                    <span className="font-mono text-xs uppercase tracking-widest text-foreground/70 truncate mr-4">{gate.label}</span>
-                    <span className="font-mono text-xs text-signal shrink-0">{gate.count} <span className="text-foreground/30">({gatePct}%)</span></span>
+                    <span className="font-sans text-xs font-medium text-muted-foreground truncate mr-4">{gate.label}</span>
+                    <span className="font-sans text-xs font-bold text-copper shrink-0">{gate.count} <span className="text-muted-foreground font-normal">({gatePct}%)</span></span>
                   </div>
-                  <div className="w-full h-3 bg-background border border-foreground/20 relative p-0.5">
+                  <div className="w-full h-2.5 bg-card border border-border/40 rounded-full relative p-0.5 overflow-hidden">
                     <div
-                      className="h-full bg-signal/60 transition-all duration-700"
+                      className="h-full bg-copper/70 rounded-full transition-all duration-700"
                       style={{ width: `${gatePct}%` }}
                     />
                   </div>
@@ -437,27 +435,27 @@ export default function LiveDashboardPage() {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Recent arrivals */}
         <div>
-          <h3 className="font-display text-2xl uppercase text-foreground mb-4">Recent Arrivals</h3>
+          <h3 className="font-sans text-xl font-bold text-foreground mb-4">Recent Arrivals</h3>
           {entries.length === 0 ? (
-            <div className="py-12 border-2 border-dashed border-foreground/20 flex items-center justify-center">
-              <p className="font-mono text-xs uppercase tracking-widest text-foreground/50">NO_ARRIVALS_YET</p>
+            <div className="py-12 border border-dashed border-border/40 rounded-2xl flex items-center justify-center">
+              <p className="font-sans text-xs font-medium text-muted-foreground">No arrivals recorded yet</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-px max-h-96 overflow-y-auto">
+            <div className="flex flex-col gap-2 max-h-96 overflow-y-auto pr-1">
               {entries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-center justify-between px-4 py-3 bg-admitted/5 border border-admitted/10 hover:border-admitted/20 transition-colors"
+                  className="flex items-center justify-between px-4 py-3 bg-card border border-border/40 rounded-xl hover:border-copper/40 transition-colors"
                 >
                   <div>
-                    <p className="font-mono text-sm text-foreground">{entry.invitation.guest.name}</p>
-                    <p className="font-mono text-[10px] text-foreground/60 uppercase tracking-widest mt-0.5">
+                    <p className="font-sans text-sm font-semibold text-foreground">{entry.invitation.guest.name}</p>
+                    <p className="font-sans text-xs text-muted-foreground mt-0.5">
                       {entry.invitation?.seat_info && <span className="mr-3">{entry.invitation.seat_info}</span>}
                       {new Date(entry.scanned_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-admitted/60 border border-admitted/20 px-2 py-1">
-                    {entry.invitation?.party_size > 1 ? `+${entry.invitation.party_size}` : 'SOLO'}
+                  <span className="font-sans text-xs font-bold text-emerald-500 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                    {entry.invitation?.party_size > 1 ? `+${entry.invitation.party_size}` : '1 guest'}
                   </span>
                 </div>
               ))}
@@ -467,12 +465,12 @@ export default function LiveDashboardPage() {
 
         {/* Still waiting */}
         <div>
-          <h3 className="font-display text-2xl uppercase text-foreground mb-4">
-            Not Yet Arrived <span className="text-foreground/40">({pending.length})</span>
+          <h3 className="font-sans text-xl font-bold text-foreground mb-4">
+            Not Yet Arrived <span className="text-muted-foreground font-normal">({pending.length})</span>
           </h3>
           {pending.length === 0 ? (
-            <div className="py-12 border-2 border-admitted/20 bg-admitted/5 flex items-center justify-center">
-              <p className="font-mono text-xs uppercase tracking-widest text-admitted">ALL_GUESTS_ARRIVED</p>
+            <div className="py-12 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl flex items-center justify-center">
+              <p className="font-sans text-xs font-bold text-emerald-500">All guests have arrived!</p>
             </div>
           ) : (
             <div className="flex flex-col gap-px max-h-96 overflow-y-auto">

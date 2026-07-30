@@ -33,12 +33,12 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({
   open,
   onOpenChange,
-  title = 'CONFIRM_ACTION',
-  description = 'THIS_ACTION_IS_IRREVERSIBLE',
+  title = 'Confirm Action',
+  description = 'This action cannot be undone.',
   subject,
-  subjectLabel = 'TARGET',
+  subjectLabel = 'Subject',
   body = 'This action is permanent and cannot be undone.',
-  confirmLabel = 'CONFIRM',
+  confirmLabel = 'Confirm',
   isPending = false,
   onConfirm,
 }: ConfirmDialogProps) {
@@ -62,8 +62,8 @@ export function ConfirmDialog({
           </DialogHeader>
 
           {subject && (
-            <div className="border border-border/40 p-4 mb-5 bg-stone-900/40 rounded-xl">
-              <p className="font-mono text-[9px] uppercase font-bold text-muted-foreground/75 mb-1 tracking-wider">
+            <div className="border border-border/40 p-4 mb-5 bg-card/50 rounded-xl">
+              <p className="font-sans text-xs font-semibold text-muted-foreground mb-1">
                 {subjectLabel}
               </p>
               <p className="font-sans text-lg font-bold text-foreground leading-tight">

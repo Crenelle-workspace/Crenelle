@@ -56,7 +56,7 @@ export function StatusChangeDialog({
       <div className="relative z-10 bg-card/95 backdrop-blur-xl border border-border/50 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-border/40">
-          <p className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper mb-1">
+          <p className="font-sans text-[11px] font-semibold uppercase tracking-wider text-copper mb-1">
             Change Event Status
           </p>
           <h2 id="status-dialog-title" className="font-sans text-xl font-bold text-foreground tracking-tight">

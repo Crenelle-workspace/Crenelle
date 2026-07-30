@@ -244,6 +244,16 @@ export interface OrganizerPaymentSettings {
   updated_at: string
 }
 
+export interface PaymentBreakdown {
+  ticketFeeKobo: number
+  crenelleChargeKobo: number
+  paystackFeeKobo: number
+  totalAmountKobo: number
+  organiserPayoutKobo: number
+  platformFeePercent: number
+}
+
+
 // Paystack webhook payload shapes
 export interface PaystackWebhookEvent {
   event:

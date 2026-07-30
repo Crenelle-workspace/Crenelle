@@ -225,7 +225,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
   return (
     <div>
       {/* Section header + Add button */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b border-border/40 pb-6">
         <SectionHeader
           eyebrow="Guest List"
           title="Guest List"
@@ -235,31 +235,31 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
         <div className="flex items-center gap-3 shrink-0">
           <Button
             onClick={exportToCSV}
-            variant="primary"
-            className="gap-2 h-12 px-6 text-sm shrink-0"
+            variant="ghost"
+            className="gap-2 h-10 px-4 text-xs font-semibold text-foreground/70 hover:text-foreground border border-border/40 rounded-full"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
-            EXPORT_CSV
+            Export CSV
           </Button>
 
           {canEdit ? (
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild>
-                <Button variant="signal" className="gap-2 h-12 px-6 text-sm shrink-0">
+                <Button variant="copper" className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full">
                   <Plus className="h-4 w-4" aria-hidden="true" />
-                  ADD_GUEST
+                  Add Guest
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-background border-2 border-foreground/20 max-w-md">
+              <DialogContent className="bg-background border border-border/40 max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="font-display text-3xl uppercase text-foreground">Add Guests</DialogTitle>
+                  <DialogTitle className="font-sans text-2xl font-bold text-foreground">Add Guests</DialogTitle>
                 </DialogHeader>
                 <Tabs defaultValue="single" className="w-full mt-2">
-                  <TabsList variant="line" className="border-b-2 border-foreground/10 w-full justify-start mb-4">
-                    <TabsTrigger value="single" className="font-mono text-xs uppercase tracking-widest px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal">
+                  <TabsList variant="line" className="border-b border-border/40 w-full justify-start mb-4">
+                    <TabsTrigger value="single" className="font-sans text-xs font-semibold px-4 py-2 border-b-2 border-transparent data-[state=active]:border-copper">
                       Single Guest
                     </TabsTrigger>
-                    <TabsTrigger value="bulk" className="font-mono text-xs uppercase tracking-widest px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal">
+                    <TabsTrigger value="bulk" className="font-sans text-xs font-semibold px-4 py-2 border-b-2 border-transparent data-[state=active]:border-copper">
                       Multiple Guests
                     </TabsTrigger>
                   </TabsList>
@@ -274,9 +274,9 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
             </Dialog>
           ) : (
             /* Read-only indicator for co-hosts */
-            <span className="inline-flex items-center gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border border-border px-3 py-2 h-12 shrink-0">
+            <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 rounded-full px-3.5 py-2 h-10 shrink-0">
               <Lock className="h-3 w-3" aria-hidden="true" />
-              READ-ONLY
+              Read-only
             </span>
           )}
         </div>
@@ -284,50 +284,58 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
 
       {/* Guest list */}
       {loading ? (
-        <div className="border-2 border-foreground/10 overflow-hidden animate-pulse">
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] bg-secondary border-b-2 border-foreground/20 px-4 py-3 gap-4">
-            {['NAME', 'CONTACT', 'PARTY', 'SEAT', ''].map((h) => (
-              <span key={h} className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/60">{h}</span>
+        <div className="border border-border/40 rounded-2xl overflow-hidden animate-pulse">
+          {/* Table header (Desktop) */}
+          <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_auto_auto_auto] bg-card border-b border-border/40 px-4 py-3 gap-4">
+            {['Name', 'Contact', 'Party', 'Seat', ''].map((h) => (
+              <span key={h} className="font-sans text-xs font-semibold text-muted-foreground">{h}</span>
             ))}
           </div>
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center px-4 py-4 gap-4 border-b border-foreground/5">
-              <div className="flex flex-col gap-1.5">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-16" />
+            <div key={i} className="p-4 border-b border-border/10">
+              {/* Desktop Skeleton */}
+              <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-6 w-8 bg-foreground/5" />
+                <Skeleton className="h-4 w-12" />
+                <div className="h-8" />
               </div>
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-6 w-8 bg-foreground/5" />
-              <Skeleton className="h-4 w-12" />
-              <div className="h-8" />
+              {/* Mobile Skeleton */}
+              <div className="sm:hidden flex flex-col gap-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-40" />
+              </div>
             </div>
           ))}
         </div>
       ) : guests.length === 0 ? (
         <EmptyState
           icon={<Users className="h-10 w-10" />}
-          title="NO_GUESTS_YET"
+          title="No Guests Yet"
           subtitle="Add guests to generate their QR entry cards"
           action={
             canEdit ? (
               <Button
-                variant="signal"
+                variant="copper"
                 onClick={() => setAddOpen(true)}
-                className="gap-2 h-11 px-5 text-xs font-mono tracking-widest uppercase"
+                className="gap-2 h-10 px-5 text-xs font-bold rounded-full"
               >
                 <Plus className="h-3.5 w-3.5" />
-                ADD_YOUR_FIRST_GUEST
+                Add Your First Guest
               </Button>
             ) : null
           }
         />
       ) : (
-        <div className="border-2 border-foreground/10 overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] bg-secondary border-b-2 border-foreground/20 px-4 py-3 gap-4">
-            {['NAME', 'CONTACT', 'PARTY', 'SEAT', ''].map((h) => (
-              <span key={h} className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/60">{h}</span>
+        <div className="border border-border/40 rounded-2xl overflow-hidden">
+          {/* Table header (Desktop) */}
+          <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_auto_auto_auto] bg-card border-b border-border/40 px-4 py-3 gap-4">
+            {['Name', 'Contact', 'Party', 'Seat', ''].map((h) => (
+              <span key={h} className="font-sans text-xs font-semibold text-muted-foreground">{h}</span>
             ))}
           </div>
 
@@ -335,61 +343,134 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
           {guests.map((guest) => (
             <div
               key={guest.id}
-              className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center px-4 py-4 gap-4 border-b border-foreground/5 hover:bg-foreground/2 transition-colors group"
+              className="border-b border-border/10 hover:bg-stone-500/5 transition-colors group"
             >
-              <div className="flex flex-col truncate">
-                <span className="font-mono text-sm text-foreground font-medium truncate mb-1">{guest.name}</span>
-                {canEdit ? (
-                  <select
-                    value={guest.invitation?.ticket_tier_id ?? ''}
-                    disabled={isSavingTier === guest.id}
-                    onChange={(e) => handleTierChange(guest.id, e.target.value || null)}
-                    className="self-start font-mono text-[9px] uppercase tracking-wider bg-foreground/10 text-foreground px-1.5 py-0.5 mt-0.5 font-semibold border border-foreground/15 rounded-none outline-none cursor-pointer hover:bg-foreground/20 max-w-37.5truncate"
-                  >
-                    <option value="">No Tier</option>
-                    {tiers.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  guest.invitation?.ticket_tier?.name && (
-                    <span className="inline-block self-start font-mono text-[9px] uppercase tracking-wider bg-foreground/10 text-foreground px-1.5 py-0.5 mt-1 font-semibold">
-                      {guest.invitation.ticket_tier.name}
-                    </span>
-                  )
-                )}
+              {/* Desktop Row (sm:grid) */}
+              <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_auto_auto_auto] items-center px-4 py-4 gap-4">
+                <div className="flex flex-col truncate min-w-0 pr-2">
+                  <span className="font-sans text-sm text-foreground font-semibold truncate">{guest.name}</span>
+                  {canEdit ? (
+                    <select
+                      value={guest.invitation?.ticket_tier_id ?? ''}
+                      disabled={isSavingTier === guest.id}
+                      onChange={(e) => handleTierChange(guest.id, e.target.value || null)}
+                      className="self-start font-sans text-[10px] bg-copper/10 text-copper px-2 py-0.5 mt-1 font-semibold border border-copper/20 rounded-md outline-none cursor-pointer hover:bg-copper/20 max-w-full truncate"
+                    >
+                      <option value="">No Tier</option>
+                      {tiers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    guest.invitation?.ticket_tier?.name && (
+                      <span className="inline-block self-start font-sans text-[10px] bg-copper/10 text-copper px-2 py-0.5 mt-1 rounded-full font-semibold truncate max-w-full">
+                        {guest.invitation.ticket_tier.name}
+                      </span>
+                    )
+                  )}
+                </div>
+                <div className="flex flex-col truncate">
+                  <span className="font-sans text-xs text-muted-foreground truncate">{guest.email || '—'}</span>
+                  {guest.phone && <span className="font-sans text-[10px] text-muted-foreground/70 truncate">{guest.phone}</span>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-sans text-xs font-semibold text-copper" title="Party size">
+                    +{guest.invitation?.party_size ?? 1}
+                  </span>
+                </div>
+                <span className="font-sans text-xs text-muted-foreground truncate">
+                  {guest.invitation?.seat_info || '—'}
+                </span>
+                {/* Edit/Delete only shown to owners */}
+                <div className="flex gap-1 justify-end">
+                  {canEdit && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-foreground/20 hover:text-foreground hover:bg-foreground/5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => setEditGuest(guest)}
+                        aria-label={`Edit guest ${guest.name}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-denied/40 hover:text-denied hover:bg-denied/5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => setDeleteTarget(guest)}
+                        aria-label={`Remove guest ${guest.name}`}
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
-              <span className="font-mono text-xs text-foreground/60 truncate">{guest.phone || guest.email || '—'}</span>
-              <span className="font-display text-lg text-signal" aria-label={`Party size: ${guest.invitation?.party_size ?? 1}`}>
-                +{guest.invitation?.party_size ?? 1}
-              </span>
-              <span className="font-mono text-xs text-foreground/60 whitespace-nowrap">{guest.invitation?.seat_info || '—'}</span>
-              {/* Edit/Delete only shown to owners */}
-              <div className="flex gap-1">
-                {canEdit && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-foreground/20 hover:text-foreground hover:bg-foreground/5 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => setEditGuest(guest)}
-                      aria-label={`Edit guest ${guest.name}`}
-                    >
-                      <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-denied/40 hover:text-denied hover:bg-denied/5 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => setDeleteTarget(guest)}
-                      aria-label={`Remove guest ${guest.name}`}
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Button>
-                  </>
-                )}
+
+              {/* Mobile Card View (sm:hidden) */}
+              <div className="sm:hidden flex flex-col p-4 gap-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col min-w-0 pr-1">
+                    <span className="font-mono text-sm font-semibold text-foreground truncate">{guest.name}</span>
+                    {canEdit ? (
+                      <select
+                        value={guest.invitation?.ticket_tier_id ?? ''}
+                        disabled={isSavingTier === guest.id}
+                        onChange={(e) => handleTierChange(guest.id, e.target.value || null)}
+                        className="self-start font-mono text-[9px] uppercase tracking-wider bg-foreground/10 text-foreground px-1.5 py-0.5 mt-1 font-semibold border border-foreground/15 rounded-none outline-none cursor-pointer hover:bg-foreground/20 max-w-full truncate"
+                      >
+                        <option value="">No Tier</option>
+                        {tiers.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      guest.invitation?.ticket_tier?.name && (
+                        <span className="inline-block self-start font-mono text-[9px] uppercase tracking-wider bg-foreground/10 text-foreground px-1.5 py-0.5 mt-1 font-semibold truncate max-w-full">
+                          {guest.invitation.ticket_tier.name}
+                        </span>
+                      )
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-display text-base text-signal" title="Party size">
+                      +{guest.invitation?.party_size ?? 1}
+                    </span>
+                    {canEdit && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-foreground/50 hover:text-foreground"
+                          onClick={() => setEditGuest(guest)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-denied/60 hover:text-denied"
+                          onClick={() => setDeleteTarget(guest)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs font-mono text-foreground/60 pt-1 border-t border-foreground/5">
+                  <span className="truncate pr-2">{guest.phone || guest.email || '—'}</span>
+                  {guest.invitation?.seat_info && (
+                    <span className="text-[10px] text-foreground/45 shrink-0 bg-foreground/5 px-1.5 py-0.5">
+                      Seat: {guest.invitation.seat_info}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -400,9 +481,9 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
       {canEdit && (
         <>
           <Dialog open={!!editGuest} onOpenChange={(o) => !o && setEditGuest(null)}>
-            <DialogContent className="bg-background border-2 border-foreground/20 max-w-md">
+            <DialogContent className="bg-background border border-border/40 max-w-md">
               <DialogHeader>
-                <DialogTitle className="font-display text-3xl uppercase text-foreground">Edit Guest</DialogTitle>
+                <DialogTitle className="font-sans text-2xl font-bold text-foreground">Edit Guest</DialogTitle>
               </DialogHeader>
               {editGuest && (
                 <GuestForm
@@ -426,12 +507,12 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
           <ConfirmDialog
             open={!!deleteTarget}
             onOpenChange={(open) => !open && setDeleteTarget(null)}
-            title="CANCEL_INVITATION"
-            description="THIS_ACTION_IS_IRREVERSIBLE"
+            title="Cancel Invitation"
+            description="This action cannot be undone."
             subject={deleteTarget?.name}
-            subjectLabel="TARGET_GUEST"
+            subjectLabel="Guest Name"
             body="Cancelling this guest's invitation will invalidate their QR code entry pass. This cannot be undone."
-            confirmLabel="CANCEL_INVITATION"
+            confirmLabel="Cancel Invitation"
             isPending={isDeleting}
             onConfirm={async () => {
               if (!deleteTarget) return
@@ -512,8 +593,8 @@ function GuestForm({
         </select>
       </div>
 
-      <Button type="submit" variant="signal" className="w-full h-12 text-sm mt-2" disabled={loading}>
-        {loading ? 'SAVING...' : 'SAVE GUEST'}
+      <Button type="submit" variant="copper" className="w-full h-11 text-xs font-bold mt-2 rounded-full" disabled={loading}>
+        {loading ? 'Saving...' : 'Save Guest'}
       </Button>
     </form>
   )
@@ -549,9 +630,9 @@ function BulkGuestForm({
           placeholder="ngozi@example.com&#10;olana@gatekeeper.dev, guest@crenelle.org"
           required
           rows={6}
-          className={`${fieldCls} py-3 resize-none font-mono text-xs h-36`}
+          className={`${fieldCls} py-3 resize-none font-sans text-xs h-36`}
         />
-        <p className="font-mono text-[9px] uppercase tracking-wider text-foreground/40 leading-relaxed">
+        <p className="font-sans text-[11px] text-muted-foreground leading-relaxed">
           Separate multiple email addresses using newlines, commas, or semicolons.
         </p>
       </div>
@@ -568,13 +649,13 @@ function BulkGuestForm({
           required
           className={fieldCls}
         />
-        <p className="font-mono text-[9px] uppercase tracking-wider text-foreground/40">
+        <p className="font-sans text-[11px] text-muted-foreground">
           This party size will be assigned to each guest in the list.
         </p>
       </div>
 
-      <Button type="submit" variant="signal" className="w-full h-12 text-sm mt-2" disabled={loading}>
-        {loading ? 'IMPORTING...' : 'SAVE GUESTS'}
+      <Button type="submit" variant="copper" className="w-full h-11 text-xs font-bold mt-2 rounded-full" disabled={loading}>
+        {loading ? 'Importing...' : 'Save Guests'}
       </Button>
     </form>
   )

@@ -54,8 +54,8 @@ export default function CardsPage() {
   }, [eventId])
 
   if (loading) return (
-    <div className="font-mono text-xs uppercase text-foreground/60 tracking-widest py-12 text-center animate-pulse">
-      GENERATING_QR_CODES...
+    <div className="font-sans text-xs font-semibold text-muted-foreground py-12 text-center animate-pulse">
+      Generating QR passes...
     </div>
   )
 
@@ -63,7 +63,7 @@ export default function CardsPage() {
     return (
       <EmptyState
         icon={<QrCode className="h-10 w-10" />}
-        title="NO_GUESTS_ADDED_YET"
+        title="No Guests Added Yet"
         subtitle="Add guests first, then return here to generate their QR entry cards"
       />
     )
@@ -89,7 +89,7 @@ export default function CardsPage() {
         </Button>
       </div>
 
-      <p className="font-mono text-[10px] text-foreground/60 uppercase tracking-widest mb-6 print:hidden">
+      <p className="font-sans text-xs text-muted-foreground mb-6 print:hidden">
         Tip: Use browser Print dialog → Save as PDF → Enable &quot;Background graphics&quot; for best results.
       </p>
 
@@ -125,15 +125,15 @@ function EntryCard({
 }) {
   return (
     <div
-      className="border-2 border-foreground/20 bg-background p-5 flex flex-col items-center text-center print:break-inside-avoid"
+      className="border border-border/40 bg-card p-5 rounded-2xl flex flex-col items-center text-center print:break-inside-avoid shadow-sm"
       role="article"
       aria-label={`Entry card for ${guestName}`}
     >
       {/* Event name */}
-      <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-foreground/60 mb-3">{eventName}</p>
+      <p className="font-sans text-[11px] font-semibold uppercase tracking-wider text-copper mb-3">{eventName}</p>
 
       {/* Dashed separator */}
-      <div className="w-full border-t border-dashed border-foreground/10 mb-3" aria-hidden="true" />
+      <div className="w-full border-t border-dashed border-border/40 mb-3" aria-hidden="true" />
 
       {/* QR Code */}
       <Image
@@ -142,24 +142,24 @@ function EntryCard({
         width={112}
         height={112}
         unoptimized
-        className="w-28 h-28 mb-4 border-2 border-foreground/10"
+        className="w-28 h-28 mb-4 border border-border/20 rounded-xl"
       />
 
       {/* Dashed separator */}
-      <div className="w-full border-t border-dashed border-foreground/10 mb-3" aria-hidden="true" />
+      <div className="w-full border-t border-dashed border-border/40 mb-3" aria-hidden="true" />
 
       {/* Guest name */}
-      <p className="font-display text-2xl uppercase text-foreground leading-tight">{guestName}</p>
+      <p className="font-sans text-xl font-bold text-foreground leading-tight">{guestName}</p>
 
       {/* Party size */}
-      <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/70 mt-2">
-        ADMITS <span className="text-signal font-bold">{partySize}</span> {partySize === 1 ? 'PERSON' : 'PEOPLE'}
+      <p className="font-sans text-xs font-semibold text-muted-foreground mt-2">
+        Admits <span className="text-copper font-bold">{partySize}</span> {partySize === 1 ? 'guest' : 'guests'}
       </p>
 
       {/* Seat info */}
       {seatInfo && (
-        <div className="mt-3 border border-signal/30 px-3 py-1">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-signal">{seatInfo}</p>
+        <div className="mt-3 border border-copper/30 bg-copper/10 px-3 py-1 rounded-full">
+          <p className="font-sans text-xs font-semibold text-copper">{seatInfo}</p>
         </div>
       )}
     </div>

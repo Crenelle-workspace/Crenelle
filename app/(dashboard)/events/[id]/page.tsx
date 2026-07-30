@@ -38,7 +38,6 @@ export default function EventOverviewPage() {
   const [editAgenda, setEditAgenda] = useState<AgendaItem[]>([])
   const [editSpeakers, setEditSpeakers] = useState<SpeakerInfo[]>([])
   const [editFaqs, setEditFaqs] = useState<FAQItem[]>([])
-  const [editLocationUrl, setEditLocationUrl] = useState('')
 
   // Reminder dialog state
   const [reminderOpen, setReminderOpen] = useState(false)
@@ -69,7 +68,6 @@ export default function EventOverviewPage() {
         setEditAgenda(data.agenda || [])
         setEditSpeakers(data.speakers || [])
         setEditFaqs(data.faqs || [])
-        setEditLocationUrl(data.location_url || '')
 
         // Resolve current user to check if they are the owner
         const { data: { user } } = await supabase.auth.getUser()
@@ -416,14 +414,14 @@ export default function EventOverviewPage() {
       <div className="lg:col-span-7 xl:col-span-8 space-y-6">
         <div className="brutalist-card">
         {/* Card header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-8 pb-6 border-b-2 border-foreground/20">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-foreground/70">EVENT_DETAILS</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-8 pb-6 border-b border-border/40">
+          <p className="font-sans text-xs font-semibold text-muted-foreground uppercase tracking-wider">Event Details</p>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setReminderOpen(true)}
-              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-3 sm:px-4"
+              className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-9 px-3 sm:px-4"
             >
               <Mail className="h-3.5 w-3.5" aria-hidden="true" />
               Remind
@@ -432,7 +430,7 @@ export default function EventOverviewPage() {
               variant="ghost"
               size="sm"
               onClick={() => setEditing(true)}
-              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50 h-9 px-3 sm:px-4"
+              className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-9 px-3 sm:px-4"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
               Edit
@@ -441,7 +439,7 @@ export default function EventOverviewPage() {
               variant="ghost"
               size="sm"
               onClick={handleDelete}
-              className="gap-1.5 sm:gap-2 font-mono text-xs uppercase tracking-widest text-denied/60 hover:text-denied border border-denied/20 hover:border-denied/50 h-9 px-3 sm:px-4"
+              className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-red-500 hover:bg-red-500/10 border border-red-500/20 rounded-full h-9 px-3 sm:px-4"
               aria-label={`Delete event ${event.name}`}
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -452,24 +450,24 @@ export default function EventOverviewPage() {
 
         {/* Data rows */}
         <dl className="flex flex-col gap-6">
-          <Row label="EVENT_NAME" value={<span className="font-display text-3xl text-foreground uppercase">{event.name}</span>} />
+          <Row label="Event Name" value={<span className="font-sans text-2xl sm:text-3xl font-bold text-foreground">{event.name}</span>} />
           <Row
-            label="EVENT_TYPE"
+            label="Event Type"
             value={
               <span className="inline-flex items-center gap-2">
-                {event.event_type === 'open' ? <Globe className="h-4 w-4 text-signal" /> : <Lock className="h-4 w-4 text-foreground/60" />}
-                <span className={`font-display text-lg uppercase ${event.event_type === 'open' ? 'text-signal' : ''}`}>
-                  {event.event_type}
+                {event.event_type === 'open' ? <Globe className="h-4 w-4 text-copper" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
+                <span className="font-sans text-sm font-semibold text-foreground">
+                  {event.event_type === 'open' ? 'Public Event' : 'Invite-Only'}
                 </span>
               </span>
             }
           />
-          <Row label="DATE" value={new Date(event.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase()} />
-          {event.time && <Row label="TIME" value={`${event.time.slice(0, 5)} (${event.timezone || 'Africa/Lagos'})`} />}
-          <Row label="VENUE" value={event.venue} />
-          {event.capacity && <Row label="CAPACITY" value={`${event.capacity} people`} />}
+          <Row label="Date" value={new Date(event.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />
+          {event.time && <Row label="Time" value={`${event.time.slice(0, 5)} (${event.timezone || 'Africa/Lagos'})`} />}
+          <Row label="Venue" value={event.venue} />
+          {event.capacity && <Row label="Capacity" value={`${event.capacity} people`} />}
           <Row
-            label="STATUS"
+            label="Status"
             value={
               <EventStatusBadge
                 eventId={id}
@@ -480,42 +478,42 @@ export default function EventOverviewPage() {
               />
             }
           />
-          {event.description && <Row label="DESCRIPTION" value={event.description} />}
+          {event.description && <Row label="Description" value={event.description} />}
         </dl>
       </div>
 
       {/* Registration link for open events */}
       {event.event_type === 'open' && event.registration_slug && (
         <div className="brutalist-card">
-          <div className="flex items-center justify-between mb-4 pb-4 border-b-2 border-foreground/10">
-            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-signal">REGISTRATION_LINK</p>
+          <div className="flex items-center justify-between mb-4 pb-4 border-b border-border/40">
+            <p className="font-sans text-xs font-semibold text-copper uppercase tracking-wider">Public Registration Link</p>
             <Button
               variant="ghost"
               size="sm"
               onClick={copyRegistrationLink}
-              className="gap-2 font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground border border-foreground/10 hover:border-foreground/30 h-8 px-3"
+              className="gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-8 px-3"
             >
               <Copy className="h-3 w-3" />
-              COPY
+              Copy Link
             </Button>
           </div>
-          <p className="font-mono text-xs text-foreground/70 break-all mb-4">
+          <p className="font-sans text-xs text-muted-foreground break-all mb-4">
             {typeof window !== 'undefined' && `${window.location.origin}/register/${event.registration_slug}`}
           </p>
 
           {/* Registration stats */}
-          <div className="grid grid-cols-3 gap-px bg-foreground/10">
+          <div className="grid grid-cols-3 gap-px bg-border/40 rounded-xl overflow-hidden">
             <div className="bg-background p-3 text-center">
-              <p className="font-display text-2xl text-signal">{regCounts.pending}</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50">Pending</p>
+              <p className="font-sans text-xl font-bold text-copper">{regCounts.pending}</p>
+              <p className="font-sans text-xs font-medium text-muted-foreground">Pending</p>
             </div>
             <div className="bg-background p-3 text-center">
-              <p className="font-display text-2xl text-admitted">{regCounts.accepted}</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50">Accepted</p>
+              <p className="font-sans text-xl font-bold text-emerald-500">{regCounts.accepted}</p>
+              <p className="font-sans text-xs font-medium text-muted-foreground">Accepted</p>
             </div>
             <div className="bg-background p-3 text-center">
-              <p className="font-display text-2xl text-denied">{regCounts.rejected}</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50">Rejected</p>
+              <p className="font-sans text-xl font-bold text-red-500">{regCounts.rejected}</p>
+              <p className="font-sans text-xs font-medium text-muted-foreground">Rejected</p>
             </div>
           </div>
 
@@ -629,21 +627,21 @@ export default function EventOverviewPage() {
                 <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50">Paid</p>
               </div>
               <div className="bg-background p-3 text-center">
-                <p className="font-display text-2xl text-signal">{revenue.pendingCount}</p>
-                <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/50">Pending</p>
+                <p className="font-sans text-xl font-bold text-copper">{revenue.pendingCount}</p>
+                <p className="font-sans text-xs font-medium text-muted-foreground">Pending</p>
               </div>
             </div>
 
-            <div className="mt-4 border-t border-foreground/10 pt-3 flex items-center justify-between">
-              <p className="font-mono text-[9px] text-foreground/30 uppercase tracking-wide">
+            <div className="mt-4 border-t border-border/40 pt-3 flex items-center justify-between">
+              <p className="font-sans text-xs text-muted-foreground">
                 Settlement T+1 via Paystack · NGN
               </p>
               <a
                 href={`/api/payments/export?event_id=${id}`}
                 download
-                className="font-mono text-[9px] uppercase tracking-widest text-copper hover:text-copper/85 border border-copper/20 hover:border-copper/45 px-2.5 py-1.5 transition-all hover:bg-copper/5 shrink-0"
+                className="font-sans text-xs font-semibold text-copper hover:text-copper/85 border border-copper/30 hover:border-copper/60 px-3 py-1.5 rounded-full transition-all hover:bg-copper/5 shrink-0"
               >
-                EXPORT_CSV
+                Export CSV
               </a>
             </div>
           </div>
@@ -656,10 +654,10 @@ export default function EventOverviewPage() {
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:gap-6">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/70 sm:w-36 shrink-0 mb-1 sm:mb-0 sm:pt-1">
+      <dt className="font-sans text-xs font-semibold text-muted-foreground sm:w-36 shrink-0 mb-1 sm:mb-0 sm:pt-1">
         {label}
       </dt>
-      <dd className="font-mono text-sm text-foreground leading-relaxed">
+      <dd className="font-sans text-sm text-foreground leading-relaxed">
         {value}
       </dd>
     </div>

@@ -249,22 +249,22 @@ export default function RegistrationsPage() {
           {/* Send Reminder */}
           <Button
             variant="ghost"
-            className="gap-2 h-12 px-5 text-sm font-mono uppercase tracking-widest text-foreground/70 hover:text-foreground border border-foreground/20 hover:border-foreground/50"
+            className="gap-2 h-10 px-4 text-xs font-semibold text-foreground/70 hover:text-foreground border border-border/40 rounded-full"
             onClick={() => setReminderOpen(true)}
           >
             <Mail className="h-4 w-4" />
-            SEND_REMINDER
+            Send Reminder
           </Button>
 
           {/* Copy registration link */}
           {event?.registration_slug && (
             <Button
-              variant="signal"
-              className="gap-2 h-12 px-5 text-sm"
+              variant="copper"
+              className="gap-2 h-10 px-5 text-xs font-bold rounded-full"
               onClick={copyRegistrationLink}
             >
               <UserPlus className="h-4 w-4" />
-              COPY_LINK
+              Copy Registration Link
             </Button>
           )}
         </div>
@@ -272,11 +272,11 @@ export default function RegistrationsPage() {
 
       {/* Registration link info */}
       {event?.registration_slug && (
-        <div className="border-l-4 border-signal p-4 bg-signal/5 mb-6">
-          <p className="font-mono text-[10px] text-foreground/50 uppercase tracking-widest mb-1">
-            PUBLIC REGISTRATION LINK
+        <div className="border-l-4 border-copper p-4 bg-copper/5 rounded-r-2xl mb-6">
+          <p className="font-sans text-xs text-muted-foreground font-semibold mb-1">
+            Public Registration Link
           </p>
-          <p className="font-mono text-xs text-signal break-all">
+          <p className="font-sans text-xs text-copper font-medium break-all">
             {typeof window !== 'undefined' && `${window.location.origin}/register/${event.registration_slug}`}
           </p>
         </div>
@@ -284,72 +284,97 @@ export default function RegistrationsPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="flex gap-0 border-2 border-foreground/20 overflow-hidden">
+        <div className="flex gap-0 border border-border/40 rounded-xl overflow-x-auto max-w-full no-scrollbar shrink-0">
           {(['all', 'pending', 'accepted', 'rejected', 'waitlist'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`font-mono text-[10px] uppercase tracking-widest px-4 py-2.5 transition-colors ${
+              className={`font-sans text-xs px-3.5 sm:px-4 py-2 transition-colors shrink-0 whitespace-nowrap ${
                 filter === f
-                  ? 'bg-foreground text-background'
-                  : 'bg-background text-foreground/60 hover:text-foreground'
+                  ? 'bg-foreground text-background font-bold'
+                  : 'bg-background text-muted-foreground hover:text-foreground'
               }`}
             >
-              {f === 'all' ? `ALL (${registrations.length})` : `${f} (${counts[f]})`}
+              {f === 'all' ? `All (${registrations.length})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${counts[f]})`}
             </button>
           ))}
         </div>
 
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/40" />
+        <div className="relative flex-1 sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-background border-2 border-foreground/20 text-foreground font-mono text-xs px-4 py-2.5 pl-9 placeholder:text-foreground/30 focus:outline-none focus:border-signal transition-colors"
+            className="w-full bg-background border border-border/40 text-foreground font-sans text-xs px-4 py-2 pl-9 placeholder:text-muted-foreground focus:outline-none focus:border-copper rounded-xl transition-colors"
           />
         </div>
       </div>
 
       {/* Registrations list */}
       {loading ? (
-        <div className="border-2 border-foreground/10 overflow-hidden animate-pulse">
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] bg-secondary border-b-2 border-foreground/20 px-4 py-3 gap-4">
-            {['NAME', 'EMAIL / PHONE', 'PAYMENT', 'STATUS', 'DATE', ''].map((h) => (
-              <span key={h} className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/60">{h}</span>
+        <div className="border border-border/40 rounded-2xl overflow-hidden animate-pulse">
+          {/* Table header (Desktop) */}
+          <div className="hidden sm:grid sm:grid-cols-[minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] bg-card border-b border-border/40 px-4 py-3 gap-4">
+            {['Name', 'Email / Phone', 'Payment', 'Status', 'Date', ''].map((h, idx) => (
+              <span
+                key={h || idx}
+                className={`font-sans text-xs font-semibold text-muted-foreground ${
+                  h === 'Payment' || h === 'Status' ? 'text-center' : h === 'Date' ? 'text-right pr-2' : ''
+                }`}
+              >
+                {h}
+              </span>
             ))}
           </div>
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center px-4 py-4 gap-4 border-b border-foreground/5">
-              <div className="flex flex-col gap-1.5">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-16" />
+            <div key={i} className="p-4 border-b border-foreground/5">
+              {/* Desktop Skeleton */}
+              <div className="hidden sm:grid sm:grid-cols-[minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] items-center gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <div className="flex justify-center"><Skeleton className="h-6 w-20 bg-foreground/5" /></div>
+                <div className="flex justify-center"><Skeleton className="h-6 w-20 bg-foreground/5" /></div>
+                <Skeleton className="h-4 w-12 ml-auto" />
+                <div className="h-8" />
               </div>
-              <div className="flex flex-col gap-1">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-3 w-20" />
+              {/* Mobile Skeleton */}
+              <div className="sm:hidden flex flex-col gap-3">
+                <div className="flex justify-between items-start">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-24" />
+                </div>
+                <Skeleton className="h-3 w-40" />
               </div>
-              <Skeleton className="h-6 w-16 bg-foreground/5" />
-              <Skeleton className="h-6 w-16 bg-foreground/5" />
-              <Skeleton className="h-4 w-12" />
-              <div className="h-8" />
             </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<UserPlus className="h-10 w-10" />}
-          title="NO_REGISTRATIONS"
+          title="No Registrations Yet"
           subtitle={filter !== 'all' ? `No ${filter} registrations` : 'No one has registered yet'}
         />
       ) : (
-        <div className="border-2 border-foreground/10 overflow-hidden">
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] bg-secondary border-b-2 border-foreground/20 px-4 py-3 gap-4">
-            {['NAME', 'EMAIL / PHONE', 'PAYMENT', 'STATUS', 'DATE', ''].map((h) => (
-              <span key={h} className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/60">{h}</span>
+        <div className="border border-border/40 rounded-2xl overflow-hidden">
+          {/* Table header (Desktop) */}
+          <div className="hidden sm:grid sm:grid-cols-[minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] bg-card border-b border-border/40 px-4 py-3 gap-4">
+            {['Name', 'Email / Phone', 'Payment', 'Status', 'Date', ''].map((h, idx) => (
+              <span
+                key={h || idx}
+                className={`font-sans text-xs font-semibold text-muted-foreground ${
+                  h === 'Payment' || h === 'Status' ? 'text-center' : h === 'Date' ? 'text-right pr-2' : ''
+                }`}
+              >
+                {h}
+              </span>
             ))}
           </div>
 
@@ -357,88 +382,175 @@ export default function RegistrationsPage() {
           {filtered.map((reg) => (
             <div
               key={reg.id}
-              className="grid grid-cols-[1fr_1fr_auto_auto_auto_auto] items-center px-4 py-4 gap-4 border-b border-foreground/5 hover:bg-foreground/2 transition-colors group"
+              className="border-b border-border/20 hover:bg-stone-500/5 transition-colors group"
             >
-              <div className="flex flex-col truncate">
-                <span className="font-mono text-sm text-foreground font-medium truncate">{reg.full_name}</span>
-                {reg.ticket_tier?.name && (
-                  <span className="inline-block self-start font-mono text-[9px] uppercase tracking-wider bg-foreground/10 text-foreground px-1.5 py-0.5 mt-1 font-semibold">
-                    {reg.ticket_tier.name}
+              {/* Desktop Row View (sm:grid) */}
+              <div className="hidden sm:grid sm:grid-cols-[minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] items-center px-4 py-4 gap-4">
+                <div className="flex flex-col truncate min-w-0 pr-2">
+                  <span className="font-sans text-sm text-foreground font-semibold truncate">{reg.full_name}</span>
+                  {reg.ticket_tier?.name && (
+                    <span className="inline-block self-start font-sans text-[10px] bg-copper/10 text-copper px-2 py-0.5 mt-1 rounded-full font-semibold truncate max-w-full">
+                      {reg.ticket_tier.name}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col truncate min-w-0 pr-2">
+                  <span className="font-sans text-xs text-muted-foreground truncate">{reg.email}</span>
+                  {reg.phone && <span className="font-sans text-[10px] text-muted-foreground/70 truncate">{reg.phone}</span>}
+                </div>
+                <div className="flex justify-center">
+                  <span
+                    className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center w-23 truncate ${paymentStatusBadge(reg.payment_status || 'unpaid')}`}
+                  >
+                    {reg.payment_status}
                   </span>
-                )}
+                </div>
+                <div className="flex justify-center">
+                  <span
+                    className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center w-23 truncate ${statusBadge(reg.status)}`}
+                  >
+                    {reg.status}
+                  </span>
+                </div>
+                <span className="font-sans text-xs text-muted-foreground whitespace-nowrap text-right pr-2">
+                  {new Date(reg.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                </span>
+                <div className="flex gap-1 justify-end">
+                  {reg.status === 'pending' && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-emerald-500 hover:bg-emerald-500/10 transition-all shrink-0 rounded-full"
+                        onClick={() => handleAccept(reg)}
+                        aria-label={`Accept ${reg.full_name}`}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 hover:bg-red-500/10 transition-all shrink-0 rounded-full"
+                        onClick={() => handleReject(reg)}
+                        aria-label={`Reject ${reg.full_name}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                  {reg.status === 'waitlist' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={isSubmitting}
+                      className="h-8 w-8 text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
+                      onClick={async () => {
+                        setIsSubmitting(true)
+                        try {
+                          const result = await promoteFromWaitlist(reg.id, eventId)
+                          if (result?.error) toast.error(result.error)
+                          else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
+                        } catch (e: unknown) {
+                          toast.error(e instanceof Error ? e.message : 'An error occurred')
+                        } finally {
+                          setIsSubmitting(false)
+                        }
+                      }}
+                      aria-label={`Promote ${reg.full_name} from waitlist`}
+                      title="Promote to pending"
+                    >
+                      <ArrowUpCircle className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {reg.status === 'accepted' && (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  )}
+                  {reg.status === 'rejected' && (
+                    <XCircle className="h-4 w-4 text-red-500/60 shrink-0" />
+                  )}
+                  {reg.status === 'waitlist' && counts.waitlist > 0 && (
+                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="font-mono text-xs text-foreground/60 truncate">{reg.email}</span>
-                {reg.phone && <span className="font-mono text-[10px] text-foreground/40 truncate">{reg.phone}</span>}
-              </div>
-              <span
-                className={`font-mono text-[9px] uppercase tracking-widest px-3 py-1 border text-center ${paymentStatusBadge(reg.payment_status || 'unpaid')}`}
-              >
-                {reg.payment_status}
-              </span>
-              <span
-                className={`font-mono text-[9px] uppercase tracking-widest px-3 py-1 border text-center ${statusBadge(reg.status)}`}
-              >
-                {reg.status}
-              </span>
-              <span className="font-mono text-[10px] text-foreground/40 whitespace-nowrap">
-                {new Date(reg.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-              </span>
-              <div className="flex gap-1">
+
+              {/* Mobile Card View (sm:hidden) */}
+              <div className="sm:hidden flex flex-col p-4 gap-3">
+                {/* Header line: Name/Tier + Badges */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col min-w-0 pr-1">
+                    <span className="font-sans text-sm font-bold text-foreground truncate">{reg.full_name}</span>
+                    {reg.ticket_tier?.name && (
+                      <span className="inline-block self-start font-sans text-[10px] bg-copper/10 text-copper px-2 py-0.5 mt-1 rounded-full font-semibold truncate max-w-full">
+                        {reg.ticket_tier.name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center ${paymentStatusBadge(reg.payment_status || 'unpaid')}`}>
+                      {reg.payment_status}
+                    </span>
+                    <span className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center ${statusBadge(reg.status)}`}>
+                      {reg.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Details line: Email/Phone & Date */}
+                <div className="flex items-end justify-between gap-2 pt-1 border-t border-border/20 font-sans">
+                  <div className="flex flex-col min-w-0 pr-2">
+                    <span className="text-xs text-muted-foreground truncate">{reg.email}</span>
+                    {reg.phone && <span className="text-[10px] text-muted-foreground/70 truncate">{reg.phone}</span>}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {new Date(reg.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                  </span>
+                </div>
+
+                {/* Actions line (Mobile buttons) */}
                 {reg.status === 'pending' && (
-                  <>
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/20">
                     <Button
                       variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-admitted/60 hover:text-admitted hover:bg-admitted/10 transition-all"
-                      onClick={() => handleAccept(reg)}
-                      aria-label={`Accept ${reg.full_name}`}
-                    >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-denied/40 hover:text-denied hover:bg-denied/10 transition-all"
+                      size="sm"
+                      className="h-8 px-3 text-xs gap-1.5 text-red-500 border border-red-500/30 hover:bg-red-500/10 rounded-full"
                       onClick={() => handleReject(reg)}
-                      aria-label={`Reject ${reg.full_name}`}
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3.5 w-3.5" /> Reject
                     </Button>
-                  </>
+                    <Button
+                      variant="copper"
+                      size="sm"
+                      className="h-8 px-3 text-xs gap-1.5 rounded-full"
+                      onClick={() => handleAccept(reg)}
+                    >
+                      <Check className="h-3.5 w-3.5" /> Accept
+                    </Button>
+                  </div>
                 )}
                 {reg.status === 'waitlist' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={isSubmitting}
-                    className="h-8 w-8 text-signal/60 hover:text-signal hover:bg-signal/10 transition-all"
-                    onClick={async () => {
-                      setIsSubmitting(true)
-                      try {
-                        const result = await promoteFromWaitlist(reg.id, eventId)
-                        if (result?.error) toast.error(result.error)
-                        else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
-                      } catch (e: unknown) {
-                        toast.error(e instanceof Error ? e.message : 'An error occurred')
-                      } finally {
-                        setIsSubmitting(false)
-                      }
-                    }}
-                    aria-label={`Promote ${reg.full_name} from waitlist`}
-                    title="Promote to pending"
-                  >
-                    <ArrowUpCircle className="h-4 w-4" />
-                  </Button>
-                )}
-                {reg.status === 'accepted' && (
-                  <CheckCircle2 className="h-4 w-4 text-admitted/60" />
-                )}
-                {reg.status === 'rejected' && (
-                  <XCircle className="h-4 w-4 text-denied/40" />
-                )}
-                {reg.status === 'waitlist' && counts.waitlist > 0 && (
-                  <Clock className="h-4 w-4 text-foreground/30" />
+                  <div className="flex items-center justify-end pt-2 border-t border-border/20">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isSubmitting}
+                      className="h-8 px-3 text-xs gap-1.5 text-copper border border-copper/30 hover:bg-copper/10 rounded-full"
+                      onClick={async () => {
+                        setIsSubmitting(true)
+                        try {
+                          const result = await promoteFromWaitlist(reg.id, eventId)
+                          if (result?.error) toast.error(result.error)
+                          else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
+                        } catch (e: unknown) {
+                          toast.error(e instanceof Error ? e.message : 'An error occurred')
+                        } finally {
+                          setIsSubmitting(false)
+                        }
+                      }}
+                    >
+                      <ArrowUpCircle className="h-3.5 w-3.5" /> Promote to Pending
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -450,12 +562,12 @@ export default function RegistrationsPage() {
       <ConfirmDialog
         open={!!acceptTarget}
         onOpenChange={(open) => !open && setAcceptTarget(null)}
-        title="ACCEPT_REGISTRATION"
-        description="CONFIRM_ACCEPTANCE"
+        title="Accept Registration"
+        description="Confirm registration acceptance"
         subject={acceptTarget?.full_name}
-        subjectLabel="REGISTRANT"
+        subjectLabel="Registrant"
         body={`Accepting will create a guest entry, generate a QR code, and send an invitation email to ${acceptTarget?.email ?? 'their email'}.`}
-        confirmLabel="ACCEPT & SEND INVITE"
+        confirmLabel="Accept & Send Invite"
         isPending={isSubmitting}
         onConfirm={confirmAccept}
       />
@@ -464,24 +576,24 @@ export default function RegistrationsPage() {
       <ConfirmDialog
         open={!!rejectTarget}
         onOpenChange={(open) => !open && setRejectTarget(null)}
-        title="REJECT_REGISTRATION"
-        description="THIS_ACTION_IS_IRREVERSIBLE"
+        title="Reject Registration"
+        description="This action cannot be undone."
         subject={rejectTarget?.full_name}
-        subjectLabel="REGISTRANT"
+        subjectLabel="Registrant"
         body="This person will not receive an invitation. You can revisit this later if needed."
-        confirmLabel="REJECT_REGISTRATION"
+        confirmLabel="Reject Registration"
         isPending={isSubmitting}
         onConfirm={confirmReject}
       />
 
       {/* Reminder Dialog */}
       <Dialog open={reminderOpen} onOpenChange={setReminderOpen}>
-        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md">
+        <DialogContent className="bg-background border border-border/40 max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display text-3xl uppercase text-foreground">Send Reminder</DialogTitle>
+            <DialogTitle className="font-sans text-2xl font-bold text-foreground">Send Reminder</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-5 mt-2">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/60 leading-relaxed">
+            <p className="font-sans text-xs text-muted-foreground leading-relaxed">
               Send a reminder email to all {counts.accepted} confirmed guests.
               Each email will include event details and their QR entry pass.
             </p>
@@ -498,20 +610,20 @@ export default function RegistrationsPage() {
               />
             </div>
 
-            <div className="border-l-4 border-signal p-3 bg-signal/5">
-              <p className="font-mono text-[10px] text-foreground/60 uppercase tracking-wide">
-                <span className="text-signal font-bold">NOTE:</span> This will send an email to {counts.accepted} confirmed guest{counts.accepted !== 1 ? 's' : ''} immediately.
+            <div className="border-l-4 border-copper p-3 bg-copper/5 rounded-r-xl">
+              <p className="font-sans text-xs text-muted-foreground">
+                <span className="text-copper font-bold">Note:</span> This will send an email to {counts.accepted} confirmed guest{counts.accepted !== 1 ? 's' : ''} immediately.
               </p>
             </div>
 
             <Button
-              variant="signal"
-              className="w-full h-12 text-sm gap-2"
+              variant="copper"
+              className="w-full h-11 text-xs font-bold gap-2 rounded-full"
               disabled={sendingReminder || counts.accepted === 0}
               onClick={handleSendReminder}
             >
               <Send className="h-4 w-4" />
-              {sendingReminder ? 'SENDING...' : `SEND TO ${counts.accepted} GUESTS →`}
+              {sendingReminder ? 'Sending...' : `Send to ${counts.accepted} Guest${counts.accepted !== 1 ? 's' : ''}`}
             </Button>
           </div>
         </DialogContent>

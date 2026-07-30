@@ -1,10 +1,9 @@
-'use client'
-
 import { useState } from 'react'
-import { Loader2, CreditCard, CheckCircle2, Building2, AlertTriangle, ChevronDown } from 'lucide-react'
+import { Loader2, CreditCard, CheckCircle2, Building2, AlertTriangle, ChevronDown, Calculator, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
 import type { OrganizerPaymentSettings } from '@/lib/types'
+import { calculatePaymentBreakdown, formatKoboAsNGN } from '@/lib/paystack'
 
 interface Props {
   settings: OrganizerPaymentSettings | null
@@ -26,6 +25,9 @@ export function PaymentSettingsForm({ settings }: Props) {
   const [resolvedAccountName, setResolvedAccountName] = useState<string | null>(null)
   const [banks, setBanks] = useState<BankOption[]>([])
   const [banksLoaded, setBanksLoaded] = useState(false)
+
+  // Calculator state
+  const [sampleTicketPriceNGN, setSampleTicketPriceNGN] = useState<number>(10000)
 
   // UI state
   const [isResolvingAccount, setIsResolvingAccount] = useState(false)
@@ -125,6 +127,10 @@ export function PaymentSettingsForm({ settings }: Props) {
       setIsConnecting(false)
     }
   }
+
+  const platformPercent = settings?.platform_fee_percent ?? 5
+  const sampleKobo = (sampleTicketPriceNGN || 0) * 100
+  const breakdown = calculatePaymentBreakdown(sampleKobo, platformPercent)
 
   return (
     <div className="space-y-6 select-none">
@@ -281,32 +287,89 @@ export function PaymentSettingsForm({ settings }: Props) {
         )}
       </section>
 
+      {/* ── Payment Breakdown Calculator ── */}
+      <section className="bg-card border border-border">
+        <div className="px-6 py-4 border-b border-border flex items-center gap-2.5">
+          <Calculator className="size-4 text-copper" />
+          <h2 className="font-sans text-[11px] font-semibold uppercase tracking-[0.25em] text-foreground">
+            Payment Breakdown Calculator
+          </h2>
+        </div>
+        <div className="px-6 py-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <label htmlFor="sample-ticket-price" className={labelCls}>
+                Sample Ticket Price (NGN)
+              </label>
+              <p className="font-mono text-[11px] text-muted-foreground">
+                Enter an amount to preview the fee breakdown.
+              </p>
+            </div>
+            <div className="relative w-full sm:w-48">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-sm text-muted-foreground">₦</span>
+              <input
+                id="sample-ticket-price"
+                type="number"
+                min={0}
+                value={sampleTicketPriceNGN || ''}
+                onChange={(e) => setSampleTicketPriceNGN(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                className={[fieldCls, 'pl-7 font-mono text-sm'].join(' ')}
+              />
+            </div>
+          </div>
+
+          {/* Breakdown results */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+            <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-1 font-mono">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Ticket Fee</span>
+              <span className="text-sm font-semibold text-foreground">{formatKoboAsNGN(breakdown.ticketFeeKobo)}</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-1 font-mono">
+              <span className="text-[10px] text-copper uppercase tracking-wider block">Crenelle Charge ({breakdown.platformFeePercent}%)</span>
+              <span className="text-sm font-semibold text-copper">{formatKoboAsNGN(breakdown.crenelleChargeKobo)}</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-background border border-border/60 space-y-1 font-mono">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Paystack Fee (1.5% + ₦100)</span>
+              <span className="text-sm font-semibold text-muted-foreground">{formatKoboAsNGN(breakdown.paystackFeeKobo)}</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-copper/10 border border-copper/30 space-y-1 font-mono">
+              <span className="text-[10px] text-copper uppercase tracking-wider block font-bold">Your Net Payout</span>
+              <span className="text-sm font-bold text-copper">{formatKoboAsNGN(breakdown.organiserPayoutKobo)}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── How splits work ── */}
       <section className="border border-border bg-card">
-        <div className="px-6 py-4 border-b border-border">
+        <div className="px-6 py-4 border-b border-border flex items-center gap-2">
+          <Receipt className="size-4 text-copper" />
           <h2 className="font-sans text-[10px] font-semibold uppercase tracking-[0.25em] text-foreground">
-            How Payouts Work
+            How Payouts & Fee Breakdown Work
           </h2>
         </div>
         <div className="px-6 py-6 space-y-4">
           <div className="grid grid-cols-1 gap-3 font-mono text-[11px] text-muted-foreground">
             {[
-              { step: '01', text: 'Guest pays for a ticket via card, bank transfer, or USSD.' },
-              { step: '02', text: 'Paystack deducts its processing fee (1.5% + ₦100, capped ₦2,000).' },
-              { step: '03', text: `Crenelle keeps ${settings?.platform_fee_percent ?? 5}% as a platform fee from the gross amount.` },
-              { step: '04', text: `You receive ${100 - (settings?.platform_fee_percent ?? 5)}% of the gross ticket price.` },
+              { step: '01', text: 'Guest previews ticket fee + Crenelle charge + Paystack fee breakdown before paying.' },
+              { step: '02', text: 'Paystack processes the payment (1.5% + ₦100 fee, waived under ₦2,500, capped ₦2,000).' },
+              { step: '03', text: `Crenelle retains ${platformPercent}% as a platform fee from the gross ticket amount.` },
+              { step: '04', text: `You receive ${100 - platformPercent}% net ticket price direct to your bank account.` },
               { step: '05', text: 'Paystack settles funds to your bank account on the next business day (T+1).' },
             ].map(({ step, text }) => (
               <div key={step} className="flex items-start gap-4">
-                <span className="text-copper shrink-0">{step}</span>
+                <span className="text-copper shrink-0 font-bold">{step}</span>
                 <span className="leading-relaxed">{text}</span>
               </div>
             ))}
           </div>
 
-          <div className="p-3 border border-border/40 bg-muted/30">
-            <p className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-wide">
-              Example: ₦10,000 ticket → Paystack fee ₦250 → Crenelle 5% (₦500) → You receive ₦9,500
+          <div className="p-3.5 border border-border/40 bg-muted/30 rounded-xl">
+            <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-wide font-medium">
+              Sample Breakdown ({formatKoboAsNGN(breakdown.ticketFeeKobo)} Ticket): Crenelle Charge ({platformPercent}%) = {formatKoboAsNGN(breakdown.crenelleChargeKobo)} · Paystack Fee = {formatKoboAsNGN(breakdown.paystackFeeKobo)} · You Receive = {formatKoboAsNGN(breakdown.organiserPayoutKobo)}
             </p>
           </div>
         </div>
@@ -315,3 +378,4 @@ export function PaymentSettingsForm({ settings }: Props) {
     </div>
   )
 }
+

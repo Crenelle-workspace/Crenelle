@@ -126,9 +126,9 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
             </DialogContent>
           </Dialog>
         ) : (
-          <span className="inline-flex items-center gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border border-border px-3 py-2">
+          <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 rounded-full px-3.5 py-2 h-10 shrink-0">
             <Lock className="h-3 w-3" aria-hidden="true" />
-            VIEW-ONLY
+            View-only
           </span>
         )}
       </div>
@@ -159,7 +159,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       ) : links.length === 0 ? (
         <EmptyState
           icon={<Link2 className="h-10 w-10" />}
-          title="NO SCANNER LINKS YET"
+          title="No Scanner Links Yet"
           subtitle="Create a scanner link and share it with your door ushers on event day."
           action={
             canManage ? (
@@ -183,19 +183,19 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1.5">
-                  <span className="font-display text-xl font-semibold text-foreground uppercase">{link.label}</span>
+                  <span className="font-sans text-base font-bold text-foreground">{link.label}</span>
                   <span
-                    className={`font-mono text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                    className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
                       link.is_active
                         ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                         : 'bg-stone-500/10 border-border/30 text-muted-foreground'
                     }`}
                     aria-label={`Status: ${link.is_active ? 'Active' : 'Inactive'}`}
                   >
-                    {link.is_active ? 'ACTIVE' : 'INACTIVE'}
+                    {link.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <p className="font-mono text-xs text-muted-foreground/80 truncate">
+                <p className="font-sans text-xs text-muted-foreground/80 truncate">
                   {scanUrl(link.token)}
                 </p>
               </div>
@@ -217,17 +217,17 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
                     <button
                       onClick={() => handleToggle(link)}
                       aria-label={`${link.is_active ? 'Deactivate' : 'Activate'} ${link.label}`}
-                      className="inline-flex items-center gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground border border-border hover:border-foreground/30 hover:text-foreground px-3 h-9 transition-all"
+                      className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 hover:border-foreground/30 hover:text-foreground px-3.5 py-2 rounded-full transition-all cursor-pointer"
                     >
                       {link.is_active
-                        ? <><ToggleRight className="h-4 w-4 text-admitted" />Deactivate</>
+                        ? <><ToggleRight className="h-4 w-4 text-emerald-500" />Deactivate</>
                         : <><ToggleLeft className="h-4 w-4" />Activate</>
                       }
                     </button>
                     <button
                       onClick={() => setDeleteTarget(link)}
                       aria-label={`Delete scanner link ${link.label}`}
-                      className="inline-flex items-center justify-center font-sans text-[10px] font-semibold uppercase text-destructive/60 border border-destructive/20 hover:border-destructive/50 hover:text-destructive hover:bg-destructive/6 px-3 h-9 transition-all"
+                      className="inline-flex items-center justify-center font-sans text-xs font-semibold text-red-500 border border-red-500/20 hover:border-red-500/50 hover:bg-red-500/10 px-3 py-2 rounded-full transition-all cursor-pointer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -240,7 +240,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       )}
 
       {/* Info panel */}
-      <div className="mt-8 border-l-2 border-copper bg-copper/6 p-5">
+      <div className="mt-8 border-l-2 border-copper bg-copper/6 p-5 rounded-r-2xl">
         <p className="font-sans text-xs text-foreground/70 leading-relaxed">
           <span className="font-semibold text-copper">How to use:</span>{' '}
           Copy a link and send it to your usher via WhatsApp or SMS.
@@ -254,12 +254,12 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
         <ConfirmDialog
           open={!!deleteTarget}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
-          title="DELETE_LINK"
-          description="THIS_ACTION_IS_IRREVERSIBLE"
+          title="Delete Link"
+          description="This action cannot be undone."
           subject={deleteTarget?.label}
-          subjectLabel="TARGET_LINK"
+          subjectLabel="Scanner Link"
           body="Deleting this link will immediately revoke usher access. Any usher using this link will be blocked from scanning."
-          confirmLabel="DELETE_LINK"
+          confirmLabel="Delete Link"
           isPending={isDeleting}
           onConfirm={() => {
             if (!deleteTarget) return

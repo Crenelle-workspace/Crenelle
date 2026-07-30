@@ -82,13 +82,28 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient()
 
-  // 1. Verify the event exists, is open, and is published/live
-  const { data: event, error: eventError } = await supabase
-    .from('events')
-    .select('id, organizer_id, name, event_type, status, max_registrations, registration_slug')
-    .eq('id', event_id)
-    .single()
+  // 1 & 2. Fetch event and tier concurrently — both are keyed on request inputs
+  // and independent of each other.
+  const [
+    { data: event, error: eventError },
+    { data: tier, error: tierError },
+  ] = await Promise.all([
+    supabase
+      .from('events')
+      .select('id, organizer_id, name, event_type, status, max_registrations, registration_slug')
+      .eq('id', event_id)
+      .single(),
+    supabase
+      .from('ticket_tiers')
+      .select('id, name, price, currency, capacity')
+      .eq('id', ticket_tier_id)
+      .eq('event_id', event_id)
+      .eq('is_public', true)
+      .is('deleted_at', null)
+      .single(),
+  ])
 
+  // Validate event
   if (eventError || !event) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   }
@@ -102,16 +117,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'This event has ended' }, { status: 400 })
   }
 
-  // 2. Verify the ticket tier exists, is public, and is not deleted
-  const { data: tier, error: tierError } = await supabase
-    .from('ticket_tiers')
-    .select('id, name, price, currency, capacity')
-    .eq('id', ticket_tier_id)
-    .eq('event_id', event_id)
-    .eq('is_public', true)
-    .is('deleted_at', null)
-    .single()
-
+  // Validate ticket tier
   if (tierError || !tier) {
     return NextResponse.json({ error: 'Ticket tier not found or unavailable' }, { status: 404 })
   }
@@ -124,39 +130,45 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // 4. Check registration capacity (soft check — DB trigger is the hard guard)
-  if (event.max_registrations) {
-    const { count } = await supabase
-      .from('attendees')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', event_id)
-      .eq('source', 'public_registration')
-      .not('registration_status', 'in', '(rejected,waitlist)')
+  // 4/5/6. The two capacity counts and the organiser payment-settings lookup are
+  // all independent once we have the event + tier — batch them in one round-trip.
+  // (Counts are only issued when their capacity limit is set; skipped ones resolve null.)
+  const [
+    { count: registrationCount },
+    { count: tierCount },
+    { data: paymentSettings },
+  ] = await Promise.all([
+    event.max_registrations
+      ? supabase
+          .from('attendees')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', event_id)
+          .eq('source', 'public_registration')
+          .not('registration_status', 'in', '(rejected,waitlist)')
+      : Promise.resolve({ count: null as number | null }),
+    tier.capacity !== null
+      ? supabase
+          .from('invitations')
+          .select('*', { count: 'exact', head: true })
+          .eq('ticket_tier_id', ticket_tier_id)
+          .in('status', ['active', 'checked_in'])
+      : Promise.resolve({ count: null as number | null }),
+    supabase
+      .from('organizer_payment_settings')
+      .select('paystack_subaccount_code, platform_fee_percent, is_verified')
+      .eq('organizer_id', event.organizer_id)
+      .maybeSingle(),
+  ])
 
-    if ((count ?? 0) >= event.max_registrations) {
-      return NextResponse.json({ error: 'This event is at capacity' }, { status: 409 })
-    }
+  // Check registration capacity (soft check — DB trigger is the hard guard)
+  if (event.max_registrations && (registrationCount ?? 0) >= event.max_registrations) {
+    return NextResponse.json({ error: 'This event is at capacity' }, { status: 409 })
   }
 
-  // 5. Check tier capacity (soft check)
-  if (tier.capacity !== null) {
-    const { count: tierCount } = await supabase
-      .from('invitations')
-      .select('*', { count: 'exact', head: true })
-      .eq('ticket_tier_id', ticket_tier_id)
-      .in('status', ['active', 'checked_in'])
-
-    if ((tierCount ?? 0) >= tier.capacity) {
-      return NextResponse.json({ error: 'This ticket tier is sold out' }, { status: 409 })
-    }
+  // Check tier capacity (soft check)
+  if (tier.capacity !== null && (tierCount ?? 0) >= tier.capacity) {
+    return NextResponse.json({ error: 'This ticket tier is sold out' }, { status: 409 })
   }
-
-  // 6. Lookup organiser's Paystack subaccount
-  const { data: paymentSettings } = await supabase
-    .from('organizer_payment_settings')
-    .select('paystack_subaccount_code, platform_fee_percent, is_verified')
-    .eq('organizer_id', event.organizer_id)
-    .maybeSingle()
 
   // Allow payment without subaccount (Crenelle collects full amount)
   // but warn in logs so ops can follow up

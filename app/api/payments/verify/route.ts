@@ -91,33 +91,34 @@ export async function GET(request: NextRequest) {
               .single()
 
             if (eventData) {
-              try {
-                await sendInvitationEmail({
+              const phone = attendee.phone
+              // Email + WhatsApp are independent — run them concurrently.
+              // Both stay awaited (Vercel freezes the instance on redirect),
+              // and each swallows its own error so one failure can't block the other.
+              await Promise.all([
+                sendInvitationEmail({
                   eventId,
                   recipientEmail: attendee.email,
                   recipientName:  attendee.name,
                   invitationId:   inv.id,
                   event:          eventData,
-                })
-              } catch (e) {
-                console.error('[Payment Verify] fast-path invitation email failed', { reference }, e)
-                Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_email' } })
-              }
-
-              if (attendee.phone) {
-                try {
-                  await sendInvitationWhatsApp({
-                    eventId,
-                    recipientPhone: attendee.phone,
-                    recipientName:  attendee.name,
-                    invitationId:   inv.id,
-                    event:          eventData,
-                  })
-                } catch (e) {
-                  console.error('[Payment Verify] fast-path invitation WhatsApp failed', { reference }, e)
-                  Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_whatsapp' } })
-                }
-              }
+                }).catch((e) => {
+                  console.error('[Payment Verify] fast-path invitation email failed', { reference }, e)
+                  Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_email' } })
+                }),
+                phone
+                  ? sendInvitationWhatsApp({
+                      eventId,
+                      recipientPhone: phone,
+                      recipientName:  attendee.name,
+                      invitationId:   inv.id,
+                      event:          eventData,
+                    }).catch((e) => {
+                      console.error('[Payment Verify] fast-path invitation WhatsApp failed', { reference }, e)
+                      Sentry.captureException(e, { extra: { reference, context: 'payment_verify_fast_path_resend_whatsapp' } })
+                    })
+                  : Promise.resolve(),
+              ])
             }
           }
         }
@@ -202,38 +203,41 @@ export async function GET(request: NextRequest) {
             supabase.from('attendees').select('name, email, phone').eq('id', attendeeId).single(),
           ])
 
-          if (attendee?.email && eventData) {
-            try {
-              await sendInvitationEmail({
-                eventId,
-                recipientEmail: attendee.email,
-                recipientName:  attendee.name,
-                invitationId,
-                event:          eventData,
-              })
-            } catch (e) {
-              console.error('[Payment Verify] fallback invitation email failed', { reference }, e)
-              Sentry.captureException(e, {
-                extra: { reference, context: 'payment_verify_fallback_send_email' },
-              })
-            }
-          }
-
-          if (attendee?.phone && eventData) {
-            try {
-              await sendInvitationWhatsApp({
-                eventId,
-                recipientPhone: attendee.phone,
-                recipientName:  attendee.name,
-                invitationId,
-                event:          eventData,
-              })
-            } catch (e) {
-              console.error('[Payment Verify] fallback invitation WhatsApp failed', { reference }, e)
-              Sentry.captureException(e, {
-                extra: { reference, context: 'payment_verify_fallback_send_whatsapp' },
-              })
-            }
+          if (eventData) {
+            const email = attendee?.email
+            const phone = attendee?.phone
+            // Email + WhatsApp are independent — run concurrently, both awaited,
+            // each swallowing its own error.
+            await Promise.all([
+              email
+                ? sendInvitationEmail({
+                    eventId,
+                    recipientEmail: email,
+                    recipientName:  attendee.name,
+                    invitationId,
+                    event:          eventData,
+                  }).catch((e) => {
+                    console.error('[Payment Verify] fallback invitation email failed', { reference }, e)
+                    Sentry.captureException(e, {
+                      extra: { reference, context: 'payment_verify_fallback_send_email' },
+                    })
+                  })
+                : Promise.resolve(),
+              phone
+                ? sendInvitationWhatsApp({
+                    eventId,
+                    recipientPhone: phone,
+                    recipientName:  attendee.name,
+                    invitationId,
+                    event:          eventData,
+                  }).catch((e) => {
+                    console.error('[Payment Verify] fallback invitation WhatsApp failed', { reference }, e)
+                    Sentry.captureException(e, {
+                      extra: { reference, context: 'payment_verify_fallback_send_whatsapp' },
+                    })
+                  })
+                : Promise.resolve(),
+            ])
           }
         }
       }

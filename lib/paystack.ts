@@ -298,6 +298,48 @@ export async function resolveAccountNumber(
   );
 }
 
+import type { PaymentBreakdown } from "./types";
+
+/**
+ * Calculate Paystack's transaction processing fee for NGN local payments in kobo.
+ * Paystack standard NGN fee: 1.5% + ₦100 (10,000 kobo).
+ * - ₦100 flat fee waived for transactions under ₦2,500 (250,000 kobo).
+ * - Total fee capped at ₦2,000 (200,000 kobo).
+ */
+export function calculatePaystackFee(amountKobo: number): number {
+  if (amountKobo <= 0) return 0;
+  let fee = Math.round(amountKobo * 0.015);
+  if (amountKobo >= 250000) {
+    fee += 10000;
+  }
+  return Math.min(fee, 200000);
+}
+
+/**
+ * Calculate the full payment breakdown:
+ * - Ticket Fee (base ticket price)
+ * - Crenelle Charge (platform fee percentage cut)
+ * - Paystack Fee (gateway processing fee)
+ * - Total Amount & Net Organiser Payout
+ */
+export function calculatePaymentBreakdown(
+  ticketFeeKobo: number,
+  platformFeePercent: number = 5,
+): PaymentBreakdown {
+  const crenelleChargeKobo = Math.round((ticketFeeKobo * platformFeePercent) / 100);
+  const paystackFeeKobo = calculatePaystackFee(ticketFeeKobo);
+  const organiserPayoutKobo = Math.max(0, ticketFeeKobo - crenelleChargeKobo);
+
+  return {
+    ticketFeeKobo,
+    crenelleChargeKobo,
+    paystackFeeKobo,
+    totalAmountKobo: ticketFeeKobo,
+    organiserPayoutKobo,
+    platformFeePercent,
+  };
+}
+
 /**
  * Calculate the split amounts for a transaction.
  * Returns kobo values for the platform fee and organiser share.
@@ -333,6 +375,7 @@ export function formatKoboAsNGN(kobo: number): string {
     maximumFractionDigits: 0,
   }).format(naira);
 }
+
 
 // ── Settlement Types & API ─────────────────────────────────────
 

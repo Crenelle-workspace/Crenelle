@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { submitRegistration } from '@/app/actions/registrations'
@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Clock,
   CheckCircle2,
-  XCircle,
   Loader2,
   ArrowRight,
   CreditCard,
@@ -24,41 +23,16 @@ import {
   ArrowLeft,
   Lock,
 } from 'lucide-react'
-import type { AgendaItem, SpeakerInfo, FAQItem } from '@/lib/types'
+import type { RegisterEventInfo } from '@/lib/register-event'
 import { calculatePaymentBreakdown, formatKoboAsNGN } from '@/lib/paystack'
 
-interface EventInfo {
-  id: string
-  name: string
-  date: string
-  time: string | null
-  timezone?: string
-  venue: string
-  description: string | null
-  status: string
-  max_registrations: number | null
-  registration_count: number
-  banner_url?: string | null
-  agenda?: AgendaItem[]
-  speakers?: SpeakerInfo[]
-  faqs?: FAQItem[]
-  location_url?: string | null
-  tiers?: Array<{ id: string; name: string; price: number; currency: string }>
-  platform_fee_percent?: number
-}
-
-
-export default function PublicRegistrationPage() {
-  const { slug } = useParams<{ slug: string }>()
+export default function RegistrationClient({ event }: { event: RegisterEventInfo }) {
   const searchParams = useSearchParams()
-  const [event, setEvent] = useState<EventInfo | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [notFound, setNotFound] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [waitlisted, setWaitlisted] = useState(false)
-  const [selectedTierId, setSelectedTierId] = useState('')
+  const [selectedTierId, setSelectedTierId] = useState(event.tiers[0]?.id ?? '')
   const [redirectingToPaystack, setRedirectingToPaystack] = useState(false)
   const [isFormVisible, setIsFormVisible] = useState(false)
   const [previewDetails, setPreviewDetails] = useState<{
@@ -78,31 +52,6 @@ export default function PublicRegistrationPage() {
   const [verifiedPaymentStatus, setVerifiedPaymentStatus] = useState<
     'paid' | 'pending' | 'failed' | 'not_found' | null
   >(null)
-
-  useEffect(() => {
-    async function loadEvent() {
-      try {
-        const res = await fetch(`/api/register/${slug}`)
-        if (!res.ok) {
-          setNotFound(true)
-          setLoading(false)
-          return
-        }
-        const data = await res.json()
-        setEvent(data)
-      } catch {
-        setNotFound(true)
-      }
-      setLoading(false)
-    }
-    loadEvent()
-  }, [slug])
-
-  useEffect(() => {
-    if (event?.tiers && event.tiers.length > 0) {
-      setSelectedTierId(event.tiers[0].id)
-    }
-  }, [event])
 
   useEffect(() => {
     if (!paymentRef) return
@@ -139,7 +88,6 @@ export default function PublicRegistrationPage() {
   }, [paymentRef])
 
   useEffect(() => {
-    if (loading || !event) return
     const target = rsvpFormRef.current
     if (!target) return
 
@@ -152,14 +100,14 @@ export default function PublicRegistrationPage() {
 
     observer.observe(target)
     return () => observer.disconnect()
-  }, [loading, event])
+  }, [])
 
   const scrollToRSVP = () => {
     rsvpFormRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   async function handleConfirmPaystackPayment() {
-    if (!event || !previewDetails || isSubmitting.current) return
+    if (!previewDetails || isSubmitting.current) return
     isSubmitting.current = true
     setRedirectingToPaystack(true)
     setError(null)
