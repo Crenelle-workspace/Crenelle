@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org crenelle-0v --project javascript-nextjs .next && sentry-cli sourcemaps upload --org crenelle-0v --project javascript-nextjs .next"
+    "sentry:sourcemaps": "node -e \"if(process.env.SENTRY_AUTH_TOKEN){require('child_process').execSync('sentry-cli sourcemaps inject --org crenelle-0v --project javascript-nextjs .next && sentry-cli sourcemaps upload --org crenelle-0v --project javascript-nextjs .next',{stdio:'inherit'})}else{console.log('[sentry] SENTRY_AUTH_TOKEN not set, skipping sourcemaps upload.')}\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
