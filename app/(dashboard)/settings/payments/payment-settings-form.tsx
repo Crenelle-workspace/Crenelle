@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { Loader2, CreditCard, CheckCircle2, Building2, AlertTriangle, ChevronDown, Calculator, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
