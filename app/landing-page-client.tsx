@@ -431,8 +431,8 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-foreground">
               The hosting lifecycle.
             </h2>
-            <span className="font-mono text-[9px] text-muted-foreground/60 tracking-wider">
-              STAGES 01 - 04
+            <span className="font-sans text-xs text-muted-foreground/70 font-semibold tracking-wider uppercase">
+              STEPS 01 - 04
             </span>
           </div>
 
@@ -463,12 +463,12 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
               href={user ? "/events" : "/login"}
               className="inline-flex items-center gap-2 bg-foreground text-background text-sm font-bold px-10 py-4.5 rounded-full hover:bg-copper hover:text-white transition-all duration-300 shadow-xl shadow-black/10 dark:shadow-black/30"
             >
-              Initialize Event Free
+              Start Hosting for Free
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          <span className="block font-mono text-[9px] text-muted-foreground/50 tracking-wider">
-            NO CREDIT CARD REQUIRED // FULL SYSTEM ACCESS
+          <span className="block font-sans text-xs text-muted-foreground/60 font-medium">
+            No credit card required. Free to get started.
           </span>
         </div>
       </section>
@@ -484,9 +484,8 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
               <span className="font-sans text-lg font-bold tracking-tight text-foreground block leading-none">
                 crenelle
               </span>
-              <span className="block font-mono text-[8px] text-muted-foreground/60 tracking-wider mt-1">
-                © 2026 CRENELLE SECURITY & TICKETING SERVICES. ALL RIGHTS
-                RESERVED.
+              <span className="block font-sans text-xs text-muted-foreground/60 mt-1">
+                © 2026 Crenelle. All rights reserved.
               </span>
             </div>
           </div>
@@ -495,8 +494,8 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             {[
               ["#hero", "Overview"],
               ["#showcase", "Showcase"],
-              ["#features", "Features Grid"],
-              ["#process", "Operational Pipeline"],
+              ["#features", "Features"],
+              ["#process", "How It Works"],
             ].map(([href, label]) => (
               <a
                 key={href}

@@ -5,6 +5,7 @@ import {
   generatePaystackReference,
   calculateSplit,
 } from '@/lib/paystack'
+import { checkRateLimitAsync } from '@/lib/rate-limit'
 import * as Sentry from '@sentry/nextjs'
 
 /**
@@ -45,6 +46,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'event_id, ticket_tier_id, payer_email, and payer_name are required' },
       { status: 400 }
+    )
+  }
+
+  // ── Rate limiting (IP & Email) ─────────────────────────────────
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    request.headers.get('x-real-ip') ??
+    'unknown'
+
+  const ipLimit = await checkRateLimitAsync({
+    key: `pay_init_ip:${ip}`,
+    limit: 10,
+    windowMs: 15 * 60 * 1000,
+  })
+  if (!ipLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many payment initialization attempts. Please try again later.' },
+      { status: 429 }
+    )
+  }
+
+  const normalizedEmail = payer_email.trim().toLowerCase()
+  const emailLimit = await checkRateLimitAsync({
+    key: `pay_init_email:${normalizedEmail}`,
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  })
+  if (!emailLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many payment initialization attempts for this email address. Please wait before trying again.' },
+      { status: 429 }
     )
   }
 
@@ -141,7 +173,6 @@ export async function POST(request: NextRequest) {
   const { platformFeeKobo, organiserAmountKobo } = calculateSplit(tier.price, platformFeePercent)
 
   // 7. Create or reuse the attendee record (pending, will be accepted on payment success)
-  const normalizedEmail = payer_email.trim().toLowerCase()
   const { data: existingPendingAttendee } = await supabase
     .from('attendees')
     .select('id')
@@ -151,6 +182,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
 
   let attendeeId = existingPendingAttendee?.id
+  let isNewAttendee = false
 
   if (!attendeeId) {
     const { data: attendee, error: attendeeError } = await supabase
@@ -181,6 +213,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create registration' }, { status: 500 })
     }
     attendeeId = attendee.id
+    isNewAttendee = true
   } else {
     // Update existing pending attendee with potentially new details
     const { error: attendeeUpdateError } = await supabase
@@ -230,8 +263,10 @@ export async function POST(request: NextRequest) {
     Sentry.captureException(paymentInsertError, {
       extra: { event_id, reference, context: 'payment_initialize_insert' },
     })
-    // Clean up the attendee record we just created
-    await supabase.from('attendees').delete().eq('id', attendeeId)
+    // Clean up the attendee record ONLY if created in this request
+    if (isNewAttendee && attendeeId) {
+      await supabase.from('attendees').delete().eq('id', attendeeId)
+    }
     return NextResponse.json({ error: 'Failed to create payment record' }, { status: 500 })
   }
 
@@ -240,7 +275,7 @@ export async function POST(request: NextRequest) {
   // env var and may be undefined in an API route. An empty appUrl produces a relative
   // callback_url that Paystack cannot redirect back to.
   const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.APP_URL || request.nextUrl.origin)
   const { data: paystackData, error: paystackError } = await initializeTransaction({
     email: payer_email,
@@ -266,12 +301,14 @@ export async function POST(request: NextRequest) {
   })
 
   if (paystackError || !paystackData) {
-    // Roll back: mark payment as failed and clean up attendee
+    // Roll back: mark payment as failed and clean up attendee if newly created
     await supabase
       .from('payments')
       .update({ status: 'failed' })
       .eq('paystack_reference', reference)
-    await supabase.from('attendees').delete().eq('id', attendeeId)
+    if (isNewAttendee && attendeeId) {
+      await supabase.from('attendees').delete().eq('id', attendeeId)
+    }
 
     Sentry.captureMessage('[Paystack Init] Failed to initialize Paystack transaction', {
       level: 'error',

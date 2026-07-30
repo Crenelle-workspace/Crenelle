@@ -25,7 +25,7 @@ export function SectionHeader({
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
         )}
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-copper">
+        <p className="font-sans text-[11px] font-semibold uppercase tracking-wider text-copper">
           {eyebrow}
         </p>
       </div>

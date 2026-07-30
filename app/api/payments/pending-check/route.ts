@@ -18,6 +18,10 @@ import * as Sentry from '@sentry/nextjs'
  *   FIX 3: Paystack verify calls are now parallelized in batches of 10
  *   instead of sequential. 50 payments: was ~15s sequential, now ~2-3s.
  */
+export async function GET(request: NextRequest) {
+  return POST(request)
+}
+
 export async function POST(request: NextRequest) {
   // ── Auth: Vercel Cron or manual admin trigger ────────────────
   const authHeader = request.headers.get('Authorization')

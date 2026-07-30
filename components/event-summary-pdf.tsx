@@ -307,8 +307,8 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
         </View>
 
         {stats.recentEntries.length === 0 ? (
-          <Text style={{ fontFamily: 'Courier', fontSize: 8, color: '#666666', marginTop: 5 }}>
-            NO_ARRIVALS_RECORDED
+          <Text style={{ fontFamily: 'Helvetica', fontSize: 8, color: '#666666', marginTop: 5 }}>
+            No arrivals recorded yet
           </Text>
         ) : (
           stats.recentEntries.map((entry, index) => (
@@ -327,7 +327,7 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
                 })}
               </Text>
               <Text style={[styles.tableCell, { width: '15%', textAlign: 'right' }]}>
-                {entry.partySize > 1 ? `+${entry.partySize}` : 'SOLO'}
+                {entry.partySize > 1 ? `+${entry.partySize}` : '1 guest'}
               </Text>
             </View>
           ))
@@ -335,9 +335,9 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>CRENELLE EVENT MANAGEMENT SYSTEM</Text>
+          <Text style={styles.footerText}>Crenelle Event Summary Report</Text>
           <Text style={styles.footerText}>
-            GENERATED: {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+            Generated: {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
       </Page>

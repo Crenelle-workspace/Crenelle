@@ -304,10 +304,10 @@ export function FinancesClient() {
                   </span>
                 )}
               </div>
-              <p className="font-mono text-xs text-muted-foreground mt-0.5">
+              <p className="font-mono text-xs text-muted-foreground mt-0.5 wrap-break-word">
                 {subaccount?.bank_name ? (
                   <>
-                    {subaccount.bank_name} • Account Number: <span className="text-foreground font-semibold">{subaccount.account_number}</span> (Subaccount: {subaccount.paystack_subaccount_code})
+                    {subaccount.bank_name} • Account Number: <span className="text-foreground font-semibold">{subaccount.account_number}</span> (Subaccount: <span className="break-all">{subaccount.paystack_subaccount_code}</span>)
                   </>
                 ) : (
                   'Connect your bank account to receive automatic next-day payouts from Paystack.'
@@ -387,42 +387,44 @@ export function FinancesClient() {
       </div>
 
       {/* ── Navigation Tabs ── */}
-      <div className="inline-flex gap-1.5 border border-border/40 bg-card/40 backdrop-blur-xl p-1.5 rounded-full overflow-x-auto shadow-xs">
-        <button
-          onClick={() => setActiveTab('events')}
-          className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
-            activeTab === 'events'
-              ? 'bg-foreground text-background shadow-xs'
-              : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          Revenue by Event ({overview?.by_event.length ?? 0})
-        </button>
+      <div className="w-full max-w-full overflow-x-auto no-scrollbar py-1">
+        <div className="inline-flex min-w-max gap-1.5 border border-border/40 bg-card/40 backdrop-blur-xl p-1.5 rounded-full shadow-xs">
+          <button
+            onClick={() => setActiveTab('events')}
+            className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
+              activeTab === 'events'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Revenue by Event ({overview?.by_event.length ?? 0})
+          </button>
 
-        <button
-          onClick={() => setActiveTab('payouts')}
-          className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
-            activeTab === 'payouts'
-              ? 'bg-foreground text-background shadow-xs'
-              : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
-          }`}
-        >
-          <Building2 className="w-3.5 h-3.5" />
-          Payout Settlements {payoutsData ? `(${payoutsData.summary.payout_count})` : ''}
-        </button>
+          <button
+            onClick={() => setActiveTab('payouts')}
+            className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
+              activeTab === 'payouts'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            Payout Settlements {payoutsData ? `(${payoutsData.summary.payout_count})` : ''}
+          </button>
 
-        <button
-          onClick={() => setActiveTab('transactions')}
-          className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
-            activeTab === 'transactions'
-              ? 'bg-foreground text-background shadow-xs'
-              : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
-          }`}
-        >
-          <Receipt className="w-3.5 h-3.5" />
-          Transaction Ledger
-        </button>
+          <button
+            onClick={() => setActiveTab('transactions')}
+            className={`font-sans text-xs font-bold px-5 py-2.5 rounded-full flex items-center gap-2 whitespace-nowrap transition-all duration-300 cursor-pointer ${
+              activeTab === 'transactions'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
+            }`}
+          >
+            <Receipt className="w-3.5 h-3.5" />
+            Transaction Ledger
+          </button>
+        </div>
       </div>
 
       {/* ── TAB 1: REVENUE BY EVENT ── */}
@@ -590,7 +592,7 @@ export function FinancesClient() {
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground min-w-0 wrap-break-word">
                           <span>
                             Settled on:{' '}
                             <strong className="text-foreground">
@@ -602,11 +604,11 @@ export function FinancesClient() {
                             </strong>
                           </span>
                           {payout.transfer_reference && (
-                            <span>
+                            <span className="break-all">
                               Ref: <strong className="text-foreground">{payout.transfer_reference}</strong>
                             </span>
                           )}
-                          <span>Paystack Settlement ID: {payout.paystack_settlement_id}</span>
+                          <span className="break-all">Paystack Settlement ID: {payout.paystack_settlement_id}</span>
                         </div>
                       </div>
 
@@ -750,8 +752,8 @@ export function FinancesClient() {
           ) : (
             <div className="space-y-4">
               <div className="border border-border/40 rounded-2xl overflow-hidden bg-card">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left font-mono text-xs">
+                <div className="overflow-x-auto no-scrollbar w-full max-w-full">
+                  <table className="w-full min-w-162.5 text-left font-mono text-xs">
                     <thead className="bg-stone-500/10 border-b border-border/40 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
                       <tr>
                         <th className="py-3 px-4">Payer</th>

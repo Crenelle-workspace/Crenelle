@@ -20,7 +20,7 @@ export function ControlBar({ filter, setFilter, sortBy, setSortBy }: ControlBarP
     <div className="flex flex-col sm:flex-row gap-5 mb-8 pb-6 border-b border-border/40 justify-between items-start sm:items-center">
       {/* Status filter pills */}
       <div className="flex flex-col gap-2 flex-1">
-        <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-muted-foreground/75">
+        <span className="font-sans text-xs font-semibold text-muted-foreground/80">
           Filter Events
         </span>
         <div className="flex flex-wrap gap-2">
@@ -46,7 +46,7 @@ export function ControlBar({ filter, setFilter, sortBy, setSortBy }: ControlBarP
 
       {/* Sort select */}
       <div className="flex flex-col gap-2 min-w-40">
-        <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-muted-foreground/75">
+        <span className="font-sans text-xs font-semibold text-muted-foreground/80">
           Sort Order
         </span>
         <select

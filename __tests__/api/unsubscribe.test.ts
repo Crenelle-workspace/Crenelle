@@ -100,7 +100,7 @@ describe('GET /api/unsubscribe', () => {
     expect(res.status).toBe(200)
     // The row must actually be updated...
     expect(updateSpy).toHaveBeenCalledTimes(1)
-    const patch = updateSpy.mock.calls[0][0] as { unsubscribed_at?: string }
+    const patch = (updateSpy.mock.calls as unknown as [{ unsubscribed_at?: string }][])[0][0]
     expect(patch.unsubscribed_at).toBeTruthy()
     // ...and scoped to rows still NULL, so a duplicate click can't clobber it.
     expect(isSpy).toHaveBeenCalledTimes(1)

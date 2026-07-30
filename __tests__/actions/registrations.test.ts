@@ -317,7 +317,7 @@ describe('submitRegistration', () => {
     expect(insertedTierId).toBe('tier-free')
   })
 
-  it('returns { success: true } silently for unsubscribed emails', async () => {
+  it('returns { error } for unsubscribed/suppressed emails', async () => {
     const mockEvent = { id: 'event-1', event_type: 'open', status: 'published', max_registrations: null }
     mockCreateAdminClient.mockReturnValue({
       from: vi.fn((table: string) => {
@@ -347,7 +347,9 @@ describe('submitRegistration', () => {
 
     const fd = makeFormData({ email: 'unsub@x.com', full_name: 'Unsub User' })
     const result = await submitRegistration('event-1', fd)
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({
+      error: 'This email address has unsubscribed or experienced delivery issues. Please contact support or the organizer to resubscribe.',
+    })
   })
 })
 

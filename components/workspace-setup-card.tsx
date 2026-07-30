@@ -34,8 +34,8 @@ export function WorkspaceSetupCard({ status }: WorkspaceSetupCardProps) {
   const items = [
     {
       id: 'org',
-      label: 'Organisation & Defaults',
-      desc: 'Set master brand name, default timezone, and ticket currency.',
+      label: 'Organization Details',
+      desc: 'Set your organization name, default timezone, and ticket currency.',
       isComplete: status.hasOrgName,
       requiredTag: null,
       href: '/settings/general',
@@ -52,8 +52,8 @@ export function WorkspaceSetupCard({ status }: WorkspaceSetupCardProps) {
     },
     {
       id: 'payout',
-      label: 'Payout Bank Account',
-      desc: 'Connect NUBAN bank account for T+1 paid ticket settlements.',
+      label: 'Payout Account',
+      desc: 'Connect your bank account to receive payouts for ticket sales.',
       isComplete: status.hasPaymentSubaccount,
       requiredTag: 'Required for Paid Tickets',
       href: '/settings/payments',
@@ -61,7 +61,7 @@ export function WorkspaceSetupCard({ status }: WorkspaceSetupCardProps) {
     },
     {
       id: 'footer',
-      label: 'Global Email Footer',
+      label: 'Email Footer',
       desc: 'Append legal disclaimer or contact info to guest emails.',
       isComplete: status.hasEmailFooter,
       requiredTag: 'Optional',

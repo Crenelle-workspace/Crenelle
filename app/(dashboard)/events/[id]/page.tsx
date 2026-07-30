@@ -230,44 +230,44 @@ export default function EventOverviewPage() {
     return (
       <div className="max-w-2xl">
         <div className="mb-8">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-signal mb-2">EDITING_EVENT</p>
-          <h2 className="font-display text-4xl uppercase text-foreground leading-none">Edit Details</h2>
+          <p className="font-sans text-[11px] font-semibold uppercase tracking-wider text-copper mb-1.5">Edit Event</p>
+          <h2 className="font-sans text-3xl font-bold text-foreground">Edit Event Details</h2>
         </div>
 
-        <form action={handleUpdate} className="brutalist-card flex flex-col gap-6">
+        <form action={handleUpdate} className="bg-card/40 backdrop-blur-xl border border-border/40 rounded-3xl p-8 shadow-xl flex flex-col gap-6">
           {error && (
-            <div role="alert" aria-live="assertive" className="border-2 border-denied bg-denied/10 p-4 font-mono text-sm text-denied uppercase tracking-wide">
+            <div role="alert" aria-live="assertive" className="border-l-2 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-xl font-sans text-xs text-red-400 leading-relaxed">
               ⚠ {error}
             </div>
           )}
 
           {/* Event Type */}
           <div className="flex flex-col gap-2">
-            <span className={labelCls}>Event Type</span>
+            <span className={labelCls}>Event Access Type</span>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setEditEventType('closed')}
-                className={`flex items-center gap-3 p-3 border-2 transition-all ${
+                className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
                   editEventType === 'closed'
-                    ? 'border-signal bg-signal/10 text-foreground'
-                    : 'border-foreground/20 text-foreground/60 hover:border-foreground/40'
+                    ? 'border-copper bg-copper/10 text-foreground'
+                    : 'border-border/40 text-foreground/60 hover:border-border/70'
                 }`}
               >
-                <Lock className={`h-4 w-4 shrink-0 ${editEventType === 'closed' ? 'text-signal' : ''}`} />
-                <span className="font-display text-lg uppercase leading-none">Closed</span>
+                <Lock className={`h-4 w-4 shrink-0 ${editEventType === 'closed' ? 'text-copper' : ''}`} />
+                <span className="font-sans text-sm font-semibold leading-none">Invite-Only</span>
               </button>
               <button
                 type="button"
                 onClick={() => setEditEventType('open')}
-                className={`flex items-center gap-3 p-3 border-2 transition-all ${
+                className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
                   editEventType === 'open'
-                    ? 'border-signal bg-signal/10 text-foreground'
-                    : 'border-foreground/20 text-foreground/60 hover:border-foreground/40'
+                    ? 'border-copper bg-copper/10 text-foreground'
+                    : 'border-border/40 text-foreground/60 hover:border-border/70'
                 }`}
               >
-                <Globe className={`h-4 w-4 shrink-0 ${editEventType === 'open' ? 'text-signal' : ''}`} />
-                <span className="font-display text-lg uppercase leading-none">Open</span>
+                <Globe className={`h-4 w-4 shrink-0 ${editEventType === 'open' ? 'text-copper' : ''}`} />
+                <span className="font-sans text-sm font-semibold leading-none">Public Event</span>
               </button>
             </div>
             <input type="hidden" name="event_type" value={editEventType} />

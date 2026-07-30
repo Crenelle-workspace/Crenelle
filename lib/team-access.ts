@@ -9,9 +9,9 @@ export interface EventAccess {
   isOwner: boolean
   canEdit: boolean           // owner only
   canManageTeam: boolean     // owner only
-  canManageGuests: boolean   // owner only
-  canManageScanners: boolean // owner + scanner_manager
-  canSendEmails: boolean     // owner only
+  canManageGuests: boolean   // owner + co_organiser
+  canManageScanners: boolean // owner + scanner_manager + co_organiser
+  canSendEmails: boolean     // owner + co_organiser
 }
 
 /**

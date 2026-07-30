@@ -77,7 +77,7 @@ export default async function SenderProfilesPage() {
       {list.length === 0 && (
         <EmptyState
           icon={<Mail className="h-10 w-10" />}
-          title="NO_SENDER_PROFILES"
+          title="No Sender Profiles Yet"
           subtitle="Create a sender profile below to define your organization's sending display name and reply-to email"
           className="mb-8"
         />
@@ -87,7 +87,7 @@ export default async function SenderProfilesPage() {
       <div className="border border-border bg-card">
         <div className="px-6 py-4 border-b border-border flex items-center gap-3">
           <div className="w-1 h-4 bg-copper shrink-0" aria-hidden="true" />
-          <h2 className="font-sans text-[10px] font-semibold uppercase tracking-[0.25em] text-foreground">
+          <h2 className="font-sans text-xs font-semibold text-foreground">
             New profile
           </h2>
         </div>

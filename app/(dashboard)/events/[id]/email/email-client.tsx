@@ -33,7 +33,7 @@ export default function EmailClient({ eventId }: { eventId: string }) {
       <div className="flex flex-col gap-8 animate-pulse">
         <div className="border-b-2 border-foreground/20 pb-6">
           <SectionHeader
-            eyebrow="EMAIL_SETTINGS"
+            eyebrow="Email Invitations"
             title="Email Themes"
             subtitle="Loading theme options…"
           />
@@ -47,7 +47,7 @@ export default function EmailClient({ eventId }: { eventId: string }) {
       {/* Header */}
       <div className="border-b-2 border-foreground/20 pb-6">
         <SectionHeader
-          eyebrow="EMAIL_SETTINGS"
+          eyebrow="Email Invitations"
           title="Email Themes"
           subtitle="Customize the visual template and theme for ticket entry passes sent to your guests"
         />

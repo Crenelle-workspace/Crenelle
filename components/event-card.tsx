@@ -65,13 +65,13 @@ export function EventCard({
                 <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/80 bg-stone-500/10 border border-border/30 px-2 py-0.5 rounded-md">
                   #{manifestNum}
                 </span>
-                <span className="font-mono text-[10px] text-muted-foreground">
+                <span className="font-sans text-xs text-muted-foreground font-medium">
                   {date} {time && `· ${time}`}
                 </span>
                 {eventType === 'open' && (
-                  <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-copper border border-copper/30 bg-copper/10 px-2 py-0.5 rounded-full font-bold">
+                  <span className="flex items-center gap-1 font-sans text-[10px] tracking-wider text-copper border border-copper/30 bg-copper/10 px-2.5 py-0.5 rounded-full font-bold">
                     <Globe className="h-2.5 w-2.5" />
-                    Open Access
+                    Public Event
                   </span>
                 )}
               </div>

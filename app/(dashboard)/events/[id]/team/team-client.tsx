@@ -94,7 +94,7 @@ export default function TeamPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
         <SectionHeader
-          eyebrow="TEAM_ACCESS"
+          eyebrow="Team & Collaborators"
           title="Co-Hosts"
           subtitle={loading ? "Loading co-hosts..." : `${members.length} co-host${members.length !== 1 ? 's' : ''} with access to this event`}
         />

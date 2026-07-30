@@ -140,7 +140,7 @@ export function FeaturesGrid() {
             </div>
 
             <div className="space-y-2">
-              <h3 className="font-bold text-lg">Paystack Infrastructure</h3>
+              <h3 className="font-bold text-lg">Seamless Payments</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Sell tickets globally in NGN or USD. Tier your pricing structure and manage automatic transaction matching directly.
               </p>
@@ -220,7 +220,7 @@ export function FeaturesGrid() {
                 {emailState === 'sending' && (
                   <>
                     <span className="w-2 h-2 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                    Dispatching...
+                    Sending...
                   </>
                 )}
                 {emailState === 'delivered' && (
@@ -233,9 +233,9 @@ export function FeaturesGrid() {
             </div>
 
             <div className="space-y-2">
-              <h3 className="font-bold text-lg">Branded Outbox</h3>
+              <h3 className="font-bold text-lg">Custom Invitations</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Send custom invitations directly from your own domain. Follow email deliveries, check-ins, and bounces with real-time audit trails.
+                Send custom invitations directly from your own domain. Follow email deliveries, check-ins, and RSVPs in real time.
               </p>
             </div>
           </div>
@@ -253,8 +253,8 @@ export function FeaturesGrid() {
               </div>
             </div>
             
-            <div className="space-y-1.5 min-h-[50px] relative">
-              <span className="text-[8px] font-mono text-muted-foreground/60 tracking-wider block uppercase">Live Delivery Webhooks</span>
+            <div className="space-y-1.5 min-h-12.5 relative">
+              <span className="text-[8px] font-sans font-semibold text-muted-foreground/60 tracking-wider block uppercase">Live Delivery Activity</span>
               <div className="space-y-1">
                 <AnimatePresence>
                   {emailLogs.map((log) => (
@@ -267,7 +267,7 @@ export function FeaturesGrid() {
                       className="text-[9px] font-mono flex justify-between items-center text-stone-600 dark:text-stone-400 bg-stone-100/50 dark:bg-stone-900/30 px-2 py-0.5 rounded border border-border/10 overflow-hidden"
                     >
                       <span className="opacity-60">{log.timestamp}</span>
-                      <strong className="truncate max-w-[110px] text-foreground font-medium">{log.recipient}</strong>
+                      <strong className="truncate max-w-27.5 text-foreground font-medium">{log.recipient}</strong>
                       <span className="text-emerald-500 dark:text-emerald-400 font-bold flex items-center gap-1">
                         <span className="w-1 h-1 rounded-full bg-emerald-500" />
                         DELIVERED

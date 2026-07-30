@@ -90,7 +90,9 @@ export async function submitRegistration(eventId: string, formData: FormData) {
     .maybeSingle()
 
   if (unsub) {
-    return { success: true }
+    return {
+      error: 'This email address has unsubscribed or experienced delivery issues. Please contact support or the organizer to resubscribe.',
+    }
   }
 
   // 4. Insert attendee with source = 'public_registration'

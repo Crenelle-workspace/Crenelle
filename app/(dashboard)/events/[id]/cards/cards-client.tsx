@@ -74,7 +74,7 @@ export default function CardsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 border-b border-border/40 pb-6 print:hidden">
         <SectionHeader
-          eyebrow="QR_PASS_MANIFEST"
+          eyebrow="Digital Passes"
           title="QR Passes"
           subtitle={`${cards.length} pass${cards.length !== 1 ? 'es' : ''} ready to print`}
         />

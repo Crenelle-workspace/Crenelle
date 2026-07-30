@@ -19,26 +19,26 @@ export function ProcessTimeline() {
   const steps: Step[] = [
     {
       num: '01',
-      title: 'Configure Tiers & Caps',
-      desc: 'Establish pricing layers and capacity gates. Secure settlements via direct multi-currency integrations.',
+      title: 'Set Up Tickets & Capacity',
+      desc: 'Create free or paid ticket tiers, set capacity limits, and start selling seamlessly in multiple currencies.',
       icon: Sliders,
     },
     {
       num: '02',
-      title: 'Dispatch Invite Campaigns',
-      desc: 'Broadcast customized emails with personalized QR ticket links and direct calendar integrations.',
+      title: 'Send Invitations',
+      desc: 'Send beautiful email invitations with instant RSVP links, QR tickets, and calendar integration.',
       icon: Mail,
     },
     {
       num: '03',
-      title: 'Authorize Check-ins',
-      desc: 'Provision direct gate scanner web apps to door staff. Validate access passes in real-time.',
+      title: 'Welcome Your Guests',
+      desc: 'Share quick scan links with door staff to check in attendees effortlessly using any smartphone camera.',
       icon: QrCode,
     },
     {
       num: '04',
-      title: 'Inspect Gate Logs',
-      desc: 'Track arrival velocity, admission logs, and sales statistics via a live coordinator dashboard.',
+      title: 'Track Live Attendance',
+      desc: 'Monitor check-ins, guest arrivals, and ticket sales live on your organizer dashboard.',
       icon: BarChart3,
     },
   ]

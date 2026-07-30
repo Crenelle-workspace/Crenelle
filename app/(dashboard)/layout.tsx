@@ -88,7 +88,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </header>
 
       {/* ── Content ── */}
-      <main className="flex-1 px-4 pt-10 pb-24 sm:py-10 max-w-7xl mx-auto w-full">
+      <main className="flex-1 min-w-0 px-4 pt-10 pb-24 sm:py-10 max-w-7xl mx-auto w-full">
         {children}
       </main>
 

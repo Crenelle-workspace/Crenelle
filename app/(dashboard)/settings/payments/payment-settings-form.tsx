@@ -155,15 +155,15 @@ export function PaymentSettingsForm({ settings }: Props) {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
               <div className="p-4 rounded-2xl bg-card border border-border/60 shadow-xs space-y-1.5">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-copper block">ACCOUNT NAME</span>
+                <span className="font-sans text-xs font-semibold text-copper block">Account Name</span>
                 <p className="font-sans text-sm font-bold text-foreground tracking-tight">{settings.account_name ?? '—'}</p>
               </div>
               <div className="p-4 rounded-2xl bg-card border border-border/60 shadow-xs space-y-1.5">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-copper block">BANK NAME</span>
+                <span className="font-sans text-xs font-semibold text-copper block">Bank Name</span>
                 <p className="font-sans text-sm font-bold text-foreground tracking-tight">{settings.bank_name ?? '—'}</p>
               </div>
               <div className="p-4 rounded-2xl bg-card border border-border/60 shadow-xs space-y-1.5">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-copper block">ACCOUNT NUMBER</span>
+                <span className="font-sans text-xs font-semibold text-copper block">Account Number</span>
                 <p className="font-mono text-sm font-bold text-foreground tracking-tight">{settings.account_number ? `••••${settings.account_number.slice(-4)}` : '—'}</p>
               </div>
             </div>

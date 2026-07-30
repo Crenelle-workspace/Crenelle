@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   // client-side env var and may be undefined / empty string in an API route,
   // which would cause NextResponse.redirect() to receive a relative path and fail.
   const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.APP_URL || request.nextUrl.origin)
 
   if (!reference) {
@@ -158,142 +158,84 @@ export async function GET(request: NextRequest) {
 
   // 3. Handle based on Paystack status
   if (txn.status === 'success') {
-    // Webhook may not have fired yet — process the payment here as a fallback
-    // This mirrors the webhook handler logic
+    // Webhook may not have fired yet — process the payment atomically via RPC as a fallback.
+    // process_charge_success handles fraud amount check, payment status update, attendee accept,
+    // tier capacity validation, and invitation creation in a single DB transaction.
     if (payment && payment.status === 'pending') {
-      // Fraud check: verify the customer paid at least the expected amount and currency matches.
-      // We use >= (not ===) because Paystack may adjust the gross amount slightly when applying
-      // subaccount splits or processing-fee rounding. Blocking underpayments is the correct guard;
-      // overpayments are fine and should not be rejected.
-      // Normalize currency to uppercase to avoid false mismatches (e.g. 'ngn' vs 'NGN').
-      if (txn.amount < payment.amount_kobo || txn.currency.toUpperCase() !== payment.currency.toUpperCase()) {
-        Sentry.captureMessage('[Payment Verify] Amount or currency mismatch during verify fallback', {
-          level: 'error',
-          extra: {
-            reference,
-            expectedAmount: payment.amount_kobo,
-            receivedAmount: txn.amount,
-            expectedCurrency: payment.currency,
-            receivedCurrency: txn.currency,
-          },
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('process_charge_success', {
+        p_reference:               reference,
+        p_paystack_transaction_id: txn.id,
+        p_channel:                 txn.channel,
+        p_paid_at:                 txn.paid_at ?? new Date().toISOString(),
+        p_amount_kobo:             txn.amount,
+      })
+
+      if (rpcError) {
+        Sentry.captureException(rpcError, {
+          extra: { reference, context: 'payment_verify_fallback_rpc' },
         })
+      } else {
+        const result = rpcResult as {
+          outcome: string
+          invitation_id?: string
+          attendee_id?: string
+          event_id?: string
+        }
 
-        await supabase
-          .from('payments')
-          .update({
-            status: 'failed',
-            webhook_received_at: new Date().toISOString(),
-          })
-          .eq('paystack_reference', reference)
+        if (result.outcome === 'amount_mismatch') {
+          const meta = payment.metadata as Record<string, string> | null
+          const slug = meta?.event_slug ?? null
+          const failUrl = slug
+            ? `${appUrl}/register/${slug}?payment=failed&reason=amount_mismatch`
+            : `${appUrl}/?payment=failed&reason=amount_mismatch`
+          return NextResponse.redirect(failUrl)
+        }
 
-        const meta = payment.metadata as Record<string, string> | null
-        const slug = meta?.event_slug ?? null
-        const failUrl = slug
-          ? `${appUrl}/register/${slug}?payment=failed&reason=amount_mismatch`
-          : `${appUrl}/?payment=failed&reason=amount_mismatch`
-        return NextResponse.redirect(failUrl)
-      }
+        if ((result.outcome === 'created' || result.outcome === 'updated')
+          && result.invitation_id && result.attendee_id && result.event_id) {
+          const invitationId = result.invitation_id
+          const attendeeId   = result.attendee_id
+          const eventId      = result.event_id
 
-      try {
-        // Update payment record
-        await supabase
-          .from('payments')
-          .update({
-            status: 'paid',
-            paystack_transaction_id: txn.id,
-            paystack_channel: txn.channel,
-            paid_at: txn.paid_at ?? new Date().toISOString(),
-            webhook_received_at: new Date().toISOString(),
-          })
-          .eq('paystack_reference', reference)
+          const [{ data: eventData }, { data: attendee }] = await Promise.all([
+            supabase.from('events').select('name, date, time, venue, description, banner_url').eq('id', eventId).single(),
+            supabase.from('attendees').select('name, email, phone').eq('id', attendeeId).single(),
+          ])
 
-        // Accept attendee and create invitation
-        if (payment.attendee_id) {
-          await supabase
-            .from('attendees')
-            .update({ registration_status: 'accepted' })
-            .eq('id', payment.attendee_id)
+          if (attendee?.email && eventData) {
+            try {
+              await sendInvitationEmail({
+                eventId,
+                recipientEmail: attendee.email,
+                recipientName:  attendee.name,
+                invitationId,
+                event:          eventData,
+              })
+            } catch (e) {
+              console.error('[Payment Verify] fallback invitation email failed', { reference }, e)
+              Sentry.captureException(e, {
+                extra: { reference, context: 'payment_verify_fallback_send_email' },
+              })
+            }
+          }
 
-          // Check if invitation already exists
-          const { data: existing } = await supabase
-            .from('invitations')
-            .select('id')
-            .eq('attendee_id', payment.attendee_id)
-            .eq('event_id', payment.event_id)
-            .maybeSingle()
-
-          if (!existing) {
-            const { data: newInvitation } = await supabase.from('invitations').insert({
-              event_id: payment.event_id,
-              attendee_id: payment.attendee_id,
-              party_size: 1,
-              status: 'active',
-              ticket_tier_id: payment.ticket_tier_id,
-              payment_reference: reference,
-              payment_status: 'paid',
-              amount_paid_kobo: txn.amount,
-              paid_at: txn.paid_at ?? new Date().toISOString(),
-            }).select('id').single()
-
-            // Send confirmation email + WhatsApp now that the invitation exists
-            const invitationId = newInvitation?.id ?? null
-            if (invitationId) {
-              const { data: eventData } = await supabase
-                .from('events')
-                .select('name, date, time, venue, description, banner_url')
-                .eq('id', payment.event_id)
-                .single()
-
-              const { data: attendee } = await supabase
-                .from('attendees')
-                .select('name, email, phone')
-                .eq('id', payment.attendee_id)
-                .single()
-
-              // Awaited, non-fatal. This runs when the webhook has not arrived yet,
-              // so it may be the guest's ONLY chance to receive their pass — a
-              // detached promise here does not survive the redirect.
-              if (attendee?.email && eventData) {
-                try {
-                  await sendInvitationEmail({
-                    eventId: payment.event_id,
-                    recipientEmail: attendee.email,
-                    recipientName: attendee.name,
-                    invitationId,
-                    event: eventData,
-                  })
-                } catch (e) {
-                  console.error('[Payment Verify] fallback invitation email failed', { reference }, e)
-                  Sentry.captureException(e, {
-                    extra: { reference, context: 'payment_verify_fallback_send_email' },
-                  })
-                }
-              }
-
-              if (attendee?.phone && eventData) {
-                try {
-                  await sendInvitationWhatsApp({
-                    eventId: payment.event_id,
-                    recipientPhone: attendee.phone,
-                    recipientName: attendee.name,
-                    invitationId,
-                    event: eventData,
-                  })
-                } catch (e) {
-                  console.error('[Payment Verify] fallback invitation WhatsApp failed', { reference }, e)
-                  Sentry.captureException(e, {
-                    extra: { reference, context: 'payment_verify_fallback_send_whatsapp' },
-                  })
-                }
-              }
+          if (attendee?.phone && eventData) {
+            try {
+              await sendInvitationWhatsApp({
+                eventId,
+                recipientPhone: attendee.phone,
+                recipientName:  attendee.name,
+                invitationId,
+                event:          eventData,
+              })
+            } catch (e) {
+              console.error('[Payment Verify] fallback invitation WhatsApp failed', { reference }, e)
+              Sentry.captureException(e, {
+                extra: { reference, context: 'payment_verify_fallback_send_whatsapp' },
+              })
             }
           }
         }
-      } catch (err) {
-        Sentry.captureException(err, {
-          extra: { reference, context: 'payment_verify_fallback_processing' },
-        })
-        // Non-fatal: payment IS confirmed, invitation will be created by webhook when it arrives
       }
     }
 

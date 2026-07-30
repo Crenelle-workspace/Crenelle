@@ -227,7 +227,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
       {/* Section header + Add button */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
         <SectionHeader
-          eyebrow="GUEST_MANIFEST"
+          eyebrow="Guest List"
           title="Guest List"
           subtitle={loading ? "Loading guests..." : `${guests.length} guest${guests.length !== 1 ? 's' : ''} · ${totalSeats} total seats`}
         />

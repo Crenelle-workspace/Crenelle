@@ -240,7 +240,7 @@ export default function RegistrationsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
         <SectionHeader
-          eyebrow="PUBLIC_REGISTRATIONS"
+          eyebrow="Public RSVPs"
           title="Registrations"
           subtitle={loading ? "Loading registrations..." : `${counts.pending} pending · ${counts.accepted} accepted · ${counts.rejected} rejected · ${counts.waitlist} waitlist`}
         />

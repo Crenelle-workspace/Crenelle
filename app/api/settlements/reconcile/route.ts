@@ -15,6 +15,10 @@ import * as Sentry from '@sentry/nextjs'
  * Triggered by Vercel Cron (see vercel.json) — runs hourly.
  * Can also be triggered manually (admin only) by POSTing with the CRON_SECRET header.
  */
+export async function GET(request: NextRequest) {
+  return POST(request)
+}
+
 export async function POST(request: NextRequest) {
   // ── Auth: Vercel Cron or manual admin trigger ────────────────
   const authHeader = request.headers.get('Authorization')

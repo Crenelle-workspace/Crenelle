@@ -82,11 +82,11 @@ export function EventsDashboardClient({
         {events.length === 0 ? (
           <EmptyState
             icon={<Users className="h-10 w-10" />}
-            title="NO_EVENTS_YET"
+            title="No events yet"
             subtitle="Create your first event to start issuing entry passes and scanning guests"
             action={
               <Link href="/events/new">
-                <button className="inline-flex items-center gap-2 bg-foreground text-background font-mono text-xs font-semibold uppercase tracking-widest px-5 py-3 hover:opacity-80 transition-opacity cursor-pointer">
+                <button className="inline-flex items-center gap-2 bg-foreground text-background font-sans text-xs font-bold rounded-full px-6 py-3 hover:opacity-90 transition-opacity cursor-pointer">
                   Create your first event →
                 </button>
               </Link>
@@ -113,7 +113,7 @@ export function EventsDashboardClient({
                     <Link href={`/events/${event.id}`}>
                       <EventCard
                         name={event.name}
-                        date={new Date(event.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }).toUpperCase()}
+                        date={new Date(event.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         time={event.time?.slice(0, 5) ?? ""}
                         guestCount={guestCount}
                         guestLabel={guestLabel}

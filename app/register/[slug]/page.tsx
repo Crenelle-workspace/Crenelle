@@ -594,10 +594,10 @@ export default function PublicRegistrationPage() {
       >
         <button
           onClick={scrollToRSVP}
-          className="flex w-full items-center justify-center gap-2 bg-foreground py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-background transition-colors active:bg-copper active:text-white"
+          className="flex w-full items-center justify-center gap-2 bg-foreground py-3.5 rounded-full font-sans text-sm font-bold text-background transition-colors active:bg-copper active:text-white shadow-lg"
         >
           <Ticket size={16} strokeWidth={1.75} />
-          <span>Register</span>
+          <span>Register for Event</span>
           <ArrowRight size={14} strokeWidth={2} />
         </button>
       </div>

@@ -219,7 +219,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b border-border/40 pb-6">
         <SectionHeader
-          eyebrow="TICKET MANAGEMENT"
+          eyebrow="Ticket Tiers"
           title="Ticket Tiers"
           subtitle={loading ? "Loading admission tiers..." : `${tiers.length} active admission tier${tiers.length !== 1 ? 's' : ''}`}
         />

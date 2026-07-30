@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { AlertOctagon, RefreshCw, LayoutDashboard, Home, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertOctagon, RefreshCw, LayoutDashboard, ChevronDown, ChevronUp } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 
 export default function Error({
@@ -74,11 +74,11 @@ export default function Error({
           className="relative z-20 w-full bg-card/40 backdrop-blur-xl rounded-3xl border border-border/40 p-8 sm:p-12 shadow-2xl shadow-black/10 overflow-hidden"
         >
           {/* Top highlight bar */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent rounded-full opacity-80" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-linear-to-r from-transparent via-amber-500 to-transparent rounded-full opacity-80" />
 
-          <div className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-amber-500 bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-full mb-6">
+          <div className="inline-flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-full mb-6">
             <AlertOctagon className="w-3.5 h-3.5" />
-            <span>System Exception &bull; 500</span>
+            <span>Unexpected Error &bull; 500</span>
           </div>
 
           <h1 className="font-sans font-black text-4xl sm:text-5xl text-foreground leading-[1.05] tracking-tight mb-4">
@@ -86,7 +86,7 @@ export default function Error({
           </h1>
 
           <p className="text-muted-foreground text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-8">
-            An unforeseen application error occurred while processing your request. Our system logged the incident for review.
+            We ran into an unexpected error while processing your request. Please try again or return to your dashboard.
           </p>
 
           {/* Action Buttons */}

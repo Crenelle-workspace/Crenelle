@@ -325,6 +325,15 @@
   .animate-blink { animation: blink 1s steps(2, start) infinite; }
   @keyframes blink { to { visibility: hidden; } }
 
+  /* ── Hide scrollbars for clean scrollable containers ── */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   /* ── Subtle entrance ── */
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(16px); }

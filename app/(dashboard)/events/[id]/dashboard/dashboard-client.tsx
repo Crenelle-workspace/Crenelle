@@ -230,7 +230,7 @@ export default function LiveDashboardPage() {
         {/* Section header */}
         <div className="border-b-2 border-foreground/20 pb-6">
           <SectionHeader
-            eyebrow="REALTIME_FEED"
+            eyebrow="Live Door Feed"
             title="Live Attendance"
             subtitle="Loading live dashboard data..."
             live
@@ -299,7 +299,7 @@ export default function LiveDashboardPage() {
       {/* Section header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b-2 border-foreground/20 pb-6">
         <SectionHeader
-          eyebrow="REALTIME_FEED"
+          eyebrow="Live Door Feed"
           title="Live Attendance"
           subtitle="Updates in real-time as guests arrive"
           live

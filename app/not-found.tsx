@@ -105,25 +105,25 @@ export default function NotFound() {
           className="relative z-20 w-full bg-card/40 backdrop-blur-xl rounded-3xl border border-border/40 p-8 sm:p-12 shadow-2xl shadow-black/10 overflow-hidden"
         >
           {/* Subtle card glow accent */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-copper to-transparent rounded-full opacity-80" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-linear-to-r from-transparent via-copper to-transparent rounded-full opacity-80" />
 
-          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-4 py-1.5 rounded-full mb-6">
+          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-copper bg-copper/10 border border-copper/20 px-4 py-1.5 rounded-full mb-6">
             <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Entry Denied &bull; 404</span>
+            <span>Page Not Found &bull; 404</span>
           </motion.div>
 
           <motion.h1
             variants={itemVariants}
             className="font-sans font-black text-4xl sm:text-6xl text-foreground leading-[1.05] tracking-tight mb-4"
           >
-            Access <span className="text-copper italic">Revoked</span>.
+            Page <span className="text-copper italic">Not Found</span>.
           </motion.h1>
 
           <motion.p
             variants={itemVariants}
             className="text-muted-foreground text-sm sm:text-base max-w-lg mx-auto leading-relaxed mb-8"
           >
-            The route you requested has expired, been relocated, or is protected by restricted security permissions.
+            The page you requested doesn&apos;t exist, has been moved, or is no longer available.
           </motion.p>
 
           {/* Primary Action Buttons */}

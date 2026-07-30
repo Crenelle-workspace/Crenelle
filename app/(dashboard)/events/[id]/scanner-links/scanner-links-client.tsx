@@ -83,7 +83,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       {/* Section header + New Link button */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
         <SectionHeader
-          eyebrow="USHER_ACCESS_TOKENS"
+          eyebrow="Door Scanner Links"
           title="Scanner Links"
           subtitle={loading ? "Loading scanner links..." : "Share these links with ushers — no login needed"}
         />

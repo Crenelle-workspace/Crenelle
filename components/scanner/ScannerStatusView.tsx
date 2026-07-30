@@ -92,17 +92,17 @@ export default function ScannerStatusView({ status, eventName }: ScannerStatusVi
           {/* Ticket Header Metadata */}
           <div className="pl-7 pr-6 pt-6 pb-4 border-b border-border/40 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/80 bg-stone-500/10 border border-border/30 px-2 py-0.5 rounded-md font-bold">
-                GATE PASS
+              <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground/80 bg-stone-500/10 border border-border/30 px-2.5 py-0.5 rounded-md font-bold">
+                DOOR PASS
               </span>
-              <span className="font-mono text-[10px] text-muted-foreground font-medium">
-                #MANIFEST-SCANNER
+              <span className="font-sans text-xs text-muted-foreground font-medium">
+                Scanner Pass
               </span>
             </div>
-            <span className="font-mono text-[10px] text-black dark:text-white font-bold uppercase tracking-wider">
-              {status === 'standby' && 'PENDING LIVE'}
-              {status === 'deactivated' && 'OFFLINE'}
-              {status === 'ended' && 'CONCLUDED'}
+            <span className="font-sans text-xs text-black dark:text-white font-bold uppercase tracking-wider">
+              {status === 'standby' && 'Waiting for Event'}
+              {status === 'deactivated' && 'Offline'}
+              {status === 'ended' && 'Concluded'}
             </span>
           </div>
 
@@ -147,10 +147,10 @@ export default function ScannerStatusView({ status, eventName }: ScannerStatusVi
 
           {/* Ticket Footer Status Bar */}
           <div className="pl-7 pr-6 sm:pr-8 py-5 bg-stone-500/5 flex items-center justify-between text-xs">
-            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-              Crenelle Gate Station
+            <span className="font-sans text-xs text-muted-foreground font-semibold">
+              Door Scanner
             </span>
-            <span className="font-mono text-[10px] text-copper font-bold uppercase tracking-wider">
+            <span className="font-sans text-xs text-copper font-bold uppercase tracking-wider">
               {status === 'standby' && 'Standby Active'}
               {status === 'deactivated' && 'Access Revoked'}
               {status === 'ended' && 'Gate Closed'}
@@ -162,8 +162,8 @@ export default function ScannerStatusView({ status, eventName }: ScannerStatusVi
 
       {/* ── FOOTER ── */}
       <footer className="relative z-20 py-5 px-6 border-t border-border/45 bg-background/60 backdrop-blur-lg text-center">
-        <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
-          Crenelle Event Access Management // Gate Scanner
+        <p className="font-sans text-xs text-muted-foreground font-medium">
+          Crenelle Door Access Scanner
         </p>
       </footer>
     </div>

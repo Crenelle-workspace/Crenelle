@@ -45,17 +45,17 @@ export default function GlobalError({
         {/* Main Content */}
         <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 relative z-10 max-w-2xl mx-auto w-full text-center">
           <div className="w-full bg-card/40 backdrop-blur-xl rounded-3xl border border-border/40 p-8 sm:p-12 shadow-2xl shadow-black/20">
-            <div className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-4 py-1.5 rounded-full mb-6">
+            <div className="inline-flex items-center gap-2 font-sans text-xs font-bold uppercase tracking-wider text-copper bg-copper/10 border border-copper/20 px-4 py-1.5 rounded-full mb-6">
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Critical Boundary Error</span>
+              <span>Unexpected Error</span>
             </div>
 
             <h1 className="font-sans font-black text-3xl sm:text-5xl text-foreground tracking-tight mb-4">
-              Fatal System <span className="text-copper italic">Exception</span>.
+              Something went <span className="text-copper italic">wrong</span>.
             </h1>
 
             <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed mb-8">
-              A critical layout error prevented the application from rendering.
+              An unexpected error occurred while loading the application.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -64,14 +64,14 @@ export default function GlobalError({
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground text-background font-sans text-xs font-bold px-8 py-3.5 hover:bg-copper hover:text-white transition-all duration-300 shadow-lg shadow-black/5 w-full sm:w-auto cursor-pointer"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span>Reload Application</span>
+                <span>Refresh Page</span>
               </button>
               <Link
                 href="/"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-border/60 bg-card/50 text-foreground font-sans text-xs font-bold px-8 py-3.5 hover:border-copper/50 hover:bg-copper/5 transition-all duration-300 w-full sm:w-auto"
               >
                 <Home className="w-4 h-4" />
-                <span>Return to Safety</span>
+                <span>Return to Home</span>
               </Link>
             </div>
           </div>

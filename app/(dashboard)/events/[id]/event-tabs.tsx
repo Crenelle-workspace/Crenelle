@@ -17,8 +17,8 @@ export function EventTabs({ id, tabs }: EventTabsProps) {
   const pathname = usePathname()
 
   return (
-    <nav aria-label="Event sections" className="mb-10 select-none">
-      <div className="flex gap-1.5 border border-border/40 bg-card/40 backdrop-blur-xl p-1.5 rounded-full overflow-x-auto shadow-xs">
+    <nav aria-label="Event sections" className="mb-10 select-none w-full max-w-full overflow-x-auto no-scrollbar py-1">
+      <div className="inline-flex min-w-max gap-1.5 border border-border/40 bg-card/40 backdrop-blur-xl p-1.5 rounded-full shadow-xs">
         {tabs.map((tab) => {
           const fullHref = `/events/${id}${tab.href}`
           const isActive = tab.href === ''

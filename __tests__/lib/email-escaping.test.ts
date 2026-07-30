@@ -85,7 +85,7 @@ describe('sendCoHostInviteEmail — stored-XSS prevention', () => {
     })
 
     expect(sendMock).toHaveBeenCalledTimes(1)
-    const { html, subject } = sendMock.mock.calls[0][0]
+    const { html, subject } = (sendMock.mock.calls as unknown as [{ html: string; subject: string }][])[0][0]
 
     // The raw payloads must NOT appear verbatim in the rendered HTML.
     expect(html).not.toContain('<script>alert(\'evt\')</script>')

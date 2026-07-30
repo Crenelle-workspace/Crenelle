@@ -27,6 +27,9 @@ jobs:
       - name: Run Linter
         run: npm run lint
 
+      - name: Run Typecheck
+        run: npx tsc --noEmit
+
       - name: Run Unit Tests
         run: npm run test
         env:
@@ -34,3 +37,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
           SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
           RESEND_API_KEY: re_placeholder
+
+      - name: Build Application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          RESEND_API_KEY: re_placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000

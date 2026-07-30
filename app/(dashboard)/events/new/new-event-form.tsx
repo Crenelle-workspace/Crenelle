@@ -103,10 +103,10 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
       </Link>
 
       <div className="mb-8">
-        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-2.5 py-1 rounded-full inline-block mb-3">
-          Event Setup Wizard
+        <span className="font-sans text-[11px] font-semibold uppercase tracking-wider text-copper bg-copper/10 border border-copper/20 px-3 py-1 rounded-full inline-block mb-3">
+          Create New Event
         </span>
-        <h1 className="font-display text-5xl uppercase text-foreground leading-none">Create Event</h1>
+        <h1 className="font-sans text-4xl font-bold tracking-tight text-foreground">Create Event</h1>
         <p className="font-sans text-xs text-muted-foreground mt-2 leading-relaxed max-w-xl">
           {eventType === 'closed' ? (
             <>
@@ -116,7 +116,7 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
             </>
           ) : (
             <>
-              <span className="font-bold text-foreground">Open</span> events generate a public registration page.
+              <span className="font-bold text-foreground">Public</span> events generate a public registration page.
               Guests sign up online, you review applications, and approved guests receive QR pass cards.
             </>
           )}
@@ -147,7 +147,7 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
                 <Lock className="h-4 w-4" />
               </div>
               <div className="text-left">
-                <p className="font-display text-xl uppercase leading-none">Closed</p>
+                <p className="font-sans text-base font-semibold leading-none">Invite-Only</p>
                 <p className="font-sans text-[10.5px] text-muted-foreground mt-1 leading-normal">
                   You manage and upload guest lists directly.
                 </p>
@@ -166,7 +166,7 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
                 <Globe className="h-4 w-4" />
               </div>
               <div className="text-left">
-                <p className="font-display text-xl uppercase leading-none">Open</p>
+                <p className="font-sans text-base font-semibold leading-none">Public Event</p>
                 <p className="font-sans text-[10.5px] text-muted-foreground mt-1 leading-normal">
                   Generates public registration & checkout link.
                 </p>
