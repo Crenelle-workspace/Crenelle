@@ -69,7 +69,9 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
       const msg = err instanceof Error ? err.message : 'Failed to upload image'
       setError(msg)
       toast.error(
-        'Upload failed. The "banners" storage bucket may not exist yet in Supabase. Please paste an image URL instead.'
+        msg.toLowerCase().includes('bucket') || msg.toLowerCase().includes('not found')
+          ? 'Upload failed. The "banners" storage bucket may not exist yet in Supabase. Please paste an image URL instead.'
+          : `Upload error: ${msg}`
       )
       // Switch to URL tab so user has alternative
       setActiveTab('url')
