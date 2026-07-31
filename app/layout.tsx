@@ -30,8 +30,8 @@ export const metadata: Metadata = {
       { url: '/Brand Logos/CRENELLE FAVICON W.png', media: '(prefers-color-scheme: dark)' },
       { url: '/Brand Logos/CRENELLE FAVICON B.png', media: '(prefers-color-scheme: light)' },
     ],
-    shortcut: '/Brand Logos/CRENELLE FAVICON W.png',
-    apple: '/Brand Logos/CRENELLE FAVICON W.png',
+    shortcut: '/Brand Logos/CRENELLE FAVICON B.png',
+    apple: '/Brand Logos/CRENELLE FAVICON B.png',
   },
   openGraph: {
     title: 'Crenelle — Event Access Management',
