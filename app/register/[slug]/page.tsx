@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getRegisterEvent } from '@/lib/register-event'
+import { getOptimizedBannerUrl } from '@/lib/images'
 import RegistrationClient from './registration-client'
 
 // Registration state (capacity, tiers) changes over time, so render per-request.
@@ -10,17 +12,47 @@ interface PageProps {
   params: Promise<{ slug: string }>
 }
 
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return 'https://crenelle.org'
+}
+
+function getAbsoluteImageUrl(url: string | null | undefined, baseUrl: string): string {
+  if (!url) return `${baseUrl}/og-image.png`
+  const optimized = getOptimizedBannerUrl(url, 'web')
+  if (optimized.startsWith('http://') || optimized.startsWith('https://')) {
+    return optimized
+  }
+  return `${baseUrl}${optimized.startsWith('/') ? '' : '/'}${optimized}`
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
-  const result = await getRegisterEvent(slug)
+  const baseUrl = getBaseUrl()
 
-  if (result.error || !result.event) {
+  // Query events table directly for metadata so link previews work even when previewing/drafting
+  const supabase = createAdminClient()
+  const { data: event } = await supabase
+    .from('events')
+    .select('name, date, venue, description, banner_url, event_type')
+    .eq('registration_slug', slug)
+    .maybeSingle()
+
+  if (!event) {
     return {
       title: 'Event Not Found | Crenelle',
+      description: 'The requested event registration link could not be found.',
     }
   }
 
-  const { event } = result
   const title = `Register for ${event.name} | Crenelle`
 
   let formattedDetails = ''
@@ -46,20 +78,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const truncatedDescription =
     description.length > 160 ? `${description.slice(0, 157)}...` : description
 
-  const imageUrl = event.banner_url || '/og-image.png'
+  const absoluteImageUrl = getAbsoluteImageUrl(event.banner_url, baseUrl)
+  const canonicalUrl = `${baseUrl}/register/${slug}`
 
   return {
     title,
     description: truncatedDescription,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description: truncatedDescription,
-      type: 'website',
+      url: canonicalUrl,
       siteName: 'Crenelle',
+      type: 'website',
       images: [
         {
-          url: imageUrl,
-          alt: `${event.name} banner`,
+          url: absoluteImageUrl,
+          secureUrl: absoluteImageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${event.name} Banner`,
         },
       ],
     },
@@ -67,7 +107,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary_large_image',
       title,
       description: truncatedDescription,
-      images: [imageUrl],
+      images: [absoluteImageUrl],
     },
   }
 }
