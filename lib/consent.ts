@@ -28,16 +28,13 @@ export async function recordTermsAcceptance(
     const admin = createAdminClient()
     const { error } = await admin
       .from('terms_acceptances')
-      .insert(
-        {
-          user_id: userId,
-          document,
-          version,
-          ip_address: ipAddress,
-          user_agent: userAgent,
-        },
-        { ignoreDuplicates: true }
-      )
+      .insert({
+        user_id: userId,
+        document,
+        version,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      })
 
     if (error) {
       // If error is Postgres unique constraint violation (code 23505), treat as idempotent success

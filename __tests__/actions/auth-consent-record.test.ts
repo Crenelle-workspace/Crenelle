@@ -37,16 +37,13 @@ describe('recordTermsAcceptance', () => {
 
     expect(res).toEqual({ success: true })
     expect(fromMock).toHaveBeenCalledWith('terms_acceptances')
-    expect(insertMock).toHaveBeenCalledWith(
-      {
-        user_id: 'user-100',
-        document: 'terms_and_privacy',
-        version: '1.0',
-        ip_address: '192.168.1.1',
-        user_agent: 'TestBrowser/1.0',
-      },
-      { ignoreDuplicates: true }
-    )
+    expect(insertMock).toHaveBeenCalledWith({
+      user_id: 'user-100',
+      document: 'terms_and_privacy',
+      version: '1.0',
+      ip_address: '192.168.1.1',
+      user_agent: 'TestBrowser/1.0',
+    })
   })
 
   it('handles unique constraint duplicate errors idempotently as success', async () => {
