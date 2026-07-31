@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
 import { toast } from 'sonner'
+import { compressImageToWebP } from '@/lib/images'
 
 interface EventBannerInputProps {
   defaultValue?: string | null
@@ -33,24 +34,19 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
         throw new Error('Please select a valid image file.')
       }
 
-      // Maximum 5MB banner file size limit
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error('Image size must be less than 5MB.')
+      // Maximum 10MB input file size limit (compressed down to ~150KB before upload)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Image size must be less than 10MB.')
       }
 
-      // Derive a SAFE extension from an allowlist — never trust the raw
-      // client filename. `file.name.split('.').pop()` can contain path
-      // separators or `..` (e.g. "foo.a/../../evil"), which would be injected
-      // into the storage object key and could traverse the bucket path.
-      const rawExt = (file.name.split('.').pop() ?? '').toLowerCase()
-      const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']
-      const fileExt = allowedExts.includes(rawExt) ? rawExt : 'jpg'
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+      // Compress and resize image client-side to WebP format before network transmission
+      const { blob, fileName, contentType } = await compressImageToWebP(file)
 
       const { error: uploadError } = await supabase.storage
         .from('banners')
-        .upload(fileName, file, {
+        .upload(fileName, blob, {
           cacheControl: '31536000, immutable',
+          contentType,
           upsert: false,
         })
 
