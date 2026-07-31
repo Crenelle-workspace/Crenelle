@@ -234,7 +234,7 @@ export default function EventOverviewPage() {
 
         <form action={handleUpdate} className="bg-card/40 backdrop-blur-xl border border-border/40 rounded-3xl p-8 shadow-xl flex flex-col gap-6">
           {error && (
-            <div role="alert" aria-live="assertive" className="border-l-2 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-xl font-sans text-xs text-red-400 leading-relaxed">
+            <div role="alert" aria-live="assertive" className="border-l-2 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-xl font-sans text-xs text-red-600 dark:text-red-400 font-medium leading-relaxed">
               ⚠ {error}
             </div>
           )}
@@ -516,11 +516,11 @@ export default function EventOverviewPage() {
               <p className="font-sans text-xs font-medium text-muted-foreground">Pending</p>
             </div>
             <div className="bg-background p-3 text-center">
-              <p className="font-sans text-xl font-bold text-emerald-500">{regCounts.accepted}</p>
+              <p className="font-sans text-xl font-bold text-emerald-600 dark:text-emerald-400">{regCounts.accepted}</p>
               <p className="font-sans text-xs font-medium text-muted-foreground">Accepted</p>
             </div>
             <div className="bg-background p-3 text-center">
-              <p className="font-sans text-xl font-bold text-red-500">{regCounts.rejected}</p>
+              <p className="font-sans text-xl font-bold text-red-600 dark:text-red-400">{regCounts.rejected}</p>
               <p className="font-sans text-xs font-medium text-muted-foreground">Rejected</p>
             </div>
           </div>
