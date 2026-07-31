@@ -294,7 +294,7 @@ export function ProcessTimeline() {
                       <div className="absolute inset-0 bg-emerald-950/90 z-20 flex flex-col items-center justify-center text-emerald-400 border border-emerald-500/20">
                         <CheckCircle2 className="w-8 h-8 text-emerald-400 mb-1.5" />
                         <span className="text-[10px] font-bold tracking-wider">TICKET VERIFIED</span>
-                        <span className="font-mono text-[9px] text-foreground mt-0.5 font-semibold">Elena Rostova</span>
+                        <span className="font-mono text-[9px] text-stone-100 mt-0.5 font-semibold">Elena Rostova</span>
                         <span className="font-mono text-[7px] opacity-75">VIP Admission · Verified</span>
                       </div>
                     </div>

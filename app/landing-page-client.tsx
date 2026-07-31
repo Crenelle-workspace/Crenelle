@@ -400,19 +400,19 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
                       className="object-cover opacity-65 group-hover:opacity-50 group-hover:scale-105 transition-all duration-700 filter grayscale group-hover:grayscale-0"
                     />
                     {/* Bottom gradient fade */}
-                    <div className="absolute inset-0 bg-linear-to-t from-stone-950 via-stone-950/40 to-stone-950/15 z-10" />
+                    <div className="absolute inset-0 bg-linear-to-t from-stone-950 via-stone-950/70 to-stone-950/30 z-10" />
                   </div>
 
                   {/* Feature Content Overlay */}
                   <div className="relative z-20 text-left space-y-3">
-                    <div className="w-8 h-8 rounded-lg bg-copper/10 border border-copper/20 flex items-center justify-center text-copper shadow-xs">
+                    <div className="w-8 h-8 rounded-lg bg-copper/20 border border-copper/30 flex items-center justify-center text-copper shadow-xs">
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="space-y-1">
-                      <h3 className="font-bold text-sm text-foreground tracking-tight">
+                      <h3 className="font-bold text-sm text-stone-100 tracking-tight">
                         {feat.title}
                       </h3>
-                      <p className="text-[10.5px] text-muted-foreground leading-relaxed">
+                      <p className="text-[10.5px] text-stone-300 leading-relaxed">
                         {feat.desc}
                       </p>
                     </div>
