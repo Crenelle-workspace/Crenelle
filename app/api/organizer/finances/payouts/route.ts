@@ -1,7 +1,105 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { listSettlements, getSettlementTransactions } from '@/lib/paystack'
 import * as Sentry from '@sentry/nextjs'
+
+/**
+ * Sync settlements for a single subaccount on-demand.
+ */
+async function syncSubaccountSettlements(
+  admin: ReturnType<typeof createAdminClient>,
+  organizerId: string,
+  subaccountCode: string
+) {
+  try {
+    const { data: paystackSettlements, error } = await listSettlements(subaccountCode, 50, 1)
+    if (error || !paystackSettlements || paystackSettlements.length === 0) return
+
+    const successSettlements = paystackSettlements.filter((s) => s.status === 'success')
+    if (successSettlements.length === 0) return
+
+    const paystackIds = successSettlements.map((s) => String(s.id))
+
+    const { data: existing } = await admin
+      .from('settlements')
+      .select('paystack_settlement_id')
+      .eq('organizer_id', organizerId)
+      .in('paystack_settlement_id', paystackIds)
+
+    const existingIds = new Set((existing ?? []).map((s) => s.paystack_settlement_id))
+    const newSettlements = successSettlements.filter((s) => !existingIds.has(String(s.id)))
+
+    for (const settlement of newSettlements) {
+      const { data: txns } = await getSettlementTransactions(settlement.id, 250, 1)
+      if (!txns) continue
+
+      const settlementDate = settlement.settlement_date
+        ? new Date(settlement.settlement_date).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0]
+
+      const { data: newSettlement, error: insertError } = await admin
+        .from('settlements')
+        .insert({
+          organizer_id: organizerId,
+          paystack_settlement_id: String(settlement.id),
+          transfer_reference: settlement.transfer_reference ?? null,
+          settlement_date: settlementDate,
+          total_amount: settlement.net_amount / 100, // net in NGN
+          status: 'PENDING',
+        })
+        .select('id')
+        .single()
+
+      if (insertError || !newSettlement) continue
+
+      const allRefs = txns.map((t) => t.reference)
+      const { data: matchedPayments } = await admin
+        .from('payments')
+        .select('id, paystack_reference')
+        .in('paystack_reference', allRefs)
+
+      const paymentByRef = new Map(
+        (matchedPayments ?? []).map((p) => [p.paystack_reference, p.id])
+      )
+
+      const settlementTxnRows: {
+        settlement_id: string
+        payment_id: string
+        amount_settled: number
+      }[] = []
+
+      let hasDiscrepancy = false
+
+      for (const txn of txns) {
+        const paymentId = paymentByRef.get(txn.reference)
+        if (!paymentId) {
+          hasDiscrepancy = true
+          continue
+        }
+
+        settlementTxnRows.push({
+          settlement_id: newSettlement.id,
+          payment_id: paymentId,
+          amount_settled: (txn.amount - txn.fees) / 100,
+        })
+      }
+
+      if (settlementTxnRows.length > 0) {
+        await admin
+          .from('settlement_transactions')
+          .upsert(settlementTxnRows, { ignoreDuplicates: true })
+      }
+
+      await admin
+        .from('settlements')
+        .update({ status: hasDiscrepancy ? 'DISCREPANCY' : 'MATCHED' })
+        .eq('id', newSettlement.id)
+    }
+  } catch (err) {
+    Sentry.captureException(err, { extra: { context: 'on_demand_settlement_sync', organizerId } })
+  }
+}
 
 /**
  * GET /api/organizer/finances/payouts
@@ -70,6 +168,17 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient()
 
   try {
+    // 0. On-demand sync for organizer's subaccount settlements
+    const { data: settings } = await admin
+      .from('organizer_payment_settings')
+      .select('paystack_subaccount_code, is_verified')
+      .eq('organizer_id', user.id)
+      .maybeSingle()
+
+    if (settings?.paystack_subaccount_code && settings.is_verified) {
+      await syncSubaccountSettlements(admin, user.id, settings.paystack_subaccount_code)
+    }
+
     // 1. Build the settlements query (restricted to this organiser by RLS + explicit filter)
     const buildBase = () => {
       let q = admin

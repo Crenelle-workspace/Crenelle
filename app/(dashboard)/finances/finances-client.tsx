@@ -328,7 +328,7 @@ export function FinancesClient() {
       </div>
 
       {/* ── Key Metrics Grid ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Organiser Net Payout */}
         <div className="border border-border/40 bg-card rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground mb-3">
@@ -359,24 +359,6 @@ export function FinancesClient() {
             </div>
             <p className="font-sans text-[11px] text-muted-foreground mt-1">
               Total paid by guests (Ticket price + platform fee)
-            </p>
-          </div>
-        </div>
-
-        {/* Buyer Platform Fee */}
-        <div className="border border-border/40 bg-card rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-muted-foreground mb-3">
-            <span className="font-sans text-xs font-semibold text-muted-foreground">
-              Buyer Platform Fee ({subaccount?.platform_fee_percent ?? 5}%)
-            </span>
-            <Receipt className="w-4 h-4 text-sky-500" />
-          </div>
-          <div>
-            <div className="font-sans text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              {loadingOverview ? '...' : formatNGN(lifetime?.platform_fees_ngn ?? 0)}
-            </div>
-            <p className="font-sans text-[11px] text-muted-foreground mt-1">
-              Fee paid by guests at checkout (₦0 cost to you)
             </p>
           </div>
         </div>
