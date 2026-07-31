@@ -16,9 +16,16 @@ export async function createEvent(formData: FormData) {
   const name = formData.get('name') as string
   const emailTheme = (formData.get('email_theme') as string) || 'classic'
   const eventDate = formData.get('date') as string
+  const eventTz = (formData.get('timezone') as string) || 'Africa/Lagos'
 
-  const today = new Date().toISOString().split('T')[0]
-  if (eventDate && eventDate < today) {
+  let todayStr: string
+  try {
+    todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: eventTz }).format(new Date())
+  } catch {
+    todayStr = new Date().toISOString().split('T')[0]
+  }
+
+  if (eventDate && eventDate < todayStr) {
     return { error: 'Event date cannot be in the past. Please select today or a future date.' }
   }
 

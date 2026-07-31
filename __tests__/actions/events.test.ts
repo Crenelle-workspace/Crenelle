@@ -27,9 +27,11 @@ function makeFormData(fields: Record<string, string>): FormData {
   return fd
 }
 
+const futureDate = new Date(Date.now() + 30 * 86_400_000).toISOString().split('T')[0]
+
 const baseEventForm = {
   name: 'Test Event',
-  date: '2025-12-31',
+  date: futureDate,
   time: '18:00',
   venue: 'Victoria Island',
   description: 'A great event',
@@ -83,6 +85,34 @@ describe('createEvent', () => {
 
     const fd = makeFormData(baseEventForm)
     await expect(createEvent(fd)).rejects.toThrow('NEXT_REDIRECT:/login')
+  })
+
+  it('returns error when event date is in the past', async () => {
+    mockCreateClient.mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
+      from: vi.fn(),
+    })
+
+    const fd = makeFormData({ ...baseEventForm, date: '2020-01-01' })
+    const result = await createEvent(fd)
+    expect(result).toEqual({
+      error: 'Event date cannot be in the past. Please select today or a future date.',
+    })
+  })
+
+  it('allows creating an event scheduled for today', async () => {
+    mockCreateClient.mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
+      from: vi.fn(() => ({
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { id: 'event-today' }, error: null }),
+      })),
+    })
+
+    const todayStr = new Date().toISOString().split('T')[0]
+    const fd = makeFormData({ ...baseEventForm, date: todayStr })
+    await expect(createEvent(fd)).rejects.toThrow('NEXT_REDIRECT:/events/event-today')
   })
 })
 
