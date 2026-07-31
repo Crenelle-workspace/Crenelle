@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signupSchema, loginSchema } from "@/lib/validations/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { recordTermsAcceptance } from "@/lib/consent";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -53,7 +54,7 @@ export async function signup(formData: FormData) {
     };
   }
 
-  const { error } = await supabase.auth.signUp({
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email: result.data.email,
     password: result.data.password,
   });
@@ -67,6 +68,10 @@ export async function signup(formData: FormData) {
       error:
         "We couldn't complete your sign up. If you already have an account, please sign in instead.",
     };
+  }
+
+  if (signUpData?.user?.id) {
+    await recordTermsAcceptance(signUpData.user.id);
   }
 
   revalidatePath("/", "layout");

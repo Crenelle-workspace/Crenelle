@@ -100,19 +100,19 @@ describe('createEvent', () => {
     })
   })
 
-  it('allows creating an event scheduled for today', async () => {
+  it('allows creating an event scheduled for today in organizer timezone (Africa/Lagos)', async () => {
     mockCreateClient.mockResolvedValue({
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
       from: vi.fn(() => ({
         insert: vi.fn().mockReturnThis(),
         select: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: { id: 'event-today' }, error: null }),
+        single: vi.fn().mockResolvedValue({ data: { id: 'event-today-lagos' }, error: null }),
       })),
     })
 
-    const todayStr = new Date().toISOString().split('T')[0]
-    const fd = makeFormData({ ...baseEventForm, date: todayStr })
-    await expect(createEvent(fd)).rejects.toThrow('NEXT_REDIRECT:/events/event-today')
+    const lagosToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos' }).format(new Date())
+    const fd = makeFormData({ ...baseEventForm, date: lagosToday, timezone: 'Africa/Lagos' })
+    await expect(createEvent(fd)).rejects.toThrow('NEXT_REDIRECT:/events/event-today-lagos')
   })
 })
 
@@ -218,6 +218,22 @@ describe('updateEvent', () => {
     const fd = makeFormData({ ...baseEventForm, status: 'published' })
     const result = await updateEvent('event-1', fd)
     expect(result).toEqual({ error: 'Update failed' })
+  })
+
+  it('returns { error } when updating event date to a past date', async () => {
+    mockCreateClient.mockResolvedValue({
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: { banner_url: null }, error: null }),
+      })),
+    })
+
+    const fd = makeFormData({ ...baseEventForm, date: '2020-01-01', status: 'published' })
+    const result = await updateEvent('event-1', fd)
+    expect(result).toEqual({
+      error: 'Event date cannot be in the past. Please select today or a future date.',
+    })
   })
 })
 

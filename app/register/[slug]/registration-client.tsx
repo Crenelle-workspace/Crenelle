@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { submitRegistration } from '@/app/actions/registrations'
@@ -565,6 +566,18 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                       {submitting ? 'Joining…' : 'Join the waitlist'}
                       {!submitting && <ArrowRight size={15} strokeWidth={2} />}
                     </button>
+                    <p className="mt-2.5 text-center font-sans text-[11px] leading-relaxed text-muted-foreground/80">
+                      By registering, you agree to our{' '}
+                      <Link
+                        href="/privacy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-copper font-medium hover:underline underline-offset-2"
+                      >
+                        Privacy Policy
+                      </Link>
+                      .
+                    </p>
                   </form>
                 </div>
               ) : (
@@ -646,6 +659,18 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                             : 'Confirm registration'}
                           {!isProcessing && <ArrowRight size={15} strokeWidth={2} />}
                         </button>
+                        <p className="mt-3 text-center font-sans text-[11px] leading-relaxed text-muted-foreground/80">
+                          By registering, you agree to our{' '}
+                          <Link
+                            href="/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-copper font-medium hover:underline underline-offset-2"
+                          >
+                            Privacy Policy
+                          </Link>
+                          .
+                        </p>
                       </div>
                     )
                   })()}

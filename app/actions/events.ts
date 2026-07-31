@@ -112,11 +112,27 @@ export async function updateEvent(id: string, formData: FormData) {
     registrationSlug = null
   }
 
+  const eventDate = formData.get('date') as string
+  const eventTz = (formData.get('timezone') as string) || 'Africa/Lagos'
+
+  if (eventDate) {
+    let todayStr: string
+    try {
+      todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: eventTz }).format(new Date())
+    } catch {
+      todayStr = new Date().toISOString().split('T')[0]
+    }
+
+    if (eventDate < todayStr) {
+      return { error: 'Event date cannot be in the past. Please select today or a future date.' }
+    }
+  }
+
   const updateData: Record<string, unknown> = {
     name,
-    date: formData.get('date') as string,
+    date: eventDate,
     time: (formData.get('time') as string) || null,
-    timezone: (formData.get('timezone') as string) || 'Africa/Lagos',
+    timezone: eventTz,
     venue: formData.get('venue') as string,
     description: (formData.get('description') as string) || null,
     capacity: formData.get('capacity') ? Number(formData.get('capacity')) : null,

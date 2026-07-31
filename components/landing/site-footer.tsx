@@ -31,9 +31,9 @@ const WHATSAPP_DISPLAY = "+234 901 472 4115";
 // that does not exist (or to someone else's). Set an href to "#" to hide that
 // icon entirely.
 const SOCIAL_LINKS = [
-  { label: "LinkedIn", href: "https://www.linkedin.com/company/crenelle", icon: "linkedin" as const },
-  { label: "Instagram", href: "https://www.instagram.com/crenelle", icon: "instagram" as const },
-  { label: "TikTok", href: "https://www.tiktok.com/@crenelle", icon: "tiktok" as const },
+  { label: "LinkedIn", href: "#", icon: "linkedin" as const },
+  { label: "Instagram", href: "#", icon: "instagram" as const },
+  { label: "TikTok", href: "#", icon: "tiktok" as const },
 ];
 
 const EXPLORE_LINKS: Array<[string, string]> = [
