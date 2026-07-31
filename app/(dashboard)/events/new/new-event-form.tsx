@@ -140,15 +140,15 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
               className={`flex items-start gap-3 p-4 rounded-2xl border transition-all duration-300 cursor-pointer ${
                 eventType === 'closed'
                   ? 'border-copper bg-copper/10 text-foreground shadow-xs'
-                  : 'border-border/40 bg-stone-900/30 text-foreground/60 hover:border-border/70 hover:text-foreground'
+                  : 'border-border/50 bg-stone-100/60 dark:bg-stone-900/30 text-foreground hover:border-copper/40'
               }`}
             >
-              <div className={`p-2 rounded-xl shrink-0 ${eventType === 'closed' ? 'bg-copper/20 text-copper' : 'bg-stone-500/10 text-muted-foreground'}`}>
+              <div className={`p-2 rounded-xl shrink-0 ${eventType === 'closed' ? 'bg-copper/20 text-copper' : 'bg-stone-200/80 dark:bg-stone-800/80 text-foreground/80'}`}>
                 <Lock className="h-4 w-4" />
               </div>
               <div className="text-left">
                 <p className="font-sans text-base font-semibold leading-none">Invite-Only</p>
-                <p className="font-sans text-[10.5px] text-muted-foreground mt-1 leading-normal">
+                <p className={`font-sans text-[10.5px] mt-1 leading-normal ${eventType === 'closed' ? 'text-foreground/90 font-medium' : 'text-stone-600 dark:text-stone-300 font-medium'}`}>
                   You manage and upload guest lists directly.
                 </p>
               </div>
@@ -159,15 +159,15 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
               className={`flex items-start gap-3 p-4 rounded-2xl border transition-all duration-300 cursor-pointer ${
                 eventType === 'open'
                   ? 'border-copper bg-copper/10 text-foreground shadow-xs'
-                  : 'border-border/40 bg-stone-900/30 text-foreground/60 hover:border-border/70 hover:text-foreground'
+                  : 'border-border/50 bg-stone-100/60 dark:bg-stone-900/30 text-foreground hover:border-copper/40'
               }`}
             >
-              <div className={`p-2 rounded-xl shrink-0 ${eventType === 'open' ? 'bg-copper/20 text-copper' : 'bg-stone-500/10 text-muted-foreground'}`}>
+              <div className={`p-2 rounded-xl shrink-0 ${eventType === 'open' ? 'bg-copper/20 text-copper' : 'bg-stone-200/80 dark:bg-stone-800/80 text-foreground/80'}`}>
                 <Globe className="h-4 w-4" />
               </div>
               <div className="text-left">
                 <p className="font-sans text-base font-semibold leading-none">Public Event</p>
-                <p className="font-sans text-[10.5px] text-muted-foreground mt-1 leading-normal">
+                <p className={`font-sans text-[10.5px] mt-1 leading-normal ${eventType === 'open' ? 'text-foreground/90 font-medium' : 'text-stone-600 dark:text-stone-300 font-medium'}`}>
                   Generates public registration & checkout link.
                 </p>
               </div>
