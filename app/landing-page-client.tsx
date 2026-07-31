@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  QrCode,
   ArrowRight,
   Clock,
   Smartphone,
@@ -17,6 +16,7 @@ import { TiltEventCard } from "@/components/landing/tilt-event-card";
 import { InteractiveTicketStack } from "@/components/landing/interactive-ticket-stack";
 import { FeaturesGrid } from "@/components/landing/features-grid";
 import { ProcessTimeline } from "@/components/landing/process-timeline";
+import { SiteFooter } from "@/components/landing/site-footer";
 
 interface LandingPageClientProps {
   user: unknown;
@@ -474,40 +474,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-border/40 py-16 px-6 md:px-12 bg-card/40 relative">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center text-background">
-              <QrCode className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="font-sans text-lg font-bold tracking-tight text-foreground block leading-none">
-                crenelle
-              </span>
-              <span className="block font-sans text-xs text-muted-foreground/60 mt-1">
-                © 2026 Crenelle. All rights reserved.
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-8 font-semibold text-xs">
-            {[
-              ["#hero", "Overview"],
-              ["#showcase", "Showcase"],
-              ["#features", "Features"],
-              ["#process", "How It Works"],
-            ].map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {label}
-              </a>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
