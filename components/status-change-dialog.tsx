@@ -76,14 +76,14 @@ export function StatusChangeDialog({
                 className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-300 cursor-pointer ${
                   isActive
                     ? 'border-copper bg-copper/10 text-foreground shadow-xs'
-                    : 'border-border/30 hover:border-border/60 bg-stone-900/30 text-foreground'
+                    : 'border-border/50 hover:border-copper/40 bg-stone-100/60 dark:bg-stone-900/30 text-foreground'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-sans text-sm font-bold">{s.label}</span>
+                  <span className="font-sans text-sm font-bold text-foreground">{s.label}</span>
                   <div className="flex items-center gap-2">
                     {isCurrent && (
-                      <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-muted-foreground border border-border/40 px-2 py-0.5 rounded-full bg-stone-500/10">
+                      <span className="font-mono text-[9px] uppercase font-bold tracking-wider text-stone-700 dark:text-stone-300 border border-border/60 px-2 py-0.5 rounded-full bg-stone-200/80 dark:bg-stone-800/80">
                         Current
                       </span>
                     )}
@@ -92,7 +92,13 @@ export function StatusChangeDialog({
                     )}
                   </div>
                 </div>
-                <p className="font-sans text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.desc}</p>
+                <p className={`font-sans text-xs mt-0.5 leading-relaxed ${
+                  isActive
+                    ? 'text-foreground/90 font-medium'
+                    : 'text-stone-600 dark:text-stone-300 font-medium'
+                }`}>
+                  {s.desc}
+                </p>
               </button>
             )
           })}
@@ -109,7 +115,7 @@ export function StatusChangeDialog({
           </button>
           <button
             onClick={() => onOpenChange(false)}
-            className="px-5 py-3 font-sans text-xs font-bold text-muted-foreground border border-border/40 hover:border-border hover:text-foreground rounded-full transition-all cursor-pointer"
+            className="px-5 py-3 font-sans text-xs font-bold text-stone-700 dark:text-stone-300 border border-border/60 hover:border-border hover:text-foreground rounded-full transition-all cursor-pointer"
           >
             Cancel
           </button>
