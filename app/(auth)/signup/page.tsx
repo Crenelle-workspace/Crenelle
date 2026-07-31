@@ -9,12 +9,16 @@ import { cn } from '@/lib/utils'
 import { signupSchema } from '@/lib/validations/auth'
 import { ZodError } from 'zod'
 import { createClient } from '@/lib/supabase/client'
+import { TermsModal } from '@/components/legal/terms-modal'
 
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [password, setPassword] = useState('')
+  // Gates both signup paths. The server action re-checks this — a disabled
+  // button is a UX affordance, not an enforcement mechanism.
+  const [agreed, setAgreed] = useState(false)
 
   const requirements = [
     { label: 'MIN_8_CHARACTERS', test: (pw: string) => pw.length >= 8 },
@@ -60,6 +64,10 @@ export default function SignupPage() {
 
   async function handleGoogleLogin() {
     if (loading) return
+    if (!agreed) {
+      setError('Please accept the Terms & Conditions and Privacy Policy to continue.')
+      return
+    }
     setGoogleLoading(true)
     setError(null)
 
@@ -189,10 +197,72 @@ export default function SignupPage() {
           />
         </div>
 
+        {/* ── Terms consent ── */}
+        <div className="mt-1 flex items-start gap-3">
+          <input
+            id="signup-terms"
+            name="terms"
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => {
+              setAgreed(e.target.checked)
+              if (e.target.checked) setError(null)
+            }}
+            className="peer sr-only"
+          />
+          <label
+            htmlFor="signup-terms"
+            className={cn(
+              'mt-0.5 size-4 shrink-0 rounded-[5px] border flex items-center justify-center cursor-pointer transition-all',
+              'peer-focus-visible:ring-2 peer-focus-visible:ring-copper/40',
+              agreed
+                ? 'bg-copper border-copper text-white'
+                : 'border-border/60 hover:border-copper/50'
+            )}
+            aria-hidden="true"
+          >
+            {agreed && <Check className="size-2.5" strokeWidth={3.5} />}
+          </label>
+
+          <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+            <label htmlFor="signup-terms" className="cursor-pointer">
+              I agree to the{' '}
+            </label>
+            <TermsModal
+              onAccept={() => {
+                setAgreed(true)
+                setError(null)
+              }}
+              trigger={
+                <button
+                  type="button"
+                  className="text-copper font-bold hover:underline underline-offset-4 cursor-pointer"
+                >
+                  Terms &amp; Conditions
+                </button>
+              }
+            />
+            <label htmlFor="signup-terms" className="cursor-pointer">
+              {' '}and{' '}
+            </label>
+            <Link
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-copper font-bold hover:underline underline-offset-4"
+            >
+              Privacy Policy
+            </Link>
+            <label htmlFor="signup-terms" className="cursor-pointer">
+              .
+            </label>
+          </p>
+        </div>
+
         <button
           type="submit"
-          disabled={loading || googleLoading}
-          className="mt-3 w-full bg-copper hover:bg-copper-dark text-white font-sans text-xs font-bold px-6 py-3.5 rounded-full transition-all duration-300 shadow-md shadow-copper/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          disabled={loading || googleLoading || !agreed}
+          className="mt-2 w-full bg-copper hover:bg-copper-dark text-white font-sans text-xs font-bold px-6 py-3.5 rounded-full transition-all duration-300 shadow-md shadow-copper/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
         >
           {loading ? 'Creating...' : 'Create Account →'}
         </button>
@@ -208,7 +278,7 @@ export default function SignupPage() {
         type="button"
         variant="glass"
         onClick={handleGoogleLogin}
-        disabled={loading || googleLoading}
+        disabled={loading || googleLoading || !agreed}
         className="w-full h-11 font-sans text-xs font-bold tracking-tight flex items-center justify-center gap-3 rounded-full border border-border/40 hover:border-copper/40"
       >
         {googleLoading ? (

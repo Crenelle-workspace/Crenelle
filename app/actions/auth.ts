@@ -43,6 +43,16 @@ export async function signup(formData: FormData) {
     return { error };
   }
 
+  // Consent is enforced here as well as in the UI. The disabled button is an
+  // affordance; anyone can POST to a server action directly, and an account
+  // created without accepted terms is one we cannot show agreement for.
+  if (formData.get("terms") !== "on") {
+    return {
+      error:
+        "Please accept the Terms & Conditions and Privacy Policy to create an account.",
+    };
+  }
+
   const { error } = await supabase.auth.signUp({
     email: result.data.email,
     password: result.data.password,

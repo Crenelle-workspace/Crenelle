@@ -20,9 +20,11 @@ import { cn } from "@/lib/utils";
  * footer renders on a page other than the landing page.
  */
 
-// ── Values to confirm before this goes live ──────────────────────────────────
-// TODO: replace with the real address.
-const CONTACT_EMAIL = "hello@crenelle.org";
+const CONTACT_EMAIL = "support@crenelle.org";
+
+// Digits only, international format without the leading "+", as wa.me requires.
+const WHATSAPP_NUMBER = "2349014724115";
+const WHATSAPP_DISPLAY = "+234 901 472 4115";
 
 // ⚠️ PLACEHOLDER URLS — these are guesses at the handle, NOT confirmed accounts.
 // Replace every one before this ships, or visitors will be sent to a profile
@@ -41,12 +43,10 @@ const EXPLORE_LINKS: Array<[string, string]> = [
   ["/#process", "How it works"],
 ];
 
-// Re-add this column once /privacy and /terms actually exist. Linking to a 404
-// costs more trust than omitting the link entirely.
-// const LEGAL_LINKS: Array<[string, string]> = [
-//   ["/privacy", "Privacy policy"],
-//   ["/terms", "Terms & conditions"],
-// ];
+const LEGAL_LINKS: Array<[string, string]> = [
+  ["/privacy", "Privacy policy"],
+  ["/terms", "Terms & conditions"],
+];
 
 /** Lucide dropped its brand icons, so TikTok is inlined. */
 function TikTokIcon({ className }: { className?: string }) {
@@ -142,7 +142,7 @@ export function SiteFooter({ className }: { className?: string }) {
           </div>
 
           {/* ── Explore ── */}
-          <div className="md:col-span-3 space-y-4">
+          <div className="md:col-span-2 space-y-4">
             <ColumnHeading>Explore</ColumnHeading>
             <ul className="space-y-2.5">
               {EXPLORE_LINKS.map(([href, label]) => (
@@ -158,18 +158,43 @@ export function SiteFooter({ className }: { className?: string }) {
             </ul>
           </div>
 
+          {/* ── Legal ── */}
+          <div className="md:col-span-2 space-y-4">
+            <ColumnHeading>Legal</ColumnHeading>
+            <ul className="space-y-2.5">
+              {LEGAL_LINKS.map(([href, label]) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="font-sans text-sm text-muted-foreground hover:text-copper transition-colors duration-300"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {/* ── Get in touch ── */}
-          <div className="md:col-span-3 space-y-4">
+          <div className="md:col-span-2 space-y-4">
             <ColumnHeading>Get in touch</ColumnHeading>
             <div className="space-y-2.5">
-              <p className="font-sans text-sm text-muted-foreground leading-relaxed">
-                Running an event and want a hand setting it up? Talk to us.
-              </p>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="inline-block font-sans text-sm font-semibold text-foreground hover:text-copper transition-colors duration-300 break-all"
+                className="block font-sans text-sm font-semibold text-foreground hover:text-copper transition-colors duration-300 break-all"
               >
                 {CONTACT_EMAIL}
+              </a>
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block font-sans text-sm text-muted-foreground hover:text-copper transition-colors duration-300"
+              >
+                {WHATSAPP_DISPLAY}
+                <span className="block font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/50 mt-0.5">
+                  WhatsApp
+                </span>
               </a>
             </div>
           </div>
