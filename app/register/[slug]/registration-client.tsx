@@ -222,8 +222,8 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="w-full max-w-md border border-border bg-card p-10 text-center"
         >
-          <CheckCircle2 size={40} strokeWidth={1.5} className="mx-auto mb-5 text-emerald-400" />
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-emerald-400">
+          <CheckCircle2 size={40} strokeWidth={1.5} className="mx-auto mb-5 text-emerald-600 dark:text-emerald-400" />
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">
             Payment confirmed
           </p>
           <h1 className="mt-3 font-display text-3xl font-medium leading-tight tracking-tight text-foreground">
@@ -267,8 +267,8 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
             </>
           ) : (
             <>
-              <CheckCircle2 size={40} strokeWidth={1.5} className="mx-auto mb-5 text-emerald-400" />
-              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-emerald-400">
+              <CheckCircle2 size={40} strokeWidth={1.5} className="mx-auto mb-5 text-emerald-600 dark:text-emerald-400" />
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">
                 Registration confirmed
               </p>
               <h1 className="mt-3 font-display text-3xl font-medium leading-tight tracking-tight text-foreground">

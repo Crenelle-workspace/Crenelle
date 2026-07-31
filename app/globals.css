@@ -18,15 +18,15 @@
   --color-copper:        #BF8430;
   --color-copper-light:  #D4A050;
   --color-copper-dim:    #8A5F22;
-  --color-moss:          #3A5F3B;
-  --color-ember:         #7A2E18;
+  --color-moss:          #10B981;
+  --color-ember:         #EF4444;
 
   /* ── Backward compat aliases ── */
   --color-void:          #0C0B09;
   --color-paper:         #EEEAE3;
   --color-signal:        #BF8430;
-  --color-admitted:      #3A5F3B;
-  --color-denied:        #7A2E18;
+  --color-admitted:      #10B981;
+  --color-denied:        #EF4444;
 
   /* ── Shadcn token wiring ── */
   --color-background:          var(--background);
@@ -227,9 +227,9 @@
 
   /* ── Status pills — editorial style ── */
   .status-live {
-    background: rgba(58,95,59,0.25);
-    color: #6BAE6D;
-    border: 1px solid rgba(58,95,59,0.50);
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    border: 1px solid rgba(16, 185, 129, 0.35);
     font-family: var(--font-sans);
     font-size: 0.6875rem;
     font-weight: 600;
@@ -260,9 +260,9 @@
     padding: 0.25rem 0.625rem;
   }
   .status-ended {
-    background: rgba(122,46,24,0.20);
-    color: #C47056;
-    border: 1px solid rgba(122,46,24,0.40);
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.35);
     font-family: var(--font-sans);
     font-size: 0.6875rem;
     font-weight: 600;
@@ -282,19 +282,21 @@
     padding: 0.25rem 0.625rem;
   }
   .status-admitted {
-    background: rgba(58,95,59,0.20);
-    color: #6BAE6D;
+    background: rgba(16, 185, 129, 0.15);
+    color: #10B981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
   }
   .status-denied {
-    background: rgba(122,46,24,0.20);
-    color: #C47056;
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
   }
   .status-pending {
     background: rgba(191,132,48,0.15);
     color: var(--color-copper-light);
   }
-  .text-admitted { color: #6BAE6D; }
-  .text-denied   { color: #C47056; }
+  .text-admitted { color: #10B981; }
+  .text-denied   { color: #EF4444; }
 
   /* ── Brutalist card (legacy compat) ── */
   .brutalist-card {

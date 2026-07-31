@@ -188,7 +188,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
                   <span
                     className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
                       link.is_active
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
                         : 'bg-stone-500/10 border-border/30 text-muted-foreground'
                     }`}
                     aria-label={`Status: ${link.is_active ? 'Active' : 'Inactive'}`}

@@ -125,7 +125,7 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
 
       <form action={handleSubmit} className="bg-card/40 backdrop-blur-xl border border-border/40 rounded-3xl p-8 sm:p-10 shadow-2xl flex flex-col gap-6 select-none">
         {error && (
-          <div role="alert" aria-live="assertive" className="border-l-2 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-xl font-sans text-xs text-red-400 leading-relaxed">
+          <div role="alert" aria-live="assertive" className="border-l-2 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-xl font-sans text-xs text-red-600 dark:text-red-400 font-medium leading-relaxed">
             {error}
           </div>
         )}
