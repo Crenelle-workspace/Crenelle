@@ -15,9 +15,11 @@ vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: vi.fn() }))
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { signup } from '@/app/actions/auth'
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>
+const mockCreateAdminClient = createAdminClient as ReturnType<typeof vi.fn>
 
 const VALID = {
   email: 'organiser@example.com',
@@ -41,7 +43,15 @@ function mockAuth(error: { message: string } | null = null) {
 }
 
 describe('signup — consent enforcement', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockCreateAdminClient.mockReturnValue({
+      from: vi.fn(() => ({
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      })),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+    })
+  })
 
   it('rejects a signup with no terms field and never creates the account', async () => {
     const signUp = mockAuth()
