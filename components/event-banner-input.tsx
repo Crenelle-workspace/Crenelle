@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { UploadCloud, Link2, X, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { UploadCloud, Link2, X, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
 import { toast } from 'sonner'
+import { compressImageToWebP } from '@/lib/images'
 
 interface EventBannerInputProps {
   defaultValue?: string | null
@@ -33,18 +34,19 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
         throw new Error('Please select a valid image file.')
       }
 
-      // Maximum 5MB banner file size limit
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error('Image size must be less than 5MB.')
+      // Maximum 10MB input file size limit (compressed down to ~150KB before upload)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Image size must be less than 10MB.')
       }
 
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+      // Compress and resize image client-side to WebP format before network transmission
+      const { blob, fileName, contentType } = await compressImageToWebP(file)
 
       const { error: uploadError } = await supabase.storage
         .from('banners')
-        .upload(fileName, file, {
+        .upload(fileName, blob, {
           cacheControl: '31536000, immutable',
+          contentType,
           upsert: false,
         })
 
@@ -58,12 +60,14 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
 
       setBannerUrl(publicUrl)
       toast.success('Banner uploaded successfully')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Upload error:', err)
-      const msg = err.message || 'Failed to upload image'
+      const msg = err instanceof Error ? err.message : 'Failed to upload image'
       setError(msg)
       toast.error(
-        'Upload failed. The "banners" storage bucket may not exist yet in Supabase. Please paste an image URL instead.'
+        msg.toLowerCase().includes('bucket') || msg.toLowerCase().includes('not found')
+          ? 'Upload failed. The "banners" storage bucket may not exist yet in Supabase. Please paste an image URL instead.'
+          : `Upload error: ${msg}`
       )
       // Switch to URL tab so user has alternative
       setActiveTab('url')
@@ -79,6 +83,7 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
 
   return (
     <div className="flex flex-col gap-3 border-2 border-foreground/20 bg-foreground/5 p-4 rounded-sm">
+      <input type="hidden" name="banner_url" value={bannerUrl} />
       <div className="flex items-center justify-between">
         <label className={labelCls}>Event Banner Image</label>
         {bannerUrl && (
@@ -103,11 +108,11 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
         onValueChange={(v) => setActiveTab(v as 'upload' | 'url')}
         className="w-full"
       >
-        <TabsList variant="line" className="border-b-2 border-foreground/10 w-full justify-start mb-4">
-          <TabsTrigger value="upload" className="font-mono text-xs uppercase tracking-widest px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal">
+        <TabsList variant="line" className="grid grid-cols-2 w-full border-b-2 border-foreground/10 mb-4 h-auto p-0">
+          <TabsTrigger value="upload" className="w-full font-mono text-[10px] sm:text-xs uppercase tracking-wider sm:tracking-widest px-1 sm:px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal text-center whitespace-normal sm:whitespace-nowrap">
             Upload Image File
           </TabsTrigger>
-          <TabsTrigger value="url" className="font-mono text-xs uppercase tracking-widest px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal">
+          <TabsTrigger value="url" className="w-full font-mono text-[10px] sm:text-xs uppercase tracking-wider sm:tracking-widest px-1 sm:px-4 py-2 border-b-2 border-transparent data-[state=active]:border-signal text-center whitespace-normal sm:whitespace-nowrap">
             Paste Image URL
           </TabsTrigger>
         </TabsList>

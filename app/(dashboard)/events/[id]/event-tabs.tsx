@@ -17,11 +17,10 @@ export function EventTabs({ id, tabs }: EventTabsProps) {
   const pathname = usePathname()
 
   return (
-    <nav aria-label="Event sections" className="mb-10">
-      <div className="flex gap-0 border-b border-border overflow-x-auto">
+    <nav aria-label="Event sections" className="mb-10 select-none w-full max-w-full overflow-x-auto no-scrollbar py-1">
+      <div className="inline-flex min-w-max gap-1.5 border border-border/40 bg-card/40 backdrop-blur-xl p-1.5 rounded-full shadow-xs">
         {tabs.map((tab) => {
           const fullHref = `/events/${id}${tab.href}`
-          // If href is empty (Overview), match exact pathname. Otherwise, match exact or sub-path.
           const isActive = tab.href === ''
             ? pathname === fullHref
             : pathname === fullHref || pathname.startsWith(fullHref + '/')
@@ -31,10 +30,10 @@ export function EventTabs({ id, tabs }: EventTabsProps) {
               key={tab.label}
               href={fullHref}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative font-sans text-xs font-semibold uppercase tracking-[0.14em] px-5 py-3 whitespace-nowrap transition-colors border-b-2 -mb-px focus-visible:outline-none focus-visible:text-copper focus-visible:border-copper ${
+              className={`font-sans text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition-all duration-300 ${
                 isActive
-                  ? 'border-copper text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-foreground/30'
+                  ? 'bg-foreground text-background shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
               }`}
             >
               {tab.label}

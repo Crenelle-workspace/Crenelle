@@ -4,22 +4,25 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && npm run sentry:sourcemaps",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "sentry:sourcemaps": "node -e \"if(process.env.SENTRY_AUTH_TOKEN){require('child_process').execSync('sentry-cli sourcemaps inject --org crenelle-0v --project javascript-nextjs .next && sentry-cli sourcemaps upload --org crenelle-0v --project javascript-nextjs .next',{stdio:'inherit'})}else{console.log('[sentry] SENTRY_AUTH_TOKEN not set, skipping sourcemaps upload.')}\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@react-pdf/renderer": "^4.3.2",
-    "@sentry/nextjs": "^10.56.0",
+    "@sentry/cli": "^2.58.6",
+    "@sentry/nextjs": "^10.69.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.40.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.575.0",
     "next": "^16.2.12",

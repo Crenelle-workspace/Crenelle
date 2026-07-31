@@ -7,7 +7,8 @@ import './globals.css'
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  // 300 (light) dropped — no `font-light` usage in the app.
+  weight: ['400', '500', '600', '700'],
   style: ['normal', 'italic'],
   variable: '--font-display',
   display: 'swap',
@@ -21,11 +22,16 @@ const syne = Syne({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://crenelle.org'),
   title: 'Crenelle — Event Access Management',
   description: 'Issue QR-coded entry passes, scan guests in real-time, and take full control of every door.',
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: [
+      { url: '/Brand Logos/CRENELLE FAVICON W.png', media: '(prefers-color-scheme: dark)' },
+      { url: '/Brand Logos/CRENELLE FAVICON B.png', media: '(prefers-color-scheme: light)' },
+    ],
+    shortcut: '/Brand Logos/CRENELLE FAVICON W.png',
+    apple: '/Brand Logos/CRENELLE FAVICON W.png',
   },
   openGraph: {
     title: 'Crenelle — Event Access Management',
@@ -54,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${cormorant.variable} ${syne.variable} antialiased font-sans grain`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >

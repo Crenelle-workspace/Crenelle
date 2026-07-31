@@ -5,19 +5,21 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full border border-transparent px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  "inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 tracking-wider uppercase transition-all duration-300 overflow-hidden select-none",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive:
-          "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 [a&]:hover:underline",
+        default: "bg-copper/10 border-copper/20 text-copper font-bold",
+        primary: "bg-foreground text-background font-bold shadow-xs",
+        secondary: "bg-secondary/70 border-border/40 text-secondary-foreground font-semibold",
+        destructive: "bg-red-500/10 border-red-500/20 text-red-500 font-bold",
+        outline: "border-border/60 text-foreground bg-transparent font-medium",
+        copper: "bg-copper/10 border-copper/20 text-copper font-bold",
+        emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold",
+        amber: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 font-bold",
+        glass: "bg-stone-500/10 dark:bg-stone-900/40 backdrop-blur-md border-border/40 text-foreground font-medium",
+        ghost: "bg-transparent border-transparent text-muted-foreground font-medium",
+        link: "text-copper underline-offset-4 hover:underline font-medium",
       },
     },
     defaultVariants: {

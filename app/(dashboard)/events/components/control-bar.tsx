@@ -17,13 +17,13 @@ export function ControlBar({ filter, setFilter, sortBy, setSortBy }: ControlBarP
   ]
 
   return (
-    <div className="flex flex-col sm:flex-row gap-5 mb-8 pb-6 border-b border-border">
+    <div className="flex flex-col sm:flex-row gap-5 mb-8 pb-6 border-b border-border/40 justify-between items-start sm:items-center">
       {/* Status filter pills */}
       <div className="flex flex-col gap-2 flex-1">
-        <span className="font-sans text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
-          Filter
+        <span className="font-sans text-xs font-semibold text-muted-foreground/80">
+          Filter Events
         </span>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {filters.map((f) => {
             const isActive = filter === f.id
             return (
@@ -31,10 +31,10 @@ export function ControlBar({ filter, setFilter, sortBy, setSortBy }: ControlBarP
                 key={f.id}
                 onClick={() => setFilter(f.id)}
                 className={cn(
-                  "px-3 py-1.5 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] border transition-all",
+                  "px-3.5 py-1.5 font-sans text-xs font-bold rounded-full border transition-all duration-300 cursor-pointer select-none",
                   isActive
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-transparent text-muted-foreground border-border hover:border-foreground/40 hover:text-foreground"
+                    ? "bg-foreground text-background border-foreground shadow-xs"
+                    : "bg-stone-500/10 dark:bg-stone-900/30 text-muted-foreground border-border/40 hover:border-border hover:text-foreground"
                 )}
               >
                 {f.label}
@@ -45,14 +45,14 @@ export function ControlBar({ filter, setFilter, sortBy, setSortBy }: ControlBarP
       </div>
 
       {/* Sort select */}
-      <div className="flex flex-col gap-2 min-w-[160px]">
-        <span className="font-sans text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
-          Sort by
+      <div className="flex flex-col gap-2 min-w-40">
+        <span className="font-sans text-xs font-semibold text-muted-foreground/80">
+          Sort Order
         </span>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as "updated" | "created" | "name")}
-          className="bg-muted border border-border px-3 py-1.5 font-sans text-[11px] uppercase tracking-[0.12em] text-foreground focus:outline-none focus:border-copper appearance-none cursor-pointer h-9"
+          className="bg-stone-900/30 dark:bg-stone-900/50 border border-border/40 px-3.5 py-2 rounded-xl font-sans text-xs font-semibold text-foreground focus:outline-none focus:border-copper focus:ring-2 focus:ring-copper/20 appearance-none cursor-pointer h-9.5"
           style={{
             backgroundImage:
               "linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%)",

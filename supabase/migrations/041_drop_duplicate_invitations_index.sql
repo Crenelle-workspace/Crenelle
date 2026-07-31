@@ -1,0 +1,26 @@
+-- ============================================================
+-- Crenelle — Drop duplicate invitations index
+-- Migration: 041_drop_duplicate_invitations_index.sql
+-- ============================================================
+--
+-- Removes a dead (exactly-duplicate) index.
+--
+-- Migration 017 (017_ticket_tiers.sql) created:
+--   invitations_event_active_partial_idx
+--     ON public.invitations (event_id, status) WHERE status = 'active'
+--
+-- Migration 023 (023_harden_checkin.sql) then created an IDENTICAL index
+-- under a different name:
+--   idx_invitations_event_active
+--     ON public.invitations (event_id, status) WHERE status = 'active'
+--
+-- Two indexes with the same table, columns and partial predicate are pure
+-- redundancy: they double the write/maintenance cost and storage for zero read
+-- benefit (the planner only ever needs one). Drop the later duplicate and keep
+-- the original from 017.
+--
+-- DROP INDEX (not CONCURRENTLY) so this runs inside the migration transaction.
+-- The retained index continues to serve the check-in dashboard queries.
+-- ============================================================
+
+DROP INDEX IF EXISTS public.idx_invitations_event_active;

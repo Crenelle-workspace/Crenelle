@@ -32,8 +32,9 @@ export function useDashboardData({
       if (newLogs) setLogs(newLogs as { invitation_id: string }[])
     }
 
-    // Initial load is handled by props, but we poll for updates
-    const poll = setInterval(refreshData, 8000)
+    // Realtime subscriptions below drive updates; this interval is only a slow
+    // safety net for dropped Realtime connections (was 8s, redundant on top of realtime).
+    const poll = setInterval(refreshData, 60000)
 
     const channel = supabase
       .channel('global-dashboard-sync')

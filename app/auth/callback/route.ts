@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { recordTermsAcceptance } from '@/lib/consent'
 
 /**
  * Validates a redirect path to prevent open-redirect attacks.
@@ -17,12 +18,20 @@ function safeRedirectPath(raw: string | null, fallback: string): string {
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const termsAccepted = searchParams.get('terms_accepted') === 'true'
   const next = safeRedirectPath(searchParams.get('next'), '/events')
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      if (termsAccepted) {
+        const { data: { user } } = await supabase.auth.getUser()
+        const userId = sessionData?.user?.id || user?.id
+        if (userId) {
+          await recordTermsAcceptance(userId)
+        }
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

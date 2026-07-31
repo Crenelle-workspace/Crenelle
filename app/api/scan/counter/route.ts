@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+export const dynamic = 'force-dynamic'
+
 /**
- * GET /api/scan/counter?token=<scannerToken>
+ * POST /api/scan/counter   body: { token: <scannerToken> }
  *
  * Returns live entry counts for this gate (scanner link) and the event overall.
  * Polled every 15s by the ScannerClient to power the live usher counter.
  *
- * Security: token validates the usher — no organiser session required.
+ * Security: token validates the usher — no organiser session required. The
+ * scanner token is read from the POST body (never the query string) so it does
+ * not leak into access logs, proxy logs, browser history or Referer headers.
  */
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const token = searchParams.get('token')?.trim()
+export async function POST(request: NextRequest) {
+  const { token: rawToken } = await request.json().catch(() => ({ token: null }))
+  const token = typeof rawToken === 'string' ? rawToken.trim() : null
 
   if (!token) {
     return NextResponse.json({ error: 'Missing token' }, { status: 400 })
@@ -38,15 +42,6 @@ export async function GET(request: NextRequest) {
     .neq('status', 'cancelled')
 
   const totalSeats = (invitations ?? []).reduce((sum, i) => sum + (i.party_size ?? 1), 0)
-
-  // Total entries for this event
-  const { count: totalEntries } = await supabase
-    .from('entry_logs')
-    .select('*', { count: 'exact', head: true })
-    .in(
-      'invitation_id',
-      (invitations ?? []).map((_, idx) => idx), // need invitation IDs — re-query
-    )
 
   // Simpler: count all entry_logs for the event via scanner_links join
   // Get all scanner_link IDs for this event

@@ -5,26 +5,30 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap font-display tracking-wide uppercase transition-none active:translate-x-[2px] active:translate-y-[2px] disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-0 focus-visible:outline-[2px] focus-visible:outline-signal focus-visible:outline-offset-0 rounded-none shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex items-center justify-center whitespace-nowrap font-sans text-xs font-bold tracking-tight transition-all duration-300 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-copper/50 rounded-full shadow-xs [&_svg]:pointer-events-none [&_svg]:shrink-0 cursor-pointer select-none",
   {
     variants: {
       variant: {
-        primary: "bg-background text-foreground border-2 border-foreground hover:bg-foreground hover:text-background",
-        signal: "bg-transparent text-signal border-2 border-signal hover:bg-signal hover:text-void",
-        ghost: "bg-transparent border-2 border-transparent text-foreground",
-        danger: "bg-denied text-paper border-2 border-denied hover:bg-transparent hover:text-denied",
+        primary: "bg-foreground text-background hover:bg-copper hover:text-white shadow-sm",
+        copper: "bg-copper text-white hover:bg-copper-dark shadow-md shadow-copper/20",
+        signal: "bg-copper/10 text-copper border border-copper/30 hover:bg-copper hover:text-white",
+        outline: "border border-border/60 bg-background/50 hover:bg-muted hover:border-border text-foreground",
+        secondary: "bg-stone-200/70 dark:bg-stone-900/60 text-foreground hover:bg-stone-300 dark:hover:bg-stone-800 border border-border/30",
+        ghost: "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50 shadow-none",
+        glass: "bg-stone-500/10 dark:bg-stone-900/40 backdrop-blur-md border border-border/40 text-foreground hover:border-copper/40 hover:text-copper",
+        danger: "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white",
       },
       size: {
-        default: "h-10 px-6 py-2 text-lg [&_svg]:size-5 gap-2",
-        sm: "h-8 px-4 py-1.5 text-base [&_svg]:size-4 gap-1.5",
-        md: "h-10 px-6 py-2 text-lg [&_svg]:size-5 gap-2",
-        lg: "h-12 px-8 py-3 text-xl [&_svg]:size-6 gap-3",
-        icon: "size-10 [&_svg]:size-5",
+        default: "h-9 px-5 py-2 text-xs [&_svg]:size-4 gap-2",
+        sm: "h-8 px-3.5 py-1 text-[11px] [&_svg]:size-3.5 gap-1.5",
+        md: "h-9.5 px-5 py-2 text-xs [&_svg]:size-4 gap-2",
+        lg: "h-11 px-7 py-3 text-sm [&_svg]:size-4.5 gap-2.5",
+        icon: "size-9 [&_svg]:size-4 rounded-full",
       },
     },
     defaultVariants: {
       variant: "primary",
-      size: "md",
+      size: "default",
     },
   }
 )

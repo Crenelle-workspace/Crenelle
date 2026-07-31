@@ -4,9 +4,10 @@ import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sendInvitationEmail, sendReminderEmailsDirect } from '@/lib/email'
-import { checkRateLimit } from '@/lib/rate-limit'
+import { sendInvitationEmail, sendReminderEmailsDirect, type ReminderEmailRecipient } from '@/lib/email'
+import { checkRateLimitAsync } from '@/lib/rate-limit'
 import { sendInvitationWhatsApp } from '@/lib/whatsapp'
+import { RegistrationInputSchema } from '@/lib/validations/registration'
 import * as Sentry from '@sentry/nextjs'
 
 /**
@@ -23,14 +24,32 @@ export async function submitRegistration(eventId: string, formData: FormData) {
     headerStore.get('x-real-ip') ??
     'unknown'
 
-  const email = (formData.get('email') as string)?.trim().toLowerCase() ?? ''
-
-  const ipLimit = checkRateLimit({ key: `reg_ip:${ip}`, limit: 10, windowMs: 15 * 60 * 1000 })
+  // IP rate limit runs first — it is the cheapest gate and does not depend on
+  // any user-supplied field, so a garbage payload can't bypass it.
+  const ipLimit = await checkRateLimitAsync({ key: `reg_ip:${ip}`, limit: 10, windowMs: 15 * 60 * 1000 })
   if (!ipLimit.allowed) {
     return { error: 'Too many registration attempts from your network. Please try again later.' }
   }
 
-  const emailLimit = checkRateLimit({ key: `reg_email:${email}`, limit: 3, windowMs: 60 * 60 * 1000 })
+  // ── Validate & normalise the visitor-supplied fields ──────────────
+  //
+  // These arrive unauthenticated from the public form. Validate the email
+  // FORMAT and length-cap every field BEFORE using any of them — in
+  // particular before `email` becomes a rate-limit key below. An unbounded or
+  // malformed value must never reach the key space or the DB insert.
+  const parsed = RegistrationInputSchema.safeParse({
+    name: (formData.get('full_name') as string) ?? '',
+    email: (formData.get('email') as string) ?? '',
+    phone: (formData.get('phone') as string) ?? undefined,
+  })
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? 'Please check your details and try again.' }
+  }
+
+  const { name, email, phone } = parsed.data
+
+  const emailLimit = await checkRateLimitAsync({ key: `reg_email:${email}`, limit: 3, windowMs: 60 * 60 * 1000 })
   if (!emailLimit.allowed) {
     return { error: 'Too many registrations for this email address. Please wait before trying again.' }
   }
@@ -71,15 +90,44 @@ export async function submitRegistration(eventId: string, formData: FormData) {
     .maybeSingle()
 
   if (unsub) {
-    return { success: true }
+    return {
+      error: 'This email address has unsubscribed or experienced delivery issues. Please contact support or the organizer to resubscribe.',
+    }
   }
 
   // 4. Insert attendee with source = 'public_registration'
-  const name = (formData.get('full_name') as string)?.trim()
-  const phone = (formData.get('phone') as string)?.trim() || null
-  const ticketTierId = (formData.get('ticket_tier_id') as string) || null
+  //    (name / email / phone were validated & normalised above)
+  const rawTierId = (formData.get('ticket_tier_id') as string) || null
 
-  if (!email || !name) return { error: 'Name and email are required' }
+  // 4a. Validate the ticket tier server-side.
+  //
+  // The tier id arrives from a hidden form field, so it is fully
+  // attacker-controlled. Without this check a visitor could:
+  //   - claim a PAID tier for free through this (payment-less) path, and
+  //   - assign themselves a tier belonging to a DIFFERENT event, a private
+  //     tier, or a soft-deleted tier (IDOR).
+  //
+  // The payment flow (/api/payments/initialize) is the only sanctioned way to
+  // acquire a paid tier, so any tier with price > 0 is rejected here.
+  let ticketTierId: string | null = null
+  if (rawTierId) {
+    const { data: tier } = await supabase
+      .from('ticket_tiers')
+      .select('id, price, is_public, deleted_at')
+      .eq('id', rawTierId)
+      .eq('event_id', eventId)
+      .maybeSingle()
+
+    if (!tier || tier.deleted_at !== null || tier.is_public !== true) {
+      return { error: 'Selected ticket tier is not available' }
+    }
+
+    if (tier.price > 0) {
+      return { error: 'This ticket tier requires payment. Please complete checkout to register.' }
+    }
+
+    ticketTierId = tier.id
+  }
 
   const { error: insertError } = await supabase
     .from('attendees')
@@ -175,48 +223,55 @@ export async function acceptRegistration(attendeeId: string, eventId: string, se
 
   if (!event) return { error: 'Event not found' }
 
-  // 5. Trigger invitation email and WhatsApp
-  let emailWarning: string | undefined = undefined
-  if (attendee.email) {
-    try {
-      const emailResult = await sendInvitationEmail({
-        eventId,
-        recipientEmail: attendee.email,
-        recipientName: attendee.name,
-        invitationId: invitation.id,
-        event,
-      })
-      if (emailResult && 'error' in emailResult && emailResult.error) {
-        console.error('Failed to send invitation email:', emailResult.error)
-        emailWarning = emailResult.error
-      }
-    } catch (e: any) {
-      console.error('Failed to send invitation email:', e)
-      Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_email' } })
-      emailWarning = e.message || 'Unknown email dispatch error'
-    }
-  }
-
-  let whatsappWarning: string | undefined = undefined
-  if (attendee.phone) {
-    try {
-      const whatsappResult = await sendInvitationWhatsApp({
-        eventId,
-        recipientPhone: attendee.phone,
-        recipientName: attendee.name,
-        invitationId: invitation.id,
-        event,
-      })
-      if (whatsappResult && 'error' in whatsappResult && whatsappResult.error) {
-        console.error('Failed to send WhatsApp invitation:', whatsappResult.error)
-        whatsappWarning = whatsappResult.error
-      }
-    } catch (e: any) {
-      console.error('Failed to send WhatsApp invitation:', e)
-      Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_whatsapp' } })
-      whatsappWarning = e.message || 'Unknown WhatsApp dispatch error'
-    }
-  }
+  // 5. Trigger invitation email and WhatsApp — independent, so run concurrently.
+  // Each task resolves to a warning string (or undefined) rather than throwing,
+  // so one failing send never blocks the other and both warnings surface.
+  const [emailWarning, whatsappWarning] = await Promise.all([
+    attendee.email
+      ? (async (): Promise<string | undefined> => {
+          try {
+            const emailResult = await sendInvitationEmail({
+              eventId,
+              recipientEmail: attendee.email,
+              recipientName: attendee.name,
+              invitationId: invitation.id,
+              event,
+            })
+            if (emailResult && 'error' in emailResult && emailResult.error) {
+              console.error('Failed to send invitation email:', emailResult.error)
+              return emailResult.error
+            }
+          } catch (e: unknown) {
+            console.error('Failed to send invitation email:', e)
+            Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_email' } })
+            return e instanceof Error ? e.message : 'Unknown email dispatch error'
+          }
+          return undefined
+        })()
+      : Promise.resolve<string | undefined>(undefined),
+    attendee.phone
+      ? (async (): Promise<string | undefined> => {
+          try {
+            const whatsappResult = await sendInvitationWhatsApp({
+              eventId,
+              recipientPhone: attendee.phone,
+              recipientName: attendee.name,
+              invitationId: invitation.id,
+              event,
+            })
+            if (whatsappResult && 'error' in whatsappResult && whatsappResult.error) {
+              console.error('Failed to send WhatsApp invitation:', whatsappResult.error)
+              return whatsappResult.error
+            }
+          } catch (e: unknown) {
+            console.error('Failed to send WhatsApp invitation:', e)
+            Sentry.captureException(e, { extra: { attendeeId, eventId, context: 'accept_registration_whatsapp' } })
+            return e instanceof Error ? e.message : 'Unknown WhatsApp dispatch error'
+          }
+          return undefined
+        })()
+      : Promise.resolve<string | undefined>(undefined),
+  ])
 
   revalidatePath(`/events/${eventId}/registrations`)
   revalidatePath(`/events/${eventId}/guests`)
@@ -342,12 +397,13 @@ export async function sendReminderEmails(eventId: string, customMessage: string)
     .eq('event_id', eventId)
     .neq('status', 'cancelled')
 
-  const recipients = ((invitations ?? []) as any[])
+  const invList = (invitations ?? []) as unknown as { id: string; status: string; attendee: { email?: string; name?: string } | { email?: string; name?: string }[] }[]
+  const recipients = invList
     .map(inv => {
       const attendee = Array.isArray(inv.attendee) ? inv.attendee[0] : inv.attendee
-      return { email: attendee?.email, name: attendee?.name, invitationId: inv.id }
+      return { email: attendee?.email, name: attendee?.name ?? 'Guest', invitationId: inv.id }
     })
-    .filter(r => r.email)
+    .filter((r): r is ReminderEmailRecipient => Boolean(r.email))
 
   if (recipients.length === 0) return { error: 'No confirmed guests with emails to send to' }
 
@@ -361,7 +417,8 @@ export async function sendReminderEmails(eventId: string, customMessage: string)
 
     revalidatePath(`/events/${eventId}`)
 
-    if (res.sent === 0 && (res as any).skipped > 0 && !res.errors?.length) {
+    const resRecord = res as Record<string, unknown>
+    if (res.sent === 0 && Number(resRecord.skipped) > 0 && !res.errors?.length) {
       return { error: 'No emails sent — all guests have unsubscribed from emails.' }
     }
 
@@ -376,8 +433,8 @@ export async function sendReminderEmails(eventId: string, customMessage: string)
         ? `Sent to ${res.sent} guest(s). Failed for: ${res.errors.join(', ')}`
         : undefined,
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     Sentry.captureException(e, { extra: { eventId, context: 'send_reminder_emails' } })
-    return { error: e.message || 'Failed to send reminder emails' }
+    return { error: e instanceof Error ? e.message : 'Failed to send reminder emails' }
   }
 }

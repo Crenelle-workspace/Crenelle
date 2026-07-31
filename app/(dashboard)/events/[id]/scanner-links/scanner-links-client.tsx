@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useCallback, useTransition } from 'react'
 import { useParams } from 'next/navigation'
 import { Plus, Copy, ToggleLeft, ToggleRight, Trash2, Link2, Lock } from 'lucide-react'
 import { createScannerLink, toggleScannerLink, deleteScannerLink } from '@/app/actions/scanner-links'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SectionHeader } from '@/components/section-header'
 import { EmptyState } from '@/components/empty-state'
@@ -23,7 +24,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
   const [isDeleting, startDeleteTransition] = useTransition()
   const [loading, setLoading] = useState(true)
 
-  async function loadLinks() {
+  const loadLinks = useCallback(async () => {
     try {
       const supabase = createClient()
       const { data } = await supabase
@@ -35,12 +36,13 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
 
   useEffect(() => {
     loadLinks()
 
-    const poll = setInterval(loadLinks, 10000)
+    // Realtime subscription below drives updates; poll is a slow safety net (was 10s).
+    const poll = setInterval(loadLinks, 60000)
 
     const supabase = createClient()
     const channel = supabase
@@ -52,7 +54,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       clearInterval(poll)
       supabase.removeChannel(channel)
     }
-  }, [eventId])
+  }, [eventId, loadLinks])
 
   const scanUrl = (token: string) =>
     `${window.location.origin}/scan/${token}`
@@ -82,7 +84,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       {/* Section header + New Link button */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
         <SectionHeader
-          eyebrow="USHER_ACCESS_TOKENS"
+          eyebrow="Door Scanner Links"
           title="Scanner Links"
           subtitle={loading ? "Loading scanner links..." : "Share these links with ushers — no login needed"}
         />
@@ -90,10 +92,10 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
         {canManage ? (
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <button className="inline-flex items-center gap-2 bg-foreground text-background font-sans text-sm font-semibold uppercase tracking-[0.12em] px-6 py-3 hover:opacity-80 transition-opacity shrink-0">
+              <Button variant="copper" className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full">
                 <Plus className="h-4 w-4" aria-hidden="true" />
-                New link
-              </button>
+                Create Scanner Link
+              </Button>
             </DialogTrigger>
             <DialogContent className="bg-background border border-border max-w-md">
               <DialogHeader>
@@ -113,18 +115,21 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
                     Helps identify which usher is at which gate
                   </p>
                 </div>
-                <button type="submit" disabled={isPending}
-                  className="w-full bg-foreground text-background font-sans text-sm font-semibold uppercase tracking-[0.12em] py-3.5 hover:opacity-80 transition-opacity disabled:opacity-40"
+                <Button
+                  type="submit"
+                  variant="copper"
+                  disabled={isPending}
+                  className="w-full h-11 text-xs font-bold uppercase rounded-full"
                 >
                   {isPending ? 'Creating...' : 'Create link →'}
-                </button>
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
         ) : (
-          <span className="inline-flex items-center gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border border-border px-3 py-2">
+          <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 rounded-full px-3.5 py-2 h-10 shrink-0">
             <Lock className="h-3 w-3" aria-hidden="true" />
-            VIEW-ONLY
+            View-only
           </span>
         )}
       </div>
@@ -135,19 +140,19 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="bg-card border border-border p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between"
+              className="bg-card/20 border border-border/40 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between"
             >
               <div className="flex-1 space-y-2.5">
                 <div className="flex items-center gap-3">
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-5 w-16" />
+                  <Skeleton className="h-6 w-32 rounded-lg" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
                 </div>
-                <Skeleton className="h-3.5 w-64" />
+                <Skeleton className="h-3.5 w-64 rounded-md" />
               </div>
               <div className="flex gap-2 shrink-0">
-                <Skeleton className="h-9 w-16" />
-                <Skeleton className="h-9 w-24" />
-                <Skeleton className="h-9 w-10" />
+                <Skeleton className="h-9 w-16 rounded-full" />
+                <Skeleton className="h-9 w-24 rounded-full" />
+                <Skeleton className="h-9 w-10 rounded-full" />
               </div>
             </div>
           ))}
@@ -155,51 +160,56 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       ) : links.length === 0 ? (
         <EmptyState
           icon={<Link2 className="h-10 w-10" />}
-          title="NO_LINKS_YET"
-          subtitle="Create a scanner link and share it with your ushers on event day"
+          title="No Scanner Links Yet"
+          subtitle="Create a scanner link and share it with your door ushers on event day."
           action={
             canManage ? (
-              <button
+              <Button
+                variant="copper"
                 onClick={() => setAddOpen(true)}
-                className="inline-flex items-center gap-2 bg-foreground text-background font-mono text-xs font-semibold uppercase tracking-widest px-5 py-3 hover:opacity-80 transition-opacity cursor-pointer"
+                className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full"
               >
                 <Plus className="h-3.5 w-3.5" />
-                CREATE_YOUR_FIRST_LINK
-              </button>
+                Create Scanner Link
+              </Button>
             ) : null
           }
         />
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 select-none">
           {links.map((link) => (
             <div
               key={link.id}
-              className="bg-card border border-border p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-copper/30 transition-colors"
+              className="bg-card/40 backdrop-blur-md border border-border/40 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-copper/40 transition-all duration-300 shadow-sm"
             >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="font-display text-xl font-semibold text-foreground">{link.label}</span>
+                <div className="flex items-center gap-3 mb-1.5">
+                  <span className="font-sans text-base font-bold text-foreground">{link.label}</span>
                   <span
-                    className={`font-mono text-[9px] uppercase tracking-widest px-2 py-1 ${link.is_active ? 'status-admitted' : 'bg-foreground/10 text-foreground/40'}`}
+                    className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                      link.is_active
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-stone-500/10 border-border/30 text-muted-foreground'
+                    }`}
                     aria-label={`Status: ${link.is_active ? 'Active' : 'Inactive'}`}
                   >
-                    {link.is_active ? 'ACTIVE' : 'INACTIVE'}
+                    {link.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-                <p className="font-sans text-[10px] text-muted-foreground truncate">
+                <p className="font-sans text-xs text-muted-foreground/80 truncate">
                   {scanUrl(link.token)}
                 </p>
               </div>
 
-              <div className="flex gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 {/* Copy — always available */}
                 <button
                   onClick={() => copyLink(link.token)}
                   aria-label={`Copy link for ${link.label}`}
-                  className="inline-flex items-center gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground border border-border hover:border-foreground/30 hover:text-foreground px-3 h-9 transition-all"
+                  className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-foreground border border-border/40 hover:border-copper/40 hover:text-copper px-4 py-2 rounded-full transition-all cursor-pointer"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  Copy
+                  Copy Link
                 </button>
 
                 {/* Toggle + Delete — only for scanner_manager / owner */}
@@ -208,17 +218,17 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
                     <button
                       onClick={() => handleToggle(link)}
                       aria-label={`${link.is_active ? 'Deactivate' : 'Activate'} ${link.label}`}
-                      className="inline-flex items-center gap-1.5 font-sans text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground border border-border hover:border-foreground/30 hover:text-foreground px-3 h-9 transition-all"
+                      className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 hover:border-foreground/30 hover:text-foreground px-3.5 py-2 rounded-full transition-all cursor-pointer"
                     >
                       {link.is_active
-                        ? <><ToggleRight className="h-4 w-4 text-admitted" />Deactivate</>
+                        ? <><ToggleRight className="h-4 w-4 text-emerald-500" />Deactivate</>
                         : <><ToggleLeft className="h-4 w-4" />Activate</>
                       }
                     </button>
                     <button
                       onClick={() => setDeleteTarget(link)}
                       aria-label={`Delete scanner link ${link.label}`}
-                      className="inline-flex items-center justify-center font-sans text-[10px] font-semibold uppercase text-destructive/60 border border-destructive/20 hover:border-destructive/50 hover:text-destructive hover:bg-destructive/6 px-3 h-9 transition-all"
+                      className="inline-flex items-center justify-center font-sans text-xs font-semibold text-red-500 border border-red-500/20 hover:border-red-500/50 hover:bg-red-500/10 px-3 py-2 rounded-full transition-all cursor-pointer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -231,7 +241,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
       )}
 
       {/* Info panel */}
-      <div className="mt-8 border-l-2 border-copper bg-copper/6 p-5">
+      <div className="mt-8 border-l-2 border-copper bg-copper/6 p-5 rounded-r-2xl">
         <p className="font-sans text-xs text-foreground/70 leading-relaxed">
           <span className="font-semibold text-copper">How to use:</span>{' '}
           Copy a link and send it to your usher via WhatsApp or SMS.
@@ -245,12 +255,12 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
         <ConfirmDialog
           open={!!deleteTarget}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
-          title="DELETE_LINK"
-          description="THIS_ACTION_IS_IRREVERSIBLE"
+          title="Delete Link"
+          description="This action cannot be undone."
           subject={deleteTarget?.label}
-          subjectLabel="TARGET_LINK"
+          subjectLabel="Scanner Link"
           body="Deleting this link will immediately revoke usher access. Any usher using this link will be blocked from scanning."
-          confirmLabel="DELETE_LINK"
+          confirmLabel="Delete Link"
           isPending={isDeleting}
           onConfirm={() => {
             if (!deleteTarget) return

@@ -38,6 +38,43 @@ const CURRENCIES = [
   { value: 'AUD', label: 'AUD — Australian Dollar' },
 ]
 
+// ── Reusable toggle group ────────────────────────────────────
+function ToggleGroup<T extends string>({
+  name,
+  value,
+  onChange,
+  options,
+}: {
+  name: string
+  value: T
+  onChange: (v: T) => void
+  options: { value: T; label: string }[]
+}) {
+  return (
+    <div className="flex flex-wrap gap-px border border-border bg-border">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          role="radio"
+          aria-checked={value === opt.value}
+          onClick={() => onChange(opt.value)}
+          className={[
+            'font-mono text-[10px] uppercase tracking-[0.15em] px-4 py-2.5 transition-colors select-none',
+            value === opt.value
+              ? 'bg-copper text-background'
+              : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
+          ].join(' ')}
+        >
+          {opt.label}
+        </button>
+      ))}
+      {/* Hidden input so FormData picks up the value */}
+      <input type="hidden" name={name} value={value} />
+    </div>
+  )
+}
+
 interface Props {
   settings: OrganizerSettings | null
 }
@@ -64,43 +101,6 @@ export function GeneralSettingsForm({ settings }: Props) {
         toast.success('General settings saved.')
       }
     })
-  }
-
-  // ── Reusable toggle group ────────────────────────────────────
-  function ToggleGroup<T extends string>({
-    name,
-    value,
-    onChange,
-    options,
-  }: {
-    name: string
-    value: T
-    onChange: (v: T) => void
-    options: { value: T; label: string }[]
-  }) {
-    return (
-      <div className="flex flex-wrap gap-px border border-border bg-border">
-        {options.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            role="radio"
-            aria-checked={value === opt.value}
-            onClick={() => onChange(opt.value)}
-            className={[
-              'font-mono text-[10px] uppercase tracking-[0.15em] px-4 py-2.5 transition-colors select-none',
-              value === opt.value
-                ? 'bg-copper text-background'
-                : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
-            ].join(' ')}
-          >
-            {opt.label}
-          </button>
-        ))}
-        {/* Hidden input so FormData picks up the value */}
-        <input type="hidden" name={name} value={value} />
-      </div>
-    )
   }
 
   return (
@@ -255,7 +255,7 @@ export function GeneralSettingsForm({ settings }: Props) {
               rows={4}
               maxLength={500}
               placeholder="e.g. Acme Events Ltd · 12 Marina Street, Lagos · events@acme.com"
-              className={[fieldCls, 'resize-y min-h-[96px]'].join(' ')}
+              className={[fieldCls, 'resize-y min-h-24'].join(' ')}
             />
             <div className="flex items-center justify-between">
               <p className={hintCls}>

@@ -1,0 +1,48 @@
+name: Crenelle CI
+
+on:
+  push:
+    branches: [ master, staging ]
+  pull_request:
+    branches: [ master, staging ]
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Run Typecheck
+        run: npx tsc --noEmit
+
+      - name: Run Unit Tests
+        run: npm run test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          RESEND_API_KEY: re_placeholder
+
+      - name: Build Application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          RESEND_API_KEY: re_placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000

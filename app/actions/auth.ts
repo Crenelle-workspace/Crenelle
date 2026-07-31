@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signupSchema, loginSchema } from "@/lib/validations/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { headers } from "next/headers";
+import { recordTermsAcceptance } from "@/lib/consent";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -24,7 +24,9 @@ export async function login(formData: FormData) {
     password: result.data.password,
   });
 
-  if (error) return { error: error.message };
+  // Generic message: never reveal whether it was the email or the password
+  // that was wrong (that difference is an account-enumeration oracle).
+  if (error) return { error: "Invalid email or password." };
 
   revalidatePath("/", "layout");
   redirect("/events");
@@ -42,12 +44,35 @@ export async function signup(formData: FormData) {
     return { error };
   }
 
-  const { error } = await supabase.auth.signUp({
+  // Consent is enforced here as well as in the UI. The disabled button is an
+  // affordance; anyone can POST to a server action directly, and an account
+  // created without accepted terms is one we cannot show agreement for.
+  if (formData.get("terms") !== "on") {
+    return {
+      error:
+        "Please accept the Terms & Conditions and Privacy Policy to create an account.",
+    };
+  }
+
+  const { data: signUpData, error } = await supabase.auth.signUp({
     email: result.data.email,
     password: result.data.password,
   });
 
-  if (error) return { error: error.message };
+  // Generic message on failure: Supabase returns a distinct "User already
+  // registered" error that would let an attacker enumerate which emails have
+  // accounts. The neutral guidance below is shown for ANY signup failure, so
+  // it confirms nothing about a specific address.
+  if (error) {
+    return {
+      error:
+        "We couldn't complete your sign up. If you already have an account, please sign in instead.",
+    };
+  }
+
+  if (signUpData?.user?.id) {
+    await recordTermsAcceptance(signUpData.user.id);
+  }
 
   revalidatePath("/", "layout");
   redirect("/events");
@@ -89,10 +114,10 @@ export async function sendPasswordResetEmailAction() {
     return { error: "Not authenticated" };
   }
 
-  const headersList = await headers();
-  const host = headersList.get("host");
-  const protocol = headersList.get("x-forwarded-proto") ?? "http";
-  const origin = `${protocol}://${host}`;
+  // Build the reset link from the trusted, server-configured app URL — NEVER
+  // from the request Host header, which an attacker can spoof to point the
+  // password-reset link at a domain they control (host-header poisoning).
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://crenelle.org";
 
   const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
     redirectTo: `${origin}/auth/callback?next=/settings/account`,

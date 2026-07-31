@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+/**
+ * POST /api/webhooks/resend
+ *
+ * Deliverability feedback loop. Hard bounces and spam complaints are added to
+ * `email_unsubscribes` so we never send to that address again — this is what
+ * keeps our bounce/complaint rates (and therefore sender reputation) in check.
+ *
+ * Engagement tracking (delivered / opened / clicked, and the `email_events`
+ * table from migration 031) was deliberately removed — we don't use it. Those
+ * event types are acknowledged and discarded without touching the database.
+ * The 031 table and columns remain in the schema but are intentionally unused.
+ */
+
 // ─── Signature verification ───────────────────────────────────────────────────
 
 /**
@@ -69,6 +82,16 @@ async function verifyResendSignature(request: NextRequest, body: string): Promis
 
 // ─── Event handler ────────────────────────────────────────────────────────────
 
+/** Event types that suppress an address. Everything else is acked and ignored. */
+const SUPPRESSING_EVENTS = new Set(['email.bounced', 'email.complained'])
+
+/** Mask an address for logging — we don't want full PII in the log stream. */
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@')
+  if (!domain) return '***'
+  return `${local.slice(0, 2)}***@${domain}`
+}
+
 export async function POST(request: NextRequest) {
   // Read raw body for signature verification
   const rawBody = await request.text()
@@ -78,116 +101,59 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
-  let payload: any
+  let payload: { type?: string; data?: { email_id?: string } }
   try {
-    payload = JSON.parse(rawBody)
+    payload = JSON.parse(rawBody) as { type?: string; data?: { email_id?: string } }
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const eventType: string = payload.type ?? ''
-  // Resend email ID lives at payload.data.email_id
-  const resendEmailId: string | undefined = payload.data?.email_id
+  const eventType = payload.type ?? ''
 
+  // Delivered / opened / clicked and test pings: ack without any DB work.
+  if (!SUPPRESSING_EVENTS.has(eventType)) {
+    return NextResponse.json({ received: true })
+  }
+
+  // Resend email ID lives at payload.data.email_id — it's our join key back to
+  // the send that produced this bounce.
+  const resendEmailId = payload.data?.email_id
   if (!resendEmailId) {
-    // Some test pings have no email_id — just ack them
     return NextResponse.json({ received: true })
   }
 
   const supabase = createAdminClient()
 
-  // ── Look up the matching email_log row ────────────────────────────────────
   const { data: log } = await supabase
     .from('email_logs')
-    .select('id, event_id, recipient_email, opened_count, clicked_count')
+    .select('recipient_email')
     .eq('resend_email_id', resendEmailId)
     .maybeSingle()
 
-  // ── Record the granular event regardless of whether we found a log row ────
-  // (The log row may have been created before we started storing resend_email_id,
-  //  or it may be a test send. We still capture the raw event.)
-  await supabase.from('email_events').insert({
-    email_log_id:    log?.id ?? null,
-    resend_email_id: resendEmailId,
-    event_type:      eventType,
-    click_url:       payload.data?.click?.link ?? null,
-    raw_payload:     payload,
-  })
-
-  if (!log) {
-    // Nothing more to update — ack and move on
+  if (!log?.recipient_email) {
+    // No matching send on record, so there's no address to suppress. Ack so
+    // Resend doesn't retry a delivery we can never act on.
+    console.warn(`[webhook/resend] ${eventType} for unknown resend_email_id ${resendEmailId}`)
     return NextResponse.json({ received: true })
   }
 
-  // ── Upsert tracking columns on email_logs ─────────────────────────────────
-  const now = new Date().toISOString()
-  const updates: Record<string, unknown> = {}
+  const email = log.recipient_email.toLowerCase()
 
-  switch (eventType) {
-    case 'email.delivered':
-      updates.delivered_at = now
-      break
+  const { error } = await supabase
+    .from('email_unsubscribes')
+    .upsert(
+      { email, unsubscribed_at: new Date().toISOString() },
+      { onConflict: 'email', ignoreDuplicates: false }
+    )
 
-    case 'email.opened': {
-      updates.opened_count   = (log.opened_count ?? 0) + 1
-      if (!log.opened_count || log.opened_count === 0) {
-        updates.first_opened_at = now
-      }
-      break
-    }
-
-    case 'email.clicked': {
-      updates.clicked_count = (log.clicked_count ?? 0) + 1
-      if (!log.clicked_count || log.clicked_count === 0) {
-        updates.first_clicked_at = now
-      }
-      break
-    }
-
-    case 'email.bounced':
-      updates.bounced_at = now
-      // Hard bounce → add to unsubscribe list so we never email this address again
-      if (log.recipient_email) {
-        await supabase
-          .from('email_unsubscribes')
-          .upsert(
-            { email: log.recipient_email.toLowerCase(), unsubscribed_at: now },
-            { onConflict: 'email', ignoreDuplicates: false }
-          )
-        console.log(`[webhook/resend] Bounce — added ${log.recipient_email} to unsubscribe list`)
-      }
-      break
-
-    case 'email.complained':
-      updates.complained_at = now
-      // Spam complaint → also unsubscribe
-      if (log.recipient_email) {
-        await supabase
-          .from('email_unsubscribes')
-          .upsert(
-            { email: log.recipient_email.toLowerCase(), unsubscribed_at: now },
-            { onConflict: 'email', ignoreDuplicates: false }
-          )
-        console.log(`[webhook/resend] Complaint — added ${log.recipient_email} to unsubscribe list`)
-      }
-      break
-
-    default:
-      // Unrecognised event type — we already recorded it in email_events, nothing else to do
-      return NextResponse.json({ received: true })
+  if (error) {
+    // Suppression is the whole point of this endpoint — if it fails, return 500
+    // so Resend retries rather than silently dropping the bounce.
+    console.error('[webhook/resend] Failed to suppress address:', error)
+    return NextResponse.json({ error: 'Failed to record suppression' }, { status: 500 })
   }
 
-  if (Object.keys(updates).length > 0) {
-    const { error } = await supabase
-      .from('email_logs')
-      .update(updates)
-      .eq('id', log.id)
-
-    if (error) {
-      console.error('[webhook/resend] Failed to update email_logs:', error)
-      // Still return 200 so Resend doesn't retry — the email_events row is already saved
-    }
-  }
+  console.log(`[webhook/resend] ${eventType} — suppressed ${maskEmail(email)}`)
 
   return NextResponse.json({ received: true })
 }

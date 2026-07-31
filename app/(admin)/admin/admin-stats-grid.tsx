@@ -198,39 +198,39 @@ export function AdminStatsGrid({ initialStats }: AdminStatsGridProps) {
   const tzLabel = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   return (
-    <div>
+    <div className="select-none">
       {/* ── Live status bar ── */}
-      <div className="flex items-center justify-between mb-8 pb-6 border-b border-border">
+      <div className="flex items-center justify-between mb-8 pb-6 border-b border-border/40">
         <div className="flex items-center gap-2.5">
           {/* Pulse dot */}
-          <span className="relative flex h-2 w-2">
+          <span className="relative flex h-2.5 w-2.5">
             <span
               className={[
                 'absolute inline-flex h-full w-full rounded-full opacity-75',
                 error
-                  ? 'bg-denied animate-ping'
-                  : 'bg-admitted animate-ping',
+                  ? 'bg-red-500 animate-ping'
+                  : 'bg-emerald-500 animate-ping',
               ].join(' ')}
             />
             <span
               className={[
-                'relative inline-flex rounded-full h-2 w-2',
-                error ? 'bg-denied' : 'bg-admitted',
+                'relative inline-flex rounded-full h-2.5 w-2.5',
+                error ? 'bg-red-500' : 'bg-emerald-500',
               ].join(' ')}
             />
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             {error ? 'Poll failed · retrying' : 'Live · auto-refreshes every 30s'}
           </span>
         </div>
 
         {/* Last updated + manual refresh */}
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground hidden sm:block">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground/75 hidden sm:block">
             {lastUpdated ? (
               <>
                 Updated {elapsed}{' '}
-                <span className="opacity-40">
+                <span className="opacity-50">
                   ({localTime} {tzLabel})
                 </span>
               </>
@@ -244,10 +244,10 @@ export function AdminStatsGrid({ initialStats }: AdminStatsGridProps) {
             disabled={isRefreshing}
             aria-label="Refresh stats now"
             title="Refresh now"
-            className="flex items-center justify-center w-7 h-7 border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center w-8 h-8 rounded-full border border-border/40 bg-stone-900/40 text-muted-foreground hover:text-foreground hover:border-copper/40 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <RefreshCw
-              className={['size-3', isRefreshing ? 'animate-spin' : ''].join(' ')}
+              className={['size-3.5', isRefreshing ? 'animate-spin' : ''].join(' ')}
               aria-hidden="true"
             />
           </button>
@@ -264,15 +264,15 @@ export function AdminStatsGrid({ initialStats }: AdminStatsGridProps) {
         {SECTIONS.map((section) => (
           <section
             key={section.heading}
-            className="bg-card border border-border"
+            className="bg-card/40 backdrop-blur-xl border border-border/40 rounded-3xl overflow-hidden shadow-2xl"
             aria-labelledby={`section-${section.heading.replace(/\s+/g, '-').toLowerCase()}`}
           >
             {/* Section header */}
-            <div className="px-6 py-4 border-b border-border flex items-center gap-3">
-              <div className="w-1 h-4 bg-copper shrink-0" aria-hidden="true" />
+            <div className="px-6 py-4 border-b border-border/40 flex items-center gap-3">
+              <div className="w-1.5 h-4 bg-copper rounded-full shrink-0" aria-hidden="true" />
               <h2
                 id={`section-${section.heading.replace(/\s+/g, '-').toLowerCase()}`}
-                className="font-sans text-[10px] font-semibold uppercase tracking-[0.25em] text-foreground"
+                className="font-sans text-xs font-bold uppercase tracking-wider text-foreground"
               >
                 {section.heading}
               </h2>

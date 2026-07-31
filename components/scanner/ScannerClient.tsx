@@ -40,7 +40,8 @@ type Counter = {
 
 function playTone(type: 'admit' | 'deny' | 'warning') {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ctx = new AudioCtx()
 
     const configs: Record<string, Array<{ freq: number; start: number; duration: number; gain: number }>> = {
       // Admit: two ascending chime tones — cheerful, clear
@@ -85,7 +86,6 @@ export default function ScannerClient({
   token,
   gate,
   eventName,
-  eventId,
 }: {
   token: string
   gate: string
@@ -112,6 +112,7 @@ export default function ScannerClient({
   const [counter, setCounter] = useState<Counter | null>(null)
 
   // --- Refs ---
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const scannerRef = useRef<any>(null)
   const lastScannedRef = useRef<string>('')
   const resultTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -120,7 +121,11 @@ export default function ScannerClient({
 
   const fetchCounter = useCallback(async () => {
     try {
-      const res = await fetch(`/api/scan/counter?token=${token}`)
+      const res = await fetch('/api/scan/counter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
       if (res.ok) {
         const data = await res.json()
         setCounter(data)
@@ -245,9 +250,11 @@ export default function ScannerClient({
     }, 3000)
   }
 
-  // ── QR camera ───────────────────────────────────────────────────────────────
+  const processScanRef = useRef(processScan)
+  processScanRef.current = processScan
 
-  async function startScanner() {
+  const startScanner = useCallback(async () => {
+    if (scannerRef.current) return
     const { Html5Qrcode } = await import('html5-qrcode')
     const scanner = new Html5Qrcode('qr-reader')
 
@@ -255,7 +262,7 @@ export default function ScannerClient({
       await scanner.start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => processScan(decodedText.trim()),
+        (decodedText) => processScanRef.current(decodedText.trim()),
         () => {}
       )
       scannerRef.current = scanner
@@ -263,17 +270,18 @@ export default function ScannerClient({
     } catch (err) {
       console.error('Scanner start error:', err)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    startScanner()
+    void startScanner()
+
     return () => {
       clearTimeout(resultTimeoutRef.current)
       if (scannerRef.current) {
         try { scannerRef.current.stop() } catch {}
       }
     }
-  }, [])
+  }, [startScanner])
 
   // ── Manual name search ──────────────────────────────────────────────────────
 
@@ -284,7 +292,11 @@ export default function ScannerClient({
     searchDebounce.current = setTimeout(async () => {
       setSearchLoading(true)
       try {
-        const res = await fetch(`/api/scan/search?token=${token}&q=${encodeURIComponent(q)}`)
+        const res = await fetch('/api/scan/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, q }),
+        })
         if (res.ok) {
           const data = await res.json()
           setSearchResults(data.results ?? [])
@@ -325,34 +337,32 @@ export default function ScannerClient({
     <div className="fixed inset-0 flex flex-col bg-void text-paper overflow-hidden select-none">
 
       {/* ── Top Bar ─────────────────────────────────────────────── */}
-      <header className="p-4 pt-10 shrink-0 border-b-2 border-ink">
+      <header className="p-4 pt-10 shrink-0 border-b border-border/40 bg-stone-950/80 backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="font-display text-3xl tracking-[0.3em] leading-none text-paper uppercase">
+            <h1 className="font-display text-3xl font-bold tracking-[0.2em] leading-none text-foreground uppercase truncate mb-1">
               CRENELLE
             </h1>
-            <p className="font-mono text-xs text-paper/40 uppercase mt-1.5 tracking-widest truncate">
-              {eventName} // {gate}
+            <p className="font-mono text-xs text-muted-foreground/70 uppercase tracking-wider truncate">
+              {`${eventName} // ${gate}`}
             </p>
-          </div>
 
           {/* Live usher counter */}
           {counter !== null && (
             <div className="shrink-0 text-right">
-              <p className="font-display text-3xl text-signal leading-none tabular-nums">
+              <p className="font-mono text-2xl font-black text-copper leading-none tabular-nums">
                 {counter.eventTotal}
                 {counter.totalSeats > 0 && (
-                  <span className="text-paper/30 text-xl">/{counter.totalSeats}</span>
+                  <span className="text-muted-foreground/50 text-sm font-normal">/{counter.totalSeats}</span>
                 )}
               </p>
-              <p className="font-mono text-[8px] uppercase tracking-widest text-paper/30 mt-0.5">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground mt-1">
                 THIS GATE: {counter.gateTotal}
               </p>
               {/* Thin capacity bar */}
               {counter.totalSeats > 0 && (
-                <div className="w-20 h-0.5 bg-ink mt-1.5 ml-auto">
+                <div className="w-20 h-1 bg-stone-900 rounded-full mt-1.5 ml-auto overflow-hidden">
                   <div
-                    className="h-full bg-signal transition-all duration-700"
+                    className="h-full bg-copper rounded-full transition-all duration-700"
                     style={{ width: `${capacityPct}%` }}
                   />
                 </div>
@@ -364,29 +374,29 @@ export default function ScannerClient({
         {/* Manual search trigger */}
         <button
           onClick={openSearch}
-          className="mt-3 w-full flex items-center gap-2 px-3 py-2 bg-ink border border-paper/10 text-paper/40 font-mono text-xs uppercase tracking-widest hover:border-signal/40 hover:text-paper/70 transition-colors"
+          className="mt-3 w-full flex items-center gap-2 px-4 py-2.5 bg-stone-900/50 border border-border/40 text-muted-foreground font-sans text-xs font-semibold rounded-xl hover:border-copper/40 hover:text-foreground transition-all duration-300 cursor-pointer"
           aria-label="Search guest by name"
         >
-          <Search className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>SEARCH GUEST NAME...</span>
+          <Search className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>Search guest name...</span>
         </button>
       </header>
 
       {/* ── Camera Viewport ──────────────────────────────────────── */}
-      <main className="flex-1 relative flex items-center justify-center bg-void">
-        <div className="relative w-72 h-72">
-          {/* Brutalist Corner Brackets */}
-          <div className="absolute -top-1 -left-1 w-6 h-6 border-t-[3px] border-l-[3px] border-signal z-20" />
-          <div className="absolute -top-1 -right-1 w-6 h-6 border-t-[3px] border-r-[3px] border-signal z-20" />
-          <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-[3px] border-l-[3px] border-signal z-20" />
-          <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-[3px] border-r-[3px] border-signal z-20" />
+      <main className="flex-1 relative flex items-center justify-center bg-stone-950">
+        <div className="relative w-72 h-72 rounded-3xl overflow-hidden shadow-2xl border border-border/30">
+          {/* Copper Corner Brackets */}
+          <div className="absolute top-2 left-2 w-6 h-6 border-t-[3px] border-l-[3px] border-copper rounded-tl-xl z-20" />
+          <div className="absolute top-2 right-2 w-6 h-6 border-t-[3px] border-r-[3px] border-copper rounded-tr-xl z-20" />
+          <div className="absolute bottom-2 left-2 w-6 h-6 border-b-[3px] border-l-[3px] border-copper rounded-bl-xl z-20" />
+          <div className="absolute bottom-2 right-2 w-6 h-6 border-b-[3px] border-r-[3px] border-copper rounded-br-xl z-20" />
 
           {/* QR Reader Surface */}
-          <div id="qr-reader" className="w-full h-full overflow-hidden grayscale contrast-125 opacity-60" />
+          <div id="qr-reader" className="w-full h-full overflow-hidden grayscale contrast-125 opacity-70" />
 
           {!scanning && !processing && (
-            <div className="absolute inset-0 flex items-center justify-center bg-void/80 z-10">
-              <Button variant="signal" onClick={startScanner}>INITIALIZE CAMERA</Button>
+            <div className="absolute inset-0 flex items-center justify-center bg-stone-950/80 backdrop-blur-md z-10">
+              <Button variant="copper" onClick={startScanner} className="rounded-full font-bold text-xs px-6 py-3">Initialize Camera</Button>
             </div>
           )}
         </div>
@@ -525,7 +535,7 @@ export default function ScannerClient({
       )}
 
       {/* ── Status Panel Flood ───────────────────────────────────── */}
-      <footer className="shrink-0 min-h-[140px] flex items-stretch border-t-2 border-ink">
+      <footer className="shrink-0 min-h-35 flex items-stretch border-t-2 border-ink">
         {processing ? (
           <div className="w-full bg-ink flex items-center justify-center animate-pulse">
             <h2 className="font-display text-4xl text-paper/40 tracking-widest uppercase">PROCESSING...</h2>

@@ -76,10 +76,10 @@ export async function addAttendee(eventId: string, formData: FormData) {
             console.error('Failed to send automated invitation email:', emailResult.error)
             emailWarning = emailResult.error
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error('Failed to send automated invitation email:', e)
           Sentry.captureException(e, { extra: { eventId, context: 'add_attendee_email' } })
-          emailWarning = e.message || 'Unknown email dispatch error'
+          emailWarning = e instanceof Error ? e.message : 'Unknown email dispatch error'
         }
       }
 
@@ -96,10 +96,10 @@ export async function addAttendee(eventId: string, formData: FormData) {
             console.error('Failed to send automated WhatsApp invitation:', whatsappResult.error)
             whatsappWarning = whatsappResult.error
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error('Failed to send automated WhatsApp invitation:', e)
           Sentry.captureException(e, { extra: { eventId, context: 'add_attendee_whatsapp' } })
-          whatsappWarning = e.message || 'Unknown WhatsApp dispatch error'
+          whatsappWarning = e instanceof Error ? e.message : 'Unknown WhatsApp dispatch error'
         }
       }
     }
@@ -198,25 +198,31 @@ export async function addMultipleAttendees(eventId: string, emailsText: string, 
 
       addedCount++
 
-      // Send email invitation asynchronously
+      // Awaited. Previously detached: a Server Action's instance is frozen when it
+      // returns, so the last sends in a batch were killed mid-flight and those
+      // guests silently never received their pass. Awaiting also makes the throttle
+      // below meaningful — it now paces actual Resend calls rather than overlapping.
       if (event) {
-        sendInvitationEmail({
-          eventId,
-          recipientEmail: email,
-          recipientName: name,
-          invitationId: invitation.id,
-          event,
-        }).catch(err => {
+        try {
+          await sendInvitationEmail({
+            eventId,
+            recipientEmail: email,
+            recipientName: name,
+            invitationId: invitation.id,
+            event,
+          })
+        } catch (err) {
           console.error(`Failed to send bulk invitation to ${email}:`, err)
-        })
+          Sentry.captureException(err, { extra: { eventId, email, context: 'add_multiple_attendees_email' } })
+        }
 
         // Throttle slightly
         await new Promise(resolve => setTimeout(resolve, 100))
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(`Bulk import error for ${email}:`, e)
       Sentry.captureException(e, { extra: { eventId, email, context: 'add_multiple_attendees' } })
-      errors.push(`${email}: ${e.message || 'unknown error'}`)
+      errors.push(`${email}: ${e instanceof Error ? e.message : 'unknown error'}`)
     }
   }
 

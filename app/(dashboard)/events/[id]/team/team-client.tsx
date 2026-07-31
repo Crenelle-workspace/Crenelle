@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
-import { useParams, notFound } from 'next/navigation'
+import { useState, useEffect, useCallback, useTransition } from 'react'
+import { useParams } from 'next/navigation'
 import { UserPlus, Trash2, Users, Shield, Eye, Star } from 'lucide-react'
 import { getTeamMembers, inviteTeamMember, removeTeamMember, updateTeamMemberRole } from '@/app/actions/team'
 import { fieldCls, labelCls } from '@/lib/form-styles'
@@ -47,7 +47,7 @@ export default function TeamPage() {
   const [isUpdatingRole, startUpdateTransition] = useTransition()
   const [loading, setLoading] = useState(true)
 
-  async function loadMembers() {
+  const loadMembers = useCallback(async () => {
     try {
       const result = await getTeamMembers(eventId)
       if (result.error) {
@@ -58,11 +58,11 @@ export default function TeamPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId])
 
   useEffect(() => {
     loadMembers()
-  }, [eventId])
+  }, [eventId, loadMembers])
 
   function handleInvite(e: React.FormEvent) {
     e.preventDefault()
@@ -94,16 +94,16 @@ export default function TeamPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
         <SectionHeader
-          eyebrow="TEAM_ACCESS"
+          eyebrow="Team & Collaborators"
           title="Co-Hosts"
           subtitle={loading ? "Loading co-hosts..." : `${members.length} co-host${members.length !== 1 ? 's' : ''} with access to this event`}
         />
 
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
           <DialogTrigger asChild>
-            <Button variant="signal" className="gap-2 h-12 px-6 text-sm shrink-0">
+            <Button variant="copper" className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full">
               <UserPlus className="h-4 w-4" aria-hidden="true" />
-              INVITE_CO-HOST
+              Invite Co-Host
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-background border border-border max-w-md">
@@ -158,13 +158,14 @@ export default function TeamPage() {
                 </div>
               </div>
 
-              <button
+              <Button
                 type="submit"
+                variant="copper"
                 disabled={isPending || !email.trim()}
-                className="w-full bg-foreground text-background font-sans text-sm font-semibold uppercase tracking-[0.12em] py-3.5 hover:opacity-80 transition-opacity disabled:opacity-40"
+                className="w-full h-11 text-xs font-bold uppercase rounded-full"
               >
                 {isPending ? 'Sending invite...' : 'Send invite →'}
-              </button>
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -212,6 +213,16 @@ export default function TeamPage() {
           icon={<Users className="h-10 w-10" />}
           title="NO_CO-HOSTS"
           subtitle="Invite a co-host to give them access to collaborate on this event"
+          action={
+            <Button
+              variant="copper"
+              onClick={() => setInviteOpen(true)}
+              className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full"
+            >
+              <UserPlus className="h-4 w-4" />
+              Invite Co-Host
+            </Button>
+          }
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -251,7 +262,7 @@ export default function TeamPage() {
                     onChange={e => handleRoleChange(member, e.target.value as MemberRole)}
                     disabled={isUpdatingRole}
                     aria-label={`Change role for ${member.member_email}`}
-                    className={`font-sans text-xs font-semibold uppercase tracking-widest px-3 py-1.5 border appearance-none cursor-pointer bg-background disabled:opacity-50 ${rc.cls}`}
+                    className={`font-sans text-xs font-semibold px-3 py-1.5 border border-border/40 rounded-full appearance-none cursor-pointer bg-background disabled:opacity-50 ${rc.cls}`}
                   >
                     {(Object.keys(roleConfig) as MemberRole[]).map(r => (
                       <option key={r} value={r}>{roleConfig[r].label}</option>
@@ -262,7 +273,7 @@ export default function TeamPage() {
                   <button
                     onClick={() => setRemoveTarget(member)}
                     aria-label={`Remove ${member.member_email} as co-host`}
-                    className="inline-flex items-center justify-center h-9 w-9 border border-destructive/20 text-destructive/50 hover:border-destructive/50 hover:text-destructive hover:bg-destructive/6 transition-all"
+                    className="inline-flex items-center justify-center h-8 w-8 border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-full transition-all cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -277,12 +288,12 @@ export default function TeamPage() {
       <ConfirmDialog
         open={!!removeTarget}
         onOpenChange={open => !open && setRemoveTarget(null)}
-        title="REMOVE_CO-HOST"
-        description="THIS_ACTION_IS_REVERSIBLE"
+        title="Remove Collaborator"
+        description="Confirm access removal"
         subject={removeTarget?.member_email}
-        subjectLabel="CO-HOST"
+        subjectLabel="Collaborator"
         body="This person will immediately lose access to this event. You can re-invite them at any time."
-        confirmLabel="REMOVE_ACCESS"
+        confirmLabel="Remove Access"
         isPending={isRemoving}
         onConfirm={() => {
           if (!removeTarget) return

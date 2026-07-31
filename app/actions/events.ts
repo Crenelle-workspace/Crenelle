@@ -14,6 +14,33 @@ export async function createEvent(formData: FormData) {
 
   const eventType = (formData.get('event_type') as string) || 'closed'
   const name = formData.get('name') as string
+  const emailTheme = (formData.get('email_theme') as string) || 'classic'
+  const eventDate = formData.get('date') as string
+  const eventTz = (formData.get('timezone') as string) || 'Africa/Lagos'
+
+  let todayStr: string
+  try {
+    todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: eventTz }).format(new Date())
+  } catch {
+    todayStr = new Date().toISOString().split('T')[0]
+  }
+
+  if (eventDate && eventDate < todayStr) {
+    return { error: 'Event date cannot be in the past. Please select today or a future date.' }
+  }
+
+  let agenda: unknown[] = []
+  if (formData.has('agenda')) {
+    try { agenda = JSON.parse(formData.get('agenda') as string) } catch {}
+  }
+  let speakers: unknown[] = []
+  if (formData.has('speakers')) {
+    try { speakers = JSON.parse(formData.get('speakers') as string) } catch {}
+  }
+  let faqs: unknown[] = []
+  if (formData.has('faqs')) {
+    try { faqs = JSON.parse(formData.get('faqs') as string) } catch {}
+  }
 
   const { data, error } = await supabase
     .from('events')
@@ -31,6 +58,11 @@ export async function createEvent(formData: FormData) {
       max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
       banner_url: (formData.get('banner_url') as string) || null,
       sender_profile_id: (formData.get('sender_profile_id') as string) || null,
+      location_url: (formData.get('location_url') as string) || null,
+      email_theme: emailTheme,
+      agenda,
+      speakers,
+      faqs,
     })
     .select()
     .single()
@@ -38,6 +70,9 @@ export async function createEvent(formData: FormData) {
   if (error) return { error: error.message }
 
   revalidatePath('/events')
+  if (data.registration_slug) {
+    revalidatePath(`/register/${data.registration_slug}`)
+  }
   redirect(`/events/${data.id}`)
 }
 
@@ -60,7 +95,7 @@ export async function updateEvent(id: string, formData: FormData) {
   // Fetch current event to check the current banner_url before updating
   const { data: currentEvent } = await supabase
     .from('events')
-    .select('banner_url')
+    .select('banner_url, registration_slug')
     .eq('id', id)
     .single()
 
@@ -77,23 +112,70 @@ export async function updateEvent(id: string, formData: FormData) {
     registrationSlug = null
   }
 
+  const eventDate = formData.get('date') as string
+  const eventTz = (formData.get('timezone') as string) || 'Africa/Lagos'
+
+  if (eventDate) {
+    let todayStr: string
+    try {
+      todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: eventTz }).format(new Date())
+    } catch {
+      todayStr = new Date().toISOString().split('T')[0]
+    }
+
+    if (eventDate < todayStr) {
+      return { error: 'Event date cannot be in the past. Please select today or a future date.' }
+    }
+  }
+
+  const updateData: Record<string, unknown> = {
+    name,
+    date: eventDate,
+    time: (formData.get('time') as string) || null,
+    timezone: eventTz,
+    venue: formData.get('venue') as string,
+    description: (formData.get('description') as string) || null,
+    capacity: formData.get('capacity') ? Number(formData.get('capacity')) : null,
+    status: formData.get('status') as string,
+    event_type: eventType,
+    registration_slug: registrationSlug,
+    max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
+    banner_url: newBannerUrl,
+    sender_profile_id: (formData.get('sender_profile_id') as string) || null,
+    location_url: (formData.get('location_url') as string) || null,
+  }
+
+  if (formData.has('email_theme')) {
+    updateData.email_theme = formData.get('email_theme') as string
+  }
+
+  if (formData.has('agenda')) {
+    try {
+      updateData.agenda = JSON.parse(formData.get('agenda') as string)
+    } catch {
+      // invalid json fallback
+    }
+  }
+
+  if (formData.has('speakers')) {
+    try {
+      updateData.speakers = JSON.parse(formData.get('speakers') as string)
+    } catch {
+      // invalid json fallback
+    }
+  }
+
+  if (formData.has('faqs')) {
+    try {
+      updateData.faqs = JSON.parse(formData.get('faqs') as string)
+    } catch {
+      // invalid json fallback
+    }
+  }
+
   const { error } = await supabase
     .from('events')
-    .update({
-      name,
-      date: formData.get('date') as string,
-      time: (formData.get('time') as string) || null,
-      timezone: (formData.get('timezone') as string) || 'Africa/Lagos',
-      venue: formData.get('venue') as string,
-      description: (formData.get('description') as string) || null,
-      capacity: formData.get('capacity') ? Number(formData.get('capacity')) : null,
-      status: formData.get('status') as string,
-      event_type: eventType,
-      registration_slug: registrationSlug,
-      max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
-      banner_url: newBannerUrl,
-      sender_profile_id: (formData.get('sender_profile_id') as string) || null,
-    })
+    .update(updateData)
     .eq('id', id)
 
   if (error) return { error: error.message }
@@ -106,7 +188,28 @@ export async function updateEvent(id: string, formData: FormData) {
     }
   }
 
+  revalidatePath('/events')
   revalidatePath(`/events/${id}`)
+  const slugToRevalidate = registrationSlug || currentEvent?.registration_slug
+  if (slugToRevalidate) {
+    revalidatePath(`/register/${slugToRevalidate}`)
+  }
+
+  return { success: true }
+}
+
+export async function updateEventEmailTheme(id: string, theme: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('events')
+    .update({ email_theme: theme })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/events/${id}`)
+  revalidatePath(`/events/${id}/email`)
   return { success: true }
 }
 

@@ -11,6 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { __resetRateLimitStoreForTests } from '@/lib/rate-limit'
 
 // ── Mock declarations (at file scope) ─────────────────────────────────────
 
@@ -52,6 +53,7 @@ const mockCreateClient = createClient as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  __resetRateLimitStoreForTests()
 })
 
 // ── submitRegistration ─────────────────────────────────────────────────────
@@ -120,32 +122,63 @@ describe('submitRegistration', () => {
     expect(result).toEqual({ error: 'This event does not accept public registrations' })
   })
 
-  it('returns { error } when name or email is missing', async () => {
-    const mockEvent = { id: 'event-1', event_type: 'open', status: 'published', max_registrations: null }
-    mockCreateAdminClient.mockReturnValue({
-      from: vi.fn((table: string) => {
-        if (table === 'events') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockEvent, error: null }),
-          }
-        }
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          not: vi.fn().mockReturnThis(),
-          ilike: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-          count: null,
-          single: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }
-      }),
-    })
+  // ── input validation (finding 9) ─────────────────────────────────────────
+  //
+  // email format + length caps are enforced BEFORE the email is used as a
+  // rate-limit key or reaches the DB. These cases fail fast, so no `from`
+  // mock is needed — an unexpected DB call would throw and fail the test.
 
+  it('returns { error } when name and email are empty', async () => {
     const fd = makeFormData({ email: '', full_name: '' })
     const result = await submitRegistration('event-1', fd)
-    expect(result).toEqual({ error: 'Name and email are required' })
+    // name is validated first → its min-length message surfaces
+    expect(result).toEqual({ error: 'Name must be at least 2 characters' })
+  })
+
+  it('returns { error } for a malformed email address', async () => {
+    const fd = makeFormData({ email: 'not-an-email', full_name: 'Valid Name' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ error: 'Please enter a valid email address' })
+  })
+
+  it('returns { error } for a single-character name', async () => {
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'A' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ error: 'Name must be at least 2 characters' })
+  })
+
+  it('returns { error } when the name exceeds 120 characters', async () => {
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'A'.repeat(121) })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ error: 'Name is too long (max 120 characters)' })
+  })
+
+  it('returns { error } when the email exceeds 254 characters', async () => {
+    // Syntactically valid local part but over the length cap.
+    const longEmail = `${'a'.repeat(250)}@x.com`
+    const fd = makeFormData({ email: longEmail, full_name: 'Valid Name' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ error: 'Email is too long' })
+  })
+
+  it('returns { error } when the phone exceeds 30 characters', async () => {
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'Valid Name', phone: '1'.repeat(31) })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ error: 'Phone number is too long' })
+  })
+
+  it('normalises email to lowercase before it reaches the DB', async () => {
+    let insertedEmail: unknown = 'UNSET'
+    mockCreateAdminClient.mockReturnValue(
+      mockClientWithTier(null, (payload) => {
+        insertedEmail = payload.email
+      }),
+    )
+
+    const fd = makeFormData({ email: 'MixedCase@X.COM', full_name: 'Case User' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ success: true, waitlisted: false })
+    expect(insertedEmail).toBe('mixedcase@x.com')
   })
 
   it('returns { error } on duplicate insert (code 23505)', async () => {
@@ -185,7 +218,106 @@ describe('submitRegistration', () => {
     expect(result).toEqual({ error: 'You have already registered for this event with this email' })
   })
 
-  it('returns { success: true } silently for unsubscribed emails', async () => {
+  // ── ticket-tier validation (paid-for-free / tier IDOR guard) ──────────────
+
+  /**
+   * Build an admin-client mock for the "open, published, no-cap" happy path
+   * where the only variable is what the ticket_tiers lookup returns.
+   * `tier` is the row returned by the ticket_tiers .maybeSingle().
+   * `onInsert` lets a test assert on the payload passed to attendees.insert().
+   */
+  function mockClientWithTier(
+    tier: { id: string; price: number; is_public: boolean; deleted_at: string | null } | null,
+    onInsert?: (payload: Record<string, unknown>) => void,
+  ) {
+    const mockEvent = { id: 'event-1', event_type: 'open', status: 'published', max_registrations: null }
+    return {
+      from: vi.fn((table: string) => {
+        if (table === 'events') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockEvent, error: null }),
+          }
+        }
+        if (table === 'email_unsubscribes') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            ilike: vi.fn().mockReturnThis(),
+            not: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }
+        }
+        if (table === 'ticket_tiers') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: tier, error: null }),
+          }
+        }
+        // attendees
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          not: vi.fn().mockReturnThis(),
+          count: 0,
+          insert: vi.fn((payload: Record<string, unknown>) => {
+            onInsert?.(payload)
+            return Promise.resolve({ error: null })
+          }),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    }
+  }
+
+  it('rejects a PAID tier submitted through the (free) registration path', async () => {
+    mockCreateAdminClient.mockReturnValue(
+      mockClientWithTier({ id: 'tier-paid', price: 500000, is_public: true, deleted_at: null }),
+    )
+
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'Freeloader', ticket_tier_id: 'tier-paid' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({
+      error: 'This ticket tier requires payment. Please complete checkout to register.',
+    })
+  })
+
+  it('rejects a tier id that does not belong to the event (IDOR)', async () => {
+    // Query is scoped by .eq('event_id', eventId) so a foreign tier returns null.
+    mockCreateAdminClient.mockReturnValue(mockClientWithTier(null))
+
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'IDOR User', ticket_tier_id: 'tier-other-event' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ error: 'Selected ticket tier is not available' })
+  })
+
+  it('rejects a private or soft-deleted tier', async () => {
+    mockCreateAdminClient.mockReturnValue(
+      mockClientWithTier({ id: 'tier-hidden', price: 0, is_public: false, deleted_at: null }),
+    )
+
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'Sneaky User', ticket_tier_id: 'tier-hidden' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ error: 'Selected ticket tier is not available' })
+  })
+
+  it('accepts a valid free tier and persists its id', async () => {
+    let insertedTierId: unknown = 'UNSET'
+    mockCreateAdminClient.mockReturnValue(
+      mockClientWithTier({ id: 'tier-free', price: 0, is_public: true, deleted_at: null }, (payload) => {
+        insertedTierId = payload.ticket_tier_id
+      }),
+    )
+
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'Valid User', ticket_tier_id: 'tier-free' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ success: true, waitlisted: false })
+    expect(insertedTierId).toBe('tier-free')
+  })
+
+  it('returns { error } for unsubscribed/suppressed emails', async () => {
     const mockEvent = { id: 'event-1', event_type: 'open', status: 'published', max_registrations: null }
     mockCreateAdminClient.mockReturnValue({
       from: vi.fn((table: string) => {
@@ -215,7 +347,9 @@ describe('submitRegistration', () => {
 
     const fd = makeFormData({ email: 'unsub@x.com', full_name: 'Unsub User' })
     const result = await submitRegistration('event-1', fd)
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({
+      error: 'This email address has unsubscribed or experienced delivery issues. Please contact support or the organizer to resubscribe.',
+    })
   })
 })
 

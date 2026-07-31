@@ -10,6 +10,7 @@ import { deleteEvent } from "@/app/actions/events"
 import { EmptyState } from "@/components/empty-state"
 import type { Event, Invitation } from "@/lib/types"
 
+import { WorkspaceSetupCard, type SetupStatus } from "@/components/workspace-setup-card"
 import { useDashboardData } from "./hooks/use-dashboard-data"
 import { StatsPanel } from "./components/stats-panel"
 import { ControlBar } from "./components/control-bar"
@@ -20,6 +21,7 @@ interface EventsDashboardClientProps {
   initialInvitations: Invitation[]
   initialLogs: { invitation_id: string }[]
   coHostedEvents?: Array<Event & { memberRole: string }>
+  setupStatus?: SetupStatus
 }
 
 const roleLabels: Record<string, string> = {
@@ -33,6 +35,7 @@ export function EventsDashboardClient({
   initialInvitations,
   initialLogs,
   coHostedEvents = [],
+  setupStatus,
 }: EventsDashboardClientProps) {
   const { events, invitations, logs, eventStats, stats, remaining, capacityPercent } =
     useDashboardData({ initialEvents, initialInvitations, initialLogs })
@@ -63,9 +66,12 @@ export function EventsDashboardClient({
     })
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-      {/* Events list */}
-      <div className="lg:col-span-7 flex flex-col gap-6">
+    <div className="space-y-8">
+      {setupStatus && <WorkspaceSetupCard status={setupStatus} />}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* Events list */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
         <EventsHeader
           isSearchExpanded={isSearchExpanded}
           setIsSearchExpanded={setIsSearchExpanded}
@@ -76,11 +82,11 @@ export function EventsDashboardClient({
         {events.length === 0 ? (
           <EmptyState
             icon={<Users className="h-10 w-10" />}
-            title="NO_EVENTS_YET"
+            title="No events yet"
             subtitle="Create your first event to start issuing entry passes and scanning guests"
             action={
               <Link href="/events/new">
-                <button className="inline-flex items-center gap-2 bg-foreground text-background font-mono text-xs font-semibold uppercase tracking-widest px-5 py-3 hover:opacity-80 transition-opacity cursor-pointer">
+                <button className="inline-flex items-center gap-2 bg-foreground text-background font-sans text-xs font-bold rounded-full px-6 py-3 hover:opacity-90 transition-opacity cursor-pointer">
                   Create your first event →
                 </button>
               </Link>
@@ -107,7 +113,7 @@ export function EventsDashboardClient({
                     <Link href={`/events/${event.id}`}>
                       <EventCard
                         name={event.name}
-                        date={new Date(event.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" }).toUpperCase()}
+                        date={new Date(event.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         time={event.time?.slice(0, 5) ?? ""}
                         guestCount={guestCount}
                         guestLabel={guestLabel}
@@ -165,7 +171,7 @@ export function EventsDashboardClient({
                 Co-hosting
               </p>
               <span className="font-sans text-[10px] text-muted-foreground ml-1">
-                — events you've been invited to collaborate on
+                — events you&apos;ve been invited to collaborate on
               </span>
             </div>
             <div className="flex flex-col gap-4">
@@ -235,6 +241,7 @@ export function EventsDashboardClient({
           currentStatus={statusTarget.status}
         />
       )}
+      </div>
     </div>
   )
 }

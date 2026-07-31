@@ -1,8 +1,32 @@
 export type EventStatus = 'draft' | 'published' | 'live' | 'ended'
 export type EventType = 'closed' | 'open'
+export type EmailTheme = 'classic' | 'boarding_pass' | 'minimal_mono' | 'luxe_dark' | 'bold_poster' | 'horizontal_pass'
 export type InvitationStatus = 'pending' | 'active' | 'cancelled' | 'checked_in' | 'expired'
 export type RegistrationStatus = 'pending' | 'accepted' | 'rejected' | 'waitlist'
 export type AttendeeSource = 'imported' | 'public_registration' | 'manual'
+
+export interface AgendaItem {
+  id: string
+  time: string
+  title: string
+  description?: string
+  speaker?: string
+}
+
+export interface SpeakerInfo {
+  id: string
+  name: string
+  role: string
+  company?: string
+  avatar_url?: string
+  bio?: string
+}
+
+export interface FAQItem {
+  id: string
+  question: string
+  answer: string
+}
 
 export interface Event {
   id: string
@@ -19,7 +43,12 @@ export interface Event {
   max_registrations: number | null
   banner_url?: string | null
   sender_profile_id?: string | null
-  timezone: string // NEW — default 'Africa/Lagos'
+  email_theme?: EmailTheme
+  timezone: string // default 'Africa/Lagos'
+  agenda?: AgendaItem[] | null
+  speakers?: SpeakerInfo[] | null
+  faqs?: FAQItem[] | null
+  location_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -171,3 +200,96 @@ export interface OrganizerSettings {
   created_at: string
   updated_at: string
 }
+
+// ── Payment types ──────────────────────────────────────────────
+
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded' | 'abandoned' | 'disputed'
+export type PaymentChannel = 'card' | 'bank' | 'ussd' | 'bank_transfer' | 'qr'
+export type InvitationPaymentStatus = 'unpaid' | 'paid' | 'refunded' | 'failed' | 'disputed'
+
+export interface Payment {
+  id: string
+  event_id: string
+  attendee_id: string | null
+  ticket_tier_id: string | null
+  paystack_reference: string
+  paystack_transaction_id: number | null
+  amount_kobo: number
+  platform_fee_kobo: number | null
+  organiser_amount_kobo: number | null
+  currency: string
+  status: PaymentStatus
+  payer_email: string
+  payer_name: string | null
+  paystack_channel: PaymentChannel | null
+  metadata: Record<string, unknown> | null
+  webhook_received_at: string | null
+  paid_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OrganizerPaymentSettings {
+  id: string
+  organizer_id: string
+  paystack_subaccount_code: string | null
+  bank_name: string | null
+  bank_code: string | null
+  account_number: string | null
+  account_name: string | null
+  is_verified: boolean
+  platform_fee_percent: number
+  connected_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PaymentBreakdown {
+  ticketFeeKobo: number
+  crenelleChargeKobo: number
+  paystackFeeKobo: number
+  totalAmountKobo: number
+  organiserPayoutKobo: number
+  platformFeePercent: number
+}
+
+
+// Paystack webhook payload shapes
+export interface PaystackWebhookEvent {
+  event:
+    | 'charge.success'
+    | 'charge.failed'
+    | 'refund.processed'
+    | 'charge.dispute.create'
+    | 'charge.dispute.resolve'
+    | 'transfer.reversed'
+    | string
+  data: {
+    id: number
+    domain: 'live' | 'test'
+    status: 'success' | 'failed' | 'abandoned'
+    reference: string
+    amount: number        // in kobo
+    message: string | null
+    gateway_response: string
+    paid_at: string | null
+    created_at: string
+    channel: PaymentChannel
+    currency: string
+    fees: number          // Paystack's fee in kobo
+    customer: {
+      id: number
+      first_name: string | null
+      last_name: string | null
+      email: string
+      phone: string | null
+    }
+    metadata?: Record<string, unknown>
+    subaccount?: {
+      id: number
+          amount: number
+      account_code: string
+    }
+  }
+}
+

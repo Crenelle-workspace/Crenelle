@@ -1,6 +1,21 @@
 import { Resend } from 'resend'
+import QRCode from 'qrcode'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getOptimizedBannerUrl } from './images'
+import { renderTicketEmail } from './email-templates'
+
+/** Generates a PNG Buffer server-side for inline CID email attachments */
+async function generateQrBuffer(qrToken: string): Promise<Buffer> {
+  return await QRCode.toBuffer(qrToken, {
+    type: 'png',
+    width: 440,
+    margin: 2,
+    color: {
+      dark: '#0A0A0A',
+      light: '#F0EDE8',
+    },
+    errorCorrectionLevel: 'M',
+  })
+}
 
 // Lazy init — avoids crash at build time when env var isn't set yet
 let _resend: Resend | null = null
@@ -27,6 +42,46 @@ if (SENDING_ADDRESS === 'onboarding@resend.dev') {
     '(onboarding@resend.dev). Emails will ONLY deliver to the Resend account owner email. ' +
     'Set EMAIL_FROM_ADDRESS=noreply@yourdomain.com in .env.local with a verified Resend domain.'
   )
+}
+
+/**
+ * Escapes the five HTML-significant characters so untrusted, user-supplied
+ * strings (custom reminder messages, event/venue names, guest names, tier
+ * labels, seat info, …) cannot break out of their text context and inject
+ * markup into the email body.
+ *
+ * Emails are a stored-XSS sink just like a web page: many clients render HTML,
+ * and even those that sandbox scripts will honour injected links/images.
+ * Interpolating raw user input into these template literals is unsafe.
+ */
+export function escapeHtml(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * Sanitises a banner image URL for safe interpolation into an `<img src="…">`
+ * attribute. The banner URL is organiser-supplied (it can be any arbitrary URL
+ * — see getOptimizedBannerUrl's fallback branch), so two guards apply:
+ *
+ *   1. Scheme allowlist — only http(s) URLs are permitted. This blocks
+ *      `javascript:` and `data:` payloads from ever reaching the markup.
+ *   2. HTML-attribute escaping — a value like `x" onerror="…` would otherwise
+ *      break out of the src attribute and inject an event handler.
+ *
+ * Returns '' for anything that is not a well-formed http(s) URL, which callers
+ * treat as "no banner" (the banner block is omitted entirely).
+ */
+export function safeImageUrl(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  const raw = String(value).trim()
+  if (!/^https?:\/\//i.test(raw)) return ''
+  return escapeHtml(raw)
 }
 
 /** Organisation/organiser identity used to personalise the From header and Reply-To. */
@@ -148,6 +203,7 @@ export interface EventDetails {
   venue: string
   description?: string | null
   banner_url?: string | null
+  email_theme?: string | null
 }
 
 export interface InvitationEmailOptions {
@@ -220,8 +276,8 @@ export async function sendInvitationEmail({
   // Generate unsubscribe URL for this recipient
   const unsubscribeUrl = await getUnsubscribeUrl(actualRecipientEmail)
 
-  // Generate QR code URL using a hosted API (robust for emails), encoding qr_token
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${qrToken}&color=0A0A0A&bgcolor=F0EDE8`;
+  // Generate QR code PNG buffer server-side (no third-party data leak)
+  const qrBuffer = await generateQrBuffer(qrToken)
 
   const eventDate = new Date(event.date).toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -232,6 +288,7 @@ export async function sendInvitationEmail({
 
   // Fetch tier perks if assigned
   let tierHtml = ''
+  let tierPerksList: string[] = []
   if (invitation.ticket_tier_id && invitation.ticket_tier) {
     const { data: perks } = await supabase
       .from('tier_perks')
@@ -239,15 +296,16 @@ export async function sendInvitationEmail({
       .eq('tier_id', invitation.ticket_tier_id)
       .order('sort_order', { ascending: true })
 
-    const perksText = perks && perks.length > 0
-      ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${perks.map(p => p.label).join(' · ')}</div>`
+    tierPerksList = perks ? perks.map(p => p.label) : []
+    const perksText = tierPerksList.length > 0
+      ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${tierPerksList.map(p => escapeHtml(p)).join(' · ')}</div>`
       : ''
 
     tierHtml = `
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">TICKET TIER</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              ${invitation.ticket_tier.name}
+              ${escapeHtml(invitation.ticket_tier.name)}
               ${perksText}
             </td>
           </tr>`
@@ -260,161 +318,34 @@ export async function sendInvitationEmail({
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">SEAT</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              ${invitation.seat_info}
+              ${escapeHtml(invitation.seat_info)}
             </td>
           </tr>`
   }
 
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light dark">
-  <meta name="supported-color-schemes" content="light dark">
-  <style>
-    :root {
-      color-scheme: light dark;
-      supported-color-schemes: light dark;
-    }
-    
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100% !important;
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
-    }
+  let theme = event.email_theme
+  if (!theme) {
+    const { data: dbEvent } = await supabase.from('events').select('email_theme').eq('id', eventId).single()
+    if (dbEvent?.email_theme) theme = dbEvent.email_theme
+  }
 
-    @media (prefers-color-scheme: dark) {
-      .bg-body {
-        background-color: #0C0B09 !important;
-      }
-      .bg-card {
-        background-color: #171512 !important;
-      }
-      .border-card {
-        border-color: rgba(238, 234, 227, 0.10) !important;
-      }
-      .text-primary {
-        color: #EEEAE3 !important;
-      }
-      .text-secondary {
-        color: #9E9890 !important;
-      }
-      .text-accent {
-        color: #D4A050 !important;
-      }
-      .qr-wrapper {
-        background-color: #EEEAE3 !important;
-        border: 2px solid rgba(238, 234, 227, 0.20) !important;
-      }
-      .rule-accent {
-        background: linear-gradient(to right, transparent, rgba(191, 132, 48, 0.6), transparent) !important;
-      }
-    }
-  </style>
-</head>
-<body class="bg-body" style="margin:0;padding:0;background-color:#F4F1EC;font-family:'Courier New',Courier,monospace;-webkit-font-smoothing:antialiased;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    
-    <!-- Outer Card -->
-    <div class="bg-card border-card" style="background-color:#FFFFFF;border:1px solid rgba(12,11,9,0.14);border-radius:2px;padding:40px;box-shadow:0 4px 12px rgba(12,11,9,0.02);">
-      
-      <!-- Top Branding -->
-      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-        <tr>
-          <td>
-            <span class="text-accent" style="font-size:10px;font-weight:600;letter-spacing:4px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">CRENELLE</span>
-          </td>
-          <td style="text-align:right;">
-            <span class="text-secondary" style="font-size:9px;letter-spacing:1px;color:#5C5850;text-transform:uppercase;">Entry System</span>
-          </td>
-        </tr>
-      </table>
-
-      ${event.banner_url ? `
-      <!-- Banner Image -->
-      <div style="margin-bottom:24px;border:1px solid rgba(12,11,9,0.08);border-radius:2px;overflow:hidden;background-color:#F4F1EC;">
-        <img src="${getOptimizedBannerUrl(event.banner_url, 'email')}" alt="${event.name} Banner" style="width:100%;height:auto;display:block;border:none;" />
-      </div>
-      ` : ''}
-
-      <!-- Title / Header -->
-      <div style="margin-bottom:30px;">
-        <p class="text-accent" style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#BF8430;margin:0 0 10px 0;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          CONFIRMED ENTRY PASS
-        </p>
-        <h1 class="text-primary" style="font-size:32px;line-height:1.2;font-weight:800;color:#0C0B09;margin:0;text-transform:uppercase;letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          ${event.name}
-        </h1>
-      </div>
-
-      <!-- Accent line -->
-      <div class="rule-accent" style="height:1px;background:linear-gradient(to right, transparent, rgba(191,132,48,0.3), transparent);margin-bottom:30px;"></div>
-
-      <!-- Details Table -->
-      <div style="margin-bottom:35px;">
-        <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">DATE</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${eventDate}</td>
-          </tr>
-          ${event.time ? `
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">TIME</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${formatTimeTo12Hour(event.time)}</td>
-          </tr>` : ''}
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">VENUE</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${event.venue}</td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">GUEST</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${actualRecipientName}</td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">ADMITS</td>
-            <td class="text-accent" style="padding:10px 0;font-size:15px;color:#BF8430;font-weight:bold;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${partySizeText}</td>
-          </tr>
-          ${seatHtml}
-          ${tierHtml}
-        </table>
-      </div>
-
-      <!-- Divider -->
-      <div class="rule-accent" style="height:1px;background:linear-gradient(to right, transparent, rgba(191,132,48,0.2), transparent);margin-bottom:35px;"></div>
-
-      <!-- QR Section -->
-      <div style="text-align:center;">
-        <p class="text-secondary" style="font-size:10px;letter-spacing:3px;color:#5C5850;margin:0 0 20px 0;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          SCAN AT THE GATE FOR ENTRY
-        </p>
-        <div class="qr-wrapper" style="display:inline-block;border:1px solid rgba(12,11,9,0.08);padding:16px;background-color:#F4F1EC;border-radius:2px;">
-          <img src="${qrUrl}" alt="Entry QR Code" width="220" height="220" style="display:block;border:none;" />
-        </div>
-        <p class="text-secondary" style="font-size:10px;letter-spacing:1px;color:#5C5850;margin:20px 0 0 0;line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          This pass is unique to you. Do not replicate or share.
-        </p>
-      </div>
-
-    </div>
-
-    <!-- Micro Footer -->
-    <div style="padding:30px 0 10px 0;text-align:center;">
-      <p class="text-secondary" style="font-size:9px;letter-spacing:2.5px;color:#5C5850;margin:0 0 10px 0;text-transform:uppercase;">
-        CRENELLE // VERIFIED_INVITATION
-      </p>
-      <p style="font-size:9px;color:#9E9890;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-        You received this email because you were invited to this event.
-        <br>
-        <a href="${unsubscribeUrl}" style="color:#9E9890;text-decoration:underline;">Unsubscribe</a> from future emails.
-      </p>
-    </div>
-  </div>
-</body>
-</html>`
+  const html = renderTicketEmail({
+    theme,
+    emailType: 'invitation',
+    event,
+    recipientName: actualRecipientName,
+    partySizeText,
+    eventDateFormatted: eventDate,
+    timeFormatted: formatTimeTo12Hour(event.time),
+    seatHtml,
+    tierHtml,
+    unsubscribeUrl,
+    qrCidOrSrc: 'cid:qrcode',
+    qrToken,
+    seatInfo: invitation.seat_info,
+    tierName: invitation.ticket_tier?.name,
+    tierPerks: tierPerksList,
+  })
 
   try {
     const { data: sendData, error: sendError } = await getResend().emails.send({
@@ -423,6 +354,13 @@ export async function sendInvitationEmail({
       to: actualRecipientEmail,
       subject: `You're confirmed — ${event.name}`,
       html,
+      attachments: [
+        {
+          filename: 'qrcode.png',
+          content: qrBuffer,
+          contentId: 'qrcode',
+        },
+      ],
     })
 
     if (sendError) {
@@ -440,9 +378,10 @@ export async function sendInvitationEmail({
     })
 
     return { success: true }
-  } catch (e: any) {
-    console.error('Email send error:', e)
-    return { error: e.message || 'Failed to send email' }
+  } catch (e: unknown) {
+    const err = e as Error
+    console.error('Email send error:', err)
+    return { error: err.message || 'Failed to send email' }
   }
 }
 
@@ -479,6 +418,12 @@ export async function sendReminderEmailsDirect({
     year: 'numeric',
   })
 
+  let theme = event.email_theme
+  if (!theme) {
+    const { data: dbEvent } = await supabase.from('events').select('email_theme').eq('id', eventId).single()
+    if (dbEvent?.email_theme) theme = dbEvent.email_theme
+  }
+
   let sent = 0
   const errors: string[] = []
 
@@ -498,10 +443,11 @@ export async function sendReminderEmailsDirect({
     const partySizeText = partySize === 1 ? '1 PERSON' : `${partySize} PEOPLE`
     const actualRecipientName = invitation?.attendee?.name || recipient.name
 
-    // Generate QR code URL using a hosted API (robust for emails), encoding qr_token
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${qrToken}&color=0A0A0A&bgcolor=F0EDE8`;
+    // Generate QR code PNG buffer server-side
+    const qrBuffer = await generateQrBuffer(qrToken)
 
     let tierHtml = ''
+    let tierPerksList: string[] = []
     if (invitation?.ticket_tier_id && invitation?.ticket_tier) {
       const { data: perks } = await supabase
         .from('tier_perks')
@@ -509,15 +455,16 @@ export async function sendReminderEmailsDirect({
         .eq('tier_id', invitation.ticket_tier_id)
         .order('sort_order', { ascending: true })
 
-      const perksText = perks && perks.length > 0
-        ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${perks.map(p => p.label).join(' · ')}</div>`
+      tierPerksList = perks ? perks.map(p => p.label) : []
+      const perksText = tierPerksList.length > 0
+        ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${tierPerksList.map(p => escapeHtml(p)).join(' · ')}</div>`
         : ''
 
       tierHtml = `
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">TICKET TIER</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              ${invitation.ticket_tier.name}
+              ${escapeHtml(invitation.ticket_tier.name)}
               ${perksText}
             </td>
           </tr>`
@@ -530,169 +477,29 @@ export async function sendReminderEmailsDirect({
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">SEAT</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-              ${invitation.seat_info}
+              ${escapeHtml(invitation.seat_info)}
             </td>
           </tr>`
     }
 
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light dark">
-  <meta name="supported-color-schemes" content="light dark">
-  <style>
-    :root {
-      color-scheme: light dark;
-      supported-color-schemes: light dark;
-    }
-    
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100% !important;
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .bg-body {
-        background-color: #0C0B09 !important;
-      }
-      .bg-card {
-        background-color: #171512 !important;
-      }
-      .border-card {
-        border-color: rgba(238, 234, 227, 0.10) !important;
-      }
-      .text-primary {
-        color: #EEEAE3 !important;
-      }
-      .text-secondary {
-        color: #9E9890 !important;
-      }
-      .text-accent {
-        color: #D4A050 !important;
-      }
-      .qr-wrapper {
-        background-color: #EEEAE3 !important;
-        border: 2px solid rgba(238, 234, 227, 0.20) !important;
-      }
-      .rule-accent {
-        background: linear-gradient(to right, transparent, rgba(191, 132, 48, 0.6), transparent) !important;
-      }
-      .message-callout {
-        background-color: rgba(191, 132, 48, 0.08) !important;
-        border-color: rgba(191, 132, 48, 0.3) !important;
-        color: #EEEAE3 !important;
-      }
-    }
-  </style>
-</head>
-<body class="bg-body" style="margin:0;padding:0;background-color:#F4F1EC;font-family:'Courier New',Courier,monospace;-webkit-font-smoothing:antialiased;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    
-    <!-- Outer Card -->
-    <div class="bg-card border-card" style="background-color:#FFFFFF;border:1px solid rgba(12,11,9,0.14);border-radius:2px;padding:40px;box-shadow:0 4px 12px rgba(12,11,9,0.02);">
-      
-      <!-- Top Branding -->
-      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
-        <tr>
-          <td>
-            <span class="text-accent" style="font-size:10px;font-weight:600;letter-spacing:4px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">CRENELLE</span>
-          </td>
-          <td style="text-align:right;">
-            <span class="text-secondary" style="font-size:9px;letter-spacing:1px;color:#5C5850;text-transform:uppercase;">Entry System</span>
-          </td>
-        </tr>
-      </table>
-
-      ${event.banner_url ? `
-      <!-- Banner Image -->
-      <div style="margin-bottom:24px;border:1px solid rgba(12,11,9,0.08);border-radius:2px;overflow:hidden;background-color:#F4F1EC;">
-        <img src="${getOptimizedBannerUrl(event.banner_url, 'email')}" alt="${event.name} Banner" style="width:100%;height:auto;display:block;border:none;" />
-      </div>
-      ` : ''}
-
-      <!-- Title / Header -->
-      <div style="margin-bottom:30px;">
-        <p class="text-accent" style="font-size:11px;font-weight:bold;letter-spacing:3px;color:#BF8430;margin:0 0 10px 0;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          EVENT REMINDER & PASS
-        </p>
-        <h1 class="text-primary" style="font-size:32px;line-height:1.2;font-weight:800;color:#0C0B09;margin:0;text-transform:uppercase;letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          ${event.name}
-        </h1>
-      </div>
-
-      <!-- Accent line -->
-      <div class="rule-accent" style="height:1px;background:linear-gradient(to right, transparent, rgba(191,132,48,0.3), transparent);margin-bottom:30px;"></div>
-
-      <!-- Custom message callout -->
-      ${customMessage ? `
-      <div class="message-callout" style="background-color:rgba(191,132,48,0.04);border:1px solid rgba(191,132,48,0.2);border-radius:2px;padding:20px;margin-bottom:30px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#0C0B09;">
-        ${customMessage}
-      </div>` : ''}
-
-      <!-- Details Table -->
-      <div style="margin-bottom:35px;">
-        <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">DATE</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${eventDate}</td>
-          </tr>
-          ${event.time ? `
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">TIME</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${formatTimeTo12Hour(event.time)}</td>
-          </tr>` : ''}
-           <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">VENUE</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${event.venue}</td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">GUEST</td>
-            <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${actualRecipientName}</td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-weight:600;">ADMITS</td>
-            <td class="text-accent" style="padding:10px 0;font-size:15px;color:#BF8430;font-weight:bold;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${partySizeText}</td>
-          </tr>
-          ${seatHtml}
-          ${tierHtml}
-        </table>
-      </div>
-
-      <!-- Divider -->
-      <div class="rule-accent" style="height:1px;background:linear-gradient(to right, transparent, rgba(191,132,48,0.2), transparent);margin-bottom:35px;"></div>
-
-      <!-- QR Section -->
-      <div style="text-align:center;">
-        <p class="text-secondary" style="font-size:10px;letter-spacing:3px;color:#5C5850;margin:0 0 20px 0;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-          YOUR ENTRY PASS
-        </p>
-        <div class="qr-wrapper" style="display:inline-block;border:1px solid rgba(12,11,9,0.08);padding:16px;background-color:#F4F1EC;border-radius:2px;">
-          <img src="${qrUrl}" alt="Entry QR Code" width="220" height="220" style="display:block;border:none;" />
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Micro Footer -->
-    <div style="padding:30px 0 10px 0;text-align:center;">
-      <p class="text-secondary" style="font-size:9px;letter-spacing:2.5px;color:#5C5850;margin:0 0 10px 0;text-transform:uppercase;">
-        CRENELLE // EVENT_REMINDER
-      </p>
-      <p style="font-size:9px;color:#9E9890;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-        You received this reminder because you are a confirmed guest for this event.
-        <br>
-        <a href="${unsubscribeUrl}" style="color:#9E9890;text-decoration:underline;">Unsubscribe</a> from future emails.
-      </p>
-    </div>
-  </div>
-</body>
-</html>`
+    const html = renderTicketEmail({
+      theme,
+      emailType: 'reminder',
+      event,
+      recipientName: actualRecipientName,
+      partySizeText,
+      eventDateFormatted: eventDate,
+      timeFormatted: formatTimeTo12Hour(event.time),
+      seatHtml,
+      tierHtml,
+      unsubscribeUrl,
+      customMessage,
+      qrCidOrSrc: 'cid:qrcode',
+      qrToken,
+      seatInfo: invitation?.seat_info,
+      tierName: invitation?.ticket_tier?.name,
+      tierPerks: tierPerksList,
+    })
 
     try {
       const { data: sendData, error: sendError } = await getResend().emails.send({
@@ -701,11 +508,19 @@ export async function sendReminderEmailsDirect({
         to: recipient.email,
         subject: `Reminder — ${event.name}`,
         html,
+        attachments: [
+          {
+            filename: 'qrcode.png',
+            content: qrBuffer,
+            contentId: 'qrcode',
+          },
+        ],
       })
 
       if (sendError) {
         // Resend SDK error object has name + message; log the full object for debugging
-        const errMsg = sendError.message || (sendError as any).name || JSON.stringify(sendError)
+        const errObj = sendError as unknown as { message?: string; name?: string }
+        const errMsg = sendError.message || errObj.name || JSON.stringify(sendError)
         console.error(`Resend error for ${recipient.email}:`, JSON.stringify(sendError))
         errors.push(`${recipient.email}: ${errMsg}`)
       } else {
@@ -720,8 +535,9 @@ export async function sendReminderEmailsDirect({
           resend_email_id: sendData?.id ?? null,
         })
       }
-    } catch (e: any) {
-      const errMsg = e.message || e.name || JSON.stringify(e)
+    } catch (e: unknown) {
+      const err = e as Error
+      const errMsg = err.message || err.name || JSON.stringify(e)
       console.error(`Exception sending reminder to ${recipient.email}:`, errMsg)
       errors.push(`${recipient.email}: ${errMsg}`)
     }
@@ -754,7 +570,6 @@ const roleDescriptions: Record<string, string> = {
  */
 export async function sendCoHostInviteEmail({
   inviteeEmail,
-  inviteeName,
   inviterName,
   inviterEmail,
   eventName,
@@ -784,7 +599,7 @@ export async function sendCoHostInviteEmail({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You've been invited to co-host ${eventName}</title>
+  <title>You've been invited to co-host ${escapeHtml(eventName)}</title>
 </head>
 <body style="margin:0;padding:0;background:#F4F1EC;font-family:'Courier New',Courier,monospace;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F1EC;padding:48px 16px;">
@@ -808,12 +623,12 @@ export async function sendCoHostInviteEmail({
                 You've been invited to co-host
               </h1>
               <h2 style="margin:0 0 32px;font-family:Georgia,serif;font-size:22px;font-weight:400;color:#BF8430;line-height:1.2;">
-                ${eventName}
+                ${escapeHtml(eventName)}
               </h2>
 
               <p style="margin:0 0 24px;font-size:13px;color:#5C5850;line-height:1.7;">
-                <strong style="color:#0C0B09;">${inviterName}</strong> has invited you to collaborate on this event.
-                You have been granted <strong style="color:#0C0B09;">${roleDesc}</strong>.
+                <strong style="color:#0C0B09;">${escapeHtml(inviterName)}</strong> has invited you to collaborate on this event.
+                You have been granted <strong style="color:#0C0B09;">${escapeHtml(roleDesc)}</strong>.
               </p>
 
               <!-- Event details -->
@@ -821,7 +636,7 @@ export async function sendCoHostInviteEmail({
                 <tr>
                   <td style="padding:16px 20px;">
                     <p style="margin:0 0 4px;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#BF8430;">EVENT</p>
-                    <p style="margin:0 0 12px;font-size:16px;font-family:Georgia,serif;font-weight:600;color:#0C0B09;">${eventName}</p>
+                    <p style="margin:0 0 12px;font-size:16px;font-family:Georgia,serif;font-weight:600;color:#0C0B09;">${escapeHtml(eventName)}</p>
                     <p style="margin:0;font-size:12px;color:#5C5850;">${formattedDate}</p>
                   </td>
                 </tr>
@@ -841,7 +656,7 @@ export async function sendCoHostInviteEmail({
 
               <p style="margin:0;font-size:12px;color:#5C5850;line-height:1.6;">
                 If you did not expect this invitation, you can safely ignore this email.
-                Contact <a href="mailto:${inviterEmail}" style="color:#BF8430;">${inviterEmail}</a> if you have questions.
+                Contact <a href="mailto:${escapeHtml(inviterEmail)}" style="color:#BF8430;">${escapeHtml(inviterEmail)}</a> if you have questions.
               </p>
             </td>
           </tr>
