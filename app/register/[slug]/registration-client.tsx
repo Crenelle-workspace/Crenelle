@@ -306,16 +306,16 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
             <Image
               src="/Brand Logos/CRENELLE WORDMARK B.png"
               alt="Crenelle Logo"
-              width={50}
-              height={16}
+              width={150}
+              height={34}
               className="h-5 w-auto object-contain block dark:hidden"
               priority
             />
             <Image
               src="/Brand Logos/CRENELLE WORDMARK W.png"
               alt="Crenelle Logo"
-              width={50}
-              height={16}
+              width={150}
+              height={34}
               className="h-5 w-auto object-contain hidden dark:block"
               priority
             />
