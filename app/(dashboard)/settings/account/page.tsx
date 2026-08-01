@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AccountSettingsForm } from './account-form'
 
 export const metadata = {
-  title: 'Account Settings — Crenelle',
+  title: 'Account Settings',
 }
 
 export default async function AccountSettingsPage() {

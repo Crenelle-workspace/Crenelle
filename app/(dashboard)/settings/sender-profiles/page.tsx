@@ -11,7 +11,7 @@ import { ProfileActions } from './profile-actions'
 import { EmptyState } from '@/components/empty-state'
 
 export const metadata = {
-  title: 'Sender Profiles — Crenelle',
+  title: 'Sender Profiles',
 }
 
 export default async function SenderProfilesPage() {

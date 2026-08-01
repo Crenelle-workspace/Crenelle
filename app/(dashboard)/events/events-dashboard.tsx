@@ -117,7 +117,7 @@ export function EventsDashboardClient({
                         time={event.time?.slice(0, 5) ?? ""}
                         guestCount={guestCount}
                         guestLabel={guestLabel}
-                        capacity={event.capacity || 0}
+                        capacity={s.totalCapacity}
                         eventType={event.event_type || 'closed'}
                         status={cardStatus}
                         onStatusClick={(e) => {
@@ -185,12 +185,13 @@ export function EventsDashboardClient({
                 const eventInvitations = invitations.filter(
                   (inv) => inv.event_id === event.id && inv.status !== "cancelled"
                 )
-                const eventLogs = logs.filter((log) => {
-                  const inv = invitations.find((i) => i.id === log.invitation_id)
-                  return inv?.event_id === event.id
-                })
-                const totalInvited = eventInvitations.reduce((sum, inv) => sum + inv.party_size, 0)
-                const checkedIn = eventLogs.length
+                const logInvIds = new Set(logs.map((l) => l.invitation_id))
+                const checkedInInvitations = eventInvitations.filter(
+                  (inv) => inv.status === "checked_in" || logInvIds.has(inv.id)
+                )
+                const totalInvited = eventInvitations.reduce((sum, inv) => sum + (inv.party_size || 1), 0)
+                const checkedIn = checkedInInvitations.reduce((sum, inv) => sum + (inv.party_size || 1), 0)
+                const cardCapacity = event.capacity && event.capacity > 0 ? event.capacity : totalInvited
 
                 const isLive = event.status === "live"
                 const guestCount = isLive ? checkedIn : totalInvited
@@ -212,7 +213,7 @@ export function EventsDashboardClient({
                         time={event.time?.slice(0, 5) ?? ""}
                         guestCount={guestCount}
                         guestLabel={guestLabel}
-                        capacity={event.capacity || 0}
+                        capacity={cardCapacity}
                         eventType={event.event_type || 'closed'}
                         status={cardStatus}
                         onStatusClick={() => {}}

@@ -55,6 +55,11 @@ export default function EventOverviewPage() {
     pendingCount: number
   } | null>(null)
 
+  const editingRef = useRef(editing)
+  useEffect(() => {
+    editingRef.current = editing
+  }, [editing])
+
   useEffect(() => {
     const supabase = createClient()
 
@@ -62,17 +67,20 @@ export default function EventOverviewPage() {
       const { data } = await supabase.from('events').select('*').eq('id', id).single()
       if (data) {
         setEvent(data)
-        setEditEventType(data.event_type || 'closed')
-        // Seed the edit timezone from the saved value
-        setEditTimezone(data.timezone || 'Africa/Lagos')
-        setEditAgenda(data.agenda || [])
-        setEditSpeakers(data.speakers || [])
-        setEditFaqs(data.faqs || [])
 
         // Resolve current user to check if they are the owner
         const { data: { user } } = await supabase.auth.getUser()
         if (user && data.organizer_id === user.id) {
           setCanEdit(true)
+        }
+
+        // Do not overwrite active form edits if the user is currently editing
+        if (!editingRef.current) {
+          setEditEventType(data.event_type || 'closed')
+          setEditTimezone(data.timezone || 'Africa/Lagos')
+          setEditAgenda(data.agenda || [])
+          setEditSpeakers(data.speakers || [])
+          setEditFaqs(data.faqs || [])
         }
       }
     }
@@ -195,6 +203,17 @@ export default function EventOverviewPage() {
     }
     setLoading(false)
     isSubmitting.current = false
+  }
+
+  function handleStartEditing() {
+    if (event) {
+      setEditEventType(event.event_type || 'closed')
+      setEditTimezone(event.timezone || 'Africa/Lagos')
+      setEditAgenda(event.agenda || [])
+      setEditSpeakers(event.speakers || [])
+      setEditFaqs(event.faqs || [])
+    }
+    setEditing(true)
   }
 
   function handleDelete() {
@@ -437,7 +456,7 @@ export default function EventOverviewPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setEditing(true)}
+              onClick={handleStartEditing}
               className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-9 px-3 sm:px-4"
             >
               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />

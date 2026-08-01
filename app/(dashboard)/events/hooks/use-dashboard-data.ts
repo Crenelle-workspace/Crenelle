@@ -18,6 +18,18 @@ export function useDashboardData({
   const [logs, setLogs] = useState<{ invitation_id: string }[]>(initialLogs)
 
   useEffect(() => {
+    setEvents(initialEvents)
+  }, [initialEvents])
+
+  useEffect(() => {
+    setInvitations(initialInvitations)
+  }, [initialInvitations])
+
+  useEffect(() => {
+    setLogs(initialLogs)
+  }, [initialLogs])
+
+  useEffect(() => {
     const supabase = createClient()
 
     async function refreshData() {
@@ -55,18 +67,27 @@ export function useDashboardData({
       const eventInvitations = invitations.filter(
         (inv) => inv.event_id === event.id && inv.status !== "cancelled",
       )
-      const eventLogs = logs.filter((log) => {
-        const inv = invitations.find((i) => i.id === log.invitation_id)
-        return inv?.event_id === event.id
-      })
+      const logInvIds = new Set(logs.map((l) => l.invitation_id))
+      const checkedInInvitations = eventInvitations.filter(
+        (inv) => inv.status === "checked_in" || logInvIds.has(inv.id),
+      )
+
+      const totalInvited = eventInvitations.reduce(
+        (sum, inv) => sum + (inv.party_size || 1),
+        0,
+      )
+      const checkedIn = checkedInInvitations.reduce(
+        (sum, inv) => sum + (inv.party_size || 1),
+        0,
+      )
+
+      // Expected capacity: use explicit event capacity if > 0, otherwise total invited seats
+      const capacity = event.capacity && event.capacity > 0 ? event.capacity : totalInvited
 
       acc[event.id] = {
-        totalCapacity: event.capacity || 0,
-        checkedIn: eventLogs.length,
-        totalInvited: eventInvitations.reduce(
-          (sum, inv) => sum + inv.party_size,
-          0,
-        ),
+        totalCapacity: capacity,
+        checkedIn,
+        totalInvited,
       }
       return acc
     },
@@ -88,13 +109,13 @@ export function useDashboardData({
         }
         acc.totalGuests += s.totalInvited
         acc.checkedIn += s.checkedIn
-        acc.totalCapacity += s.totalCapacity
-        return acc;
+        acc.totalCapacity += Math.max(s.totalCapacity, s.checkedIn)
+        return acc
       },
       { totalGuests: 0, checkedIn: 0, totalCapacity: 0 },
     )
 
-  const remaining = stats.totalCapacity - stats.checkedIn
+  const remaining = Math.max(0, stats.totalCapacity - stats.checkedIn)
   const capacityPercent =
     stats.totalCapacity > 0
       ? Math.min((stats.checkedIn / stats.totalCapacity) * 100, 100)

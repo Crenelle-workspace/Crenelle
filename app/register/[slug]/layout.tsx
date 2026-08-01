@@ -8,7 +8,7 @@ const bebasNeue = Bebas_Neue({
 })
 
 export const metadata: Metadata = {
-  title: 'Event Registration — Crenelle',
+  title: 'Event Registration',
   description: 'Register for an upcoming event.',
 }
 

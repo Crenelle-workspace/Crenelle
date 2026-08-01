@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/admin'
 import { AdminStatsGrid } from './admin-stats-grid'
 
 export const metadata = {
-  title: 'Admin Dashboard — Crenelle',
+  title: 'Admin Dashboard',
   description: 'Internal platform statistics. Restricted access.',
   robots: { index: false, follow: false },
 }
