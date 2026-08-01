@@ -328,12 +328,12 @@ export function FinancesClient() {
       </div>
 
       {/* ── Key Metrics Grid ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Organiser Net Payout */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total Ticket Revenue */}
         <div className="border border-border/40 bg-card rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground mb-3">
             <span className="font-sans text-xs font-semibold text-muted-foreground">
-              Organiser Payout (100%)
+              Total Ticket Revenue
             </span>
             <Wallet className="w-4 h-4 text-copper" />
           </div>
@@ -342,46 +342,12 @@ export function FinancesClient() {
               {loadingOverview ? '...' : formatNGN(lifetime?.net_earnings_ngn ?? 0)}
             </div>
             <p className="font-sans text-[11px] text-muted-foreground mt-1">
-              100% of your ticket sales (0% fee deduction)
+              100% of your ticket sales deposited to bank
             </p>
           </div>
         </div>
 
-        {/* Total Buyer Volume */}
-        <div className="border border-border/40 bg-card rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-muted-foreground mb-3">
-            <span className="font-sans text-xs font-semibold text-muted-foreground">Total Buyer Volume</span>
-            <TrendingUp className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div>
-            <div className="font-sans text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              {loadingOverview ? '...' : formatNGN(lifetime?.gross_revenue_ngn ?? 0)}
-            </div>
-            <p className="font-sans text-[11px] text-muted-foreground mt-1">
-              Total paid by guests (Ticket price + platform fee)
-            </p>
-          </div>
-        </div>
-
-        {/* Buyer Platform Fee */}
-        <div className="border border-border/40 bg-card rounded-2xl p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-muted-foreground mb-3">
-            <span className="font-sans text-xs font-semibold text-muted-foreground">
-              Buyer Platform Fee ({subaccount?.platform_fee_percent ?? 5}%)
-            </span>
-            <Receipt className="w-4 h-4 text-sky-500" />
-          </div>
-          <div>
-            <div className="font-sans text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              {loadingOverview ? '...' : formatNGN(lifetime?.platform_fees_ngn ?? 0)}
-            </div>
-            <p className="font-sans text-[11px] text-muted-foreground mt-1">
-              Fee paid by guests at checkout (₦0 cost to you)
-            </p>
-          </div>
-        </div>
-
-        {/* Paid Tickets */}
+        {/* Paid Registrations */}
         <div className="border border-border/40 bg-card rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground mb-3">
             <span className="font-sans text-xs font-semibold text-muted-foreground">Paid Registrations</span>
@@ -392,6 +358,20 @@ export function FinancesClient() {
               {loadingOverview ? '...' : (lifetime?.paid_count ?? 0).toLocaleString()}
             </div>
             <p className="font-sans text-[11px] text-muted-foreground mt-1">Confirmed paid guest admissions</p>
+          </div>
+        </div>
+
+        {/* Paid Events */}
+        <div className="border border-border/40 bg-card rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between text-muted-foreground mb-3">
+            <span className="font-sans text-xs font-semibold text-muted-foreground">Paid Events</span>
+            <TrendingUp className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div>
+            <div className="font-sans text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+              {loadingOverview ? '...' : (overview?.by_event ?? []).filter((e) => e.paid_count > 0).length.toLocaleString()}
+            </div>
+            <p className="font-sans text-[11px] text-muted-foreground mt-1">Events with ticket sales</p>
           </div>
         </div>
       </div>
@@ -475,8 +455,8 @@ export function FinancesClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredEvents.map((evt) => {
                 const percentage =
-                  (lifetime?.gross_revenue_ngn ?? 0) > 0
-                    ? Math.round((evt.gross_revenue_ngn / lifetime!.gross_revenue_ngn) * 100)
+                  (lifetime?.net_earnings_ngn ?? 0) > 0
+                    ? Math.round((evt.net_earnings_ngn / lifetime!.net_earnings_ngn) * 100)
                     : 0
 
                 return (
@@ -526,14 +506,10 @@ export function FinancesClient() {
                     </div>
 
                     {/* Breakdown metrics */}
-                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/30 font-mono">
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border/30 font-mono">
                       <div>
-                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">Your Net Payout</span>
+                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">Ticket Revenue</span>
                         <span className="text-xs font-bold text-copper">{formatNGN(evt.net_earnings_ngn)}</span>
-                      </div>
-                      <div>
-                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">Buyer Volume</span>
-                        <span className="text-xs font-semibold text-foreground">{formatNGN(evt.gross_revenue_ngn)}</span>
                       </div>
                       <div>
                         <span className="text-[9px] uppercase tracking-wider text-muted-foreground block">Paid Tickets</span>
@@ -769,8 +745,7 @@ export function FinancesClient() {
                         <th className="py-3 px-4">Payer</th>
                         <th className="py-3 px-4">Event & Tier</th>
                         <th className="py-3 px-4">Paystack Ref</th>
-                        <th className="py-3 px-4">Buyer Paid (Gross)</th>
-                        <th className="py-3 px-4">Your Payout (Net)</th>
+                        <th className="py-3 px-4">Amount</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Date</th>
                       </tr>
@@ -800,7 +775,6 @@ export function FinancesClient() {
                               </span>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-foreground">{formatNGN(p.amount_kobo / 100)}</td>
                           <td className="py-3 px-4 font-bold text-copper">
                             {formatNGN((p.organiser_amount_kobo ?? 0) / 100)}
                           </td>

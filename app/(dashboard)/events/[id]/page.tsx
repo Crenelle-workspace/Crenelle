@@ -107,13 +107,13 @@ export default function EventOverviewPage() {
     async function loadRevenue() {
       const { data } = await supabase
         .from('payments')
-        .select('amount_kobo, status')
+        .select('amount_kobo, organiser_amount_kobo, status')
         .eq('event_id', id)
       if (data && data.length > 0) {
         const paid = data.filter((p) => p.status === 'paid')
         const pending = data.filter((p) => p.status === 'pending')
         setRevenue({
-          totalKobo: paid.reduce((sum, p) => sum + (p.amount_kobo ?? 0), 0),
+          totalKobo: paid.reduce((sum, p) => sum + (p.organiser_amount_kobo ?? p.amount_kobo ?? 0), 0),
           paidCount: paid.length,
           pendingCount: pending.length,
         })
@@ -639,9 +639,9 @@ export default function EventOverviewPage() {
               <TrendingUp className="h-3.5 w-3.5 text-copper" />
             </div>
 
-            {/* Total collected */}
+            {/* Total ticket revenue */}
             <div className="mb-4">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/40 mb-1">Total collected</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-foreground/40 mb-1">Total ticket revenue</p>
               <p className="font-display text-4xl text-admitted">
                 ₦{(revenue.totalKobo / 100).toLocaleString('en-NG')}
               </p>
