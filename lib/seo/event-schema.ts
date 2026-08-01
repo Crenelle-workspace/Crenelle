@@ -49,6 +49,7 @@ export function buildEventSchema(
   event: RegisterEventInfo,
   canonicalUrl: string,
   absoluteImageUrl: string,
+  baseUrl: string,
 ): Record<string, unknown> {
   const location: Record<string, unknown> = {
     '@type': 'Place',
@@ -71,7 +72,7 @@ export function buildEventSchema(
     organizer: {
       '@type': 'Organization',
       name: 'Crenelle',
-      url: 'https://crenelle.org',
+      url: baseUrl,
     },
   }
 
@@ -111,5 +112,34 @@ export function buildFaqSchema(faqs: FAQItem[]): Record<string, unknown> {
         text: faq.answer,
       },
     })),
+  }
+}
+
+/**
+ * Build a schema.org `BreadcrumbList` for an event registration page
+ * (Home › Event Name). Surfaces a breadcrumb trail in search results.
+ */
+export function buildBreadcrumbSchema(
+  eventName: string,
+  canonicalUrl: string,
+  baseUrl: string,
+): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: baseUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: eventName,
+        item: canonicalUrl,
+      },
+    ],
   }
 }

@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRegisterEvent } from '@/lib/register-event'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { JsonLd } from '@/components/seo/json-ld'
-import { buildEventSchema, buildFaqSchema } from '@/lib/seo/event-schema'
+import { buildEventSchema, buildFaqSchema, buildBreadcrumbSchema } from '@/lib/seo/event-schema'
 import RegistrationClient from './registration-client'
 
 // Registration state (capacity, tiers) changes over time, so render per-request.
@@ -128,13 +128,16 @@ export default async function PublicRegistrationPage({ params }: PageProps) {
   const canonicalUrl = `${baseUrl}/register/${slug}`
   const absoluteImageUrl = getAbsoluteImageUrl(event.banner_url, baseUrl)
 
-  const eventSchema = buildEventSchema(event, canonicalUrl, absoluteImageUrl)
+  const eventSchema = buildEventSchema(event, canonicalUrl, absoluteImageUrl, baseUrl)
   const faqSchema = event.faqs.length > 0 ? buildFaqSchema(event.faqs) : null
+  const breadcrumbSchema = buildBreadcrumbSchema(event.name, canonicalUrl, baseUrl)
+
+  const schemas = [eventSchema, breadcrumbSchema, ...(faqSchema ? [faqSchema] : [])]
 
   // Event data is server-fetched and passed as a prop — no client-side loading spinner.
   return (
     <>
-      <JsonLd data={faqSchema ? [eventSchema, faqSchema] : eventSchema} />
+      <JsonLd data={schemas} />
       <RegistrationClient event={event} />
     </>
   )
