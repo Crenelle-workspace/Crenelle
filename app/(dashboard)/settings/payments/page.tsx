@@ -4,7 +4,7 @@ import { PaymentSettingsForm } from './payment-settings-form'
 import type { OrganizerPaymentSettings } from '@/lib/types'
 
 export const metadata = {
-  title: 'Payment Settings — Crenelle',
+  title: 'Payment Settings',
   description: 'Connect your bank account to receive payouts from paid events.',
 }
 

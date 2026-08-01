@@ -154,24 +154,26 @@ export default function SignupPage() {
 
           {/* Password Requirements Checklist */}
           {password && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 bg-stone-100/60 p-3.5 border border-border/30 rounded-xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 bg-stone-100/80 dark:bg-stone-900/60 p-3.5 border border-border/40 rounded-xl">
               {requirements.map((req) => {
                 const isMet = req.test(password)
                 return (
                   <div
                     key={req.label}
                     className={cn(
-                      "flex items-center gap-2 font-mono text-[9px] font-bold tracking-wider transition-colors",
-                      isMet ? "text-emerald-400" : "text-muted-foreground/40"
+                      "flex items-center gap-2 font-mono text-[9.5px] font-bold tracking-wider transition-colors",
+                      isMet ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground dark:text-stone-400"
                     )}
                   >
                     <div className={cn(
-                      "size-3 rounded-full border flex items-center justify-center shrink-0",
-                      isMet ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400" : "border-border/40"
+                      "size-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
+                      isMet
+                        ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : "border-border/60 bg-stone-500/10 text-muted-foreground/60 dark:text-stone-500"
                     )}>
-                      {isMet && <Check className="size-2" strokeWidth={3} />}
+                      {isMet && <Check className="size-2.5" strokeWidth={3} />}
                     </div>
-                    {req.label.replace('_', ' ')}
+                    {req.label.replace(/_/g, ' ')}
                   </div>
                 )
               })}

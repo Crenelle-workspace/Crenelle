@@ -26,7 +26,7 @@ export function EventCard({
   className,
   guestLabel,
 }: EventCardProps) {
-  const percentage = Math.min((guestCount / capacity) * 100, 100)
+  const percentage = capacity > 0 ? Math.min((guestCount / capacity) * 100, 100) : 0
 
   const statusConfig: Record<string, { cls: string; label: string }> = {
     LIVE:      { cls: "status-live",      label: "Live" },

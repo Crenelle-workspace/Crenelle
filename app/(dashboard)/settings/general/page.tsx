@@ -4,7 +4,7 @@ import { getOrganizerSettings } from '@/app/actions/general-settings'
 import { GeneralSettingsForm } from './general-form'
 
 export const metadata = {
-  title: 'General Settings — Crenelle',
+  title: 'General Settings',
 }
 
 export default async function GeneralSettingsPage() {

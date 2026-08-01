@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { FinancesClient } from './finances-client'
 
 export const metadata = {
-  title: 'Finances & Payouts — Crenelle',
+  title: 'Finances & Payouts',
   description: 'View your event earnings, ticket revenue breakdown, and bank payouts.',
 }
 

@@ -3,7 +3,10 @@ import { Cormorant_Garamond, Syne } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SentryUserProvider } from '@/components/sentry-user-provider'
+import { JsonLd } from '@/components/seo/json-ld'
 import './globals.css'
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://crenelle.org'
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -23,8 +26,33 @@ const syne = Syne({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://crenelle.org'),
-  title: 'Crenelle — Event Access Management',
+  title: {
+    default: 'Crenelle — Event Access Management',
+    template: '%s | Crenelle',
+  },
   description: 'Issue QR-coded entry passes, scan guests in real-time, and take full control of every door.',
+  applicationName: 'Crenelle',
+  keywords: [
+    'event access management',
+    'event ticketing',
+    'QR code tickets',
+    'guest check-in',
+    'event registration',
+    'door management',
+  ],
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: [
       { url: '/Brand Logos/CRENELLE FAVICON W.png', media: '(prefers-color-scheme: dark)' },
@@ -54,10 +82,28 @@ export const metadata: Metadata = {
   },
 }
 
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Crenelle',
+  url: SITE_URL,
+  logo: `${SITE_URL}/icon.png`,
+  description:
+    'Event access management — issue QR-coded entry passes, scan guests in real-time, and take full control of every door.',
+}
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Crenelle',
+  url: SITE_URL,
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${cormorant.variable} ${syne.variable} antialiased font-sans grain`}>
+        <JsonLd data={[organizationSchema, websiteSchema]} />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

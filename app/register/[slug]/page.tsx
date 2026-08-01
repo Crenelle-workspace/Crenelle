@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRegisterEvent } from '@/lib/register-event'
 import { getOptimizedBannerUrl } from '@/lib/images'
+import { JsonLd } from '@/components/seo/json-ld'
+import { buildEventSchema, buildFaqSchema, buildBreadcrumbSchema } from '@/lib/seo/event-schema'
 import RegistrationClient from './registration-client'
 
 // Registration state (capacity, tiers) changes over time, so render per-request.
@@ -48,12 +50,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!event) {
     return {
-      title: 'Event Not Found | Crenelle',
+      title: 'Event Not Found',
       description: 'The requested event registration link could not be found.',
     }
   }
 
-  const title = `Register for ${event.name} | Crenelle`
+  const title = `Register for ${event.name}`
 
   let formattedDetails = ''
   if (event.date) {
@@ -121,7 +123,23 @@ export default async function PublicRegistrationPage({ params }: PageProps) {
     notFound()
   }
 
+  const { event } = result
+  const baseUrl = getBaseUrl()
+  const canonicalUrl = `${baseUrl}/register/${slug}`
+  const absoluteImageUrl = getAbsoluteImageUrl(event.banner_url, baseUrl)
+
+  const eventSchema = buildEventSchema(event, canonicalUrl, absoluteImageUrl, baseUrl)
+  const faqSchema = event.faqs.length > 0 ? buildFaqSchema(event.faqs) : null
+  const breadcrumbSchema = buildBreadcrumbSchema(event.name, canonicalUrl, baseUrl)
+
+  const schemas = [eventSchema, breadcrumbSchema, ...(faqSchema ? [faqSchema] : [])]
+
   // Event data is server-fetched and passed as a prop — no client-side loading spinner.
-  return <RegistrationClient event={result.event} />
+  return (
+    <>
+      <JsonLd data={schemas} />
+      <RegistrationClient event={event} />
+    </>
+  )
 }
 

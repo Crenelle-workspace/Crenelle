@@ -12,7 +12,7 @@ import {
 } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Crenelle",
+  title: "Privacy Policy",
   description:
     "How Crenelle collects, uses and protects personal data for event organisers and their guests.",
 };
