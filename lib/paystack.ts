@@ -315,21 +315,65 @@ export function calculatePaystackFee(amountKobo: number): number {
   return Math.min(fee, 200000);
 }
 
+const PAYSTACK_PERCENT = 0.015;
+const PAYSTACK_FLAT_KOBO = 10000; // ₦100 in kobo
+const PAYSTACK_FLAT_THRESHOLD_KOBO = 250000; // ₦2,500 in kobo
+const PAYSTACK_FEE_CAP_KOBO = 200000; // ₦2,000 in kobo
+const ROUND_TO_KOBO = 1000; // ₦10 in kobo
+
 /**
  * Calculate the full payment breakdown:
- * - Ticket Fee (base ticket price)
- * - Crenelle Charge (platform fee percentage cut)
- * - Paystack Fee (gateway processing fee)
- * - Total Amount & Net Organiser Payout
+ * - Ticket Fee (target organiser price)
+ * - Crenelle Charge (total fee charged to buyer over ticket price)
+ * - Paystack Fee (gateway processing fee estimated on total amount)
+ * - Total Amount & Net Organiser Payout (organiser receives 100% of ticket price)
  */
 export function calculatePaymentBreakdown(
   ticketFeeKobo: number,
   platformFeePercent: number = 5,
 ): PaymentBreakdown {
-  const crenelleChargeKobo = Math.round((ticketFeeKobo * platformFeePercent) / 100);
-  const paystackFeeKobo = calculatePaystackFee(ticketFeeKobo);
-  const totalAmountKobo = ticketFeeKobo + crenelleChargeKobo;
+  if (ticketFeeKobo <= 0) {
+    return {
+      ticketFeeKobo: 0,
+      crenelleChargeKobo: 0,
+      paystackFeeKobo: 0,
+      totalAmountKobo: 0,
+      organiserPayoutKobo: 0,
+      platformFeePercent,
+    };
+  }
+
+  const platformDecimal = platformFeePercent / 100;
+  const combinedPercent = platformDecimal + PAYSTACK_PERCENT;
+  if (combinedPercent >= 1) {
+    throw new Error("Fee percentages must sum to less than 100%");
+  }
+
+  // Pass 1: assume total stays under the ₦2,500 flat-fee threshold.
+  let totalKobo = Math.ceil(ticketFeeKobo / (1 - combinedPercent));
+
+  // Pass 2: if total is >= ₦2,500 threshold, include ₦100 flat fee.
+  if (totalKobo >= PAYSTACK_FLAT_THRESHOLD_KOBO) {
+    totalKobo = Math.ceil(
+      (ticketFeeKobo + PAYSTACK_FLAT_KOBO) / (1 - combinedPercent)
+    );
+  }
+
+  // Pass 3: if uncapped fee exceeds ₦2,000 cap, fee becomes fixed at cap.
+  const uncappedFee = totalKobo * PAYSTACK_PERCENT + PAYSTACK_FLAT_KOBO;
+  if (uncappedFee > PAYSTACK_FEE_CAP_KOBO) {
+    totalKobo = Math.ceil(
+      (ticketFeeKobo + PAYSTACK_FEE_CAP_KOBO) / (1 - platformDecimal)
+    );
+  }
+
+  // Round up to nearest ₦10 (1,000 kobo).
+  const totalAmountKobo =
+    Math.ceil(totalKobo / ROUND_TO_KOBO) * ROUND_TO_KOBO;
+
   const organiserPayoutKobo = ticketFeeKobo;
+  const crenelleChargeKobo = totalAmountKobo - ticketFeeKobo;
+  const paystackFeeKobo = calculatePaystackFee(totalAmountKobo);
 
   return {
     ticketFeeKobo,
