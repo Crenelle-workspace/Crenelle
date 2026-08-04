@@ -297,12 +297,11 @@ export async function POST(request: NextRequest) {
     amount: breakdown.totalAmountKobo,
     reference,
     subaccount: paymentSettings?.paystack_subaccount_code ?? undefined,
-    bearer: 'account', // Crenelle bears the Paystack processing fee
-    // transaction_charge explicitly sets the flat kobo amount Crenelle retains.
-    // Crenelle retains platform fee + Paystack fee so that after Paystack deducts
-    // Paystack fee from main account, Crenelle keeps platform fee and subaccount gets 100% of ticket price.
+    bearer: 'account', // Crenelle main account explicitly bears the Paystack processing fee
+    // transaction_charge sets the flat kobo amount Crenelle retains.
+    // Crenelle retains breakdown.crenelleChargeKobo so subaccount receives totalAmountKobo - crenelleChargeKobo = 100% of ticket price.
     transaction_charge: paymentSettings?.paystack_subaccount_code
-      ? breakdown.crenelleChargeKobo + breakdown.paystackFeeKobo
+      ? breakdown.crenelleChargeKobo
       : undefined,
     callback_url: `${appUrl}/api/payments/verify?reference=${reference}`,
     channels: ['card', 'bank', 'ussd', 'bank_transfer'],
