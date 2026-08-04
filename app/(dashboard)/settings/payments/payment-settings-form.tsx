@@ -352,10 +352,10 @@ export function PaymentSettingsForm({ settings }: Props) {
         <div className="px-6 py-6 space-y-4">
           <div className="grid grid-cols-1 gap-3 font-mono text-[11px] text-muted-foreground">
             {[
-              { step: '01', text: 'Guest previews ticket fee and Crenelle processing fee before paying.' },
-              { step: '02', text: 'Crenelle carries all Paystack gateway processing charges within Crenelle’s fee.' },
-              { step: '03', text: `Crenelle retains ${platformPercent}% as a platform processing fee.` },
-              { step: '04', text: `You receive ${100 - platformPercent}% net ticket revenue direct to your bank account.` },
+              { step: '01', text: 'Guest previews ticket fee and processing fees before paying.' },
+              { step: '02', text: `Crenelle adds a ${platformPercent}% platform fee plus Paystack gateway processing charges to the buyer total.` },
+              { step: '03', text: 'Total buyer price is rounded UP to the nearest ₦10 to avoid decimal numbers for bank transfers.' },
+              { step: '04', text: 'You receive 100% of your set ticket price direct to your bank account.' },
               { step: '05', text: 'Paystack settles funds to your bank account on the next business day (T+1).' },
             ].map(({ step, text }) => (
               <div key={step} className="flex items-start gap-4">
@@ -367,7 +367,7 @@ export function PaymentSettingsForm({ settings }: Props) {
 
           <div className="p-3.5 border border-border/40 bg-muted/30 rounded-xl">
             <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-wide font-medium">
-              Sample Breakdown ({formatKoboAsNGN(breakdown.ticketFeeKobo)} Ticket): Crenelle Processing Fee ({platformPercent}%) = {formatKoboAsNGN(breakdown.crenelleChargeKobo)} (includes Paystack charges) · You Receive = {formatKoboAsNGN(breakdown.organiserPayoutKobo)}
+              Sample Breakdown ({formatKoboAsNGN(breakdown.ticketFeeKobo)} Ticket): Buyer Pays = {formatKoboAsNGN(breakdown.totalAmountKobo)} (includes {formatKoboAsNGN(breakdown.crenelleChargeKobo)} processing fee & gateway charges) · You Receive = {formatKoboAsNGN(breakdown.organiserPayoutKobo)} (100%)
             </p>
           </div>
         </div>
