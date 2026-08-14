@@ -740,36 +740,36 @@ export default function RegistrationsPage() {
 
       {/* Floating Bulk Action Bar */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
-          <div className="bg-stone-900/95 dark:bg-stone-950/95 text-stone-100 backdrop-blur-md border border-stone-800 shadow-2xl rounded-full px-5 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="font-sans text-xs font-bold bg-copper/20 text-copper px-2.5 py-1 rounded-full border border-copper/30">
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:w-full max-w-xl px-1 sm:px-4">
+          <div className="bg-stone-900/95 dark:bg-stone-950/95 text-stone-100 backdrop-blur-md border border-stone-800 shadow-2xl rounded-full px-3 py-2.5 sm:px-5 sm:py-3 flex items-center justify-between gap-1.5 sm:gap-3 overflow-hidden">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              <span className="font-sans text-[11px] sm:text-xs font-bold bg-copper/20 text-copper px-2 sm:px-2.5 py-1 rounded-full border border-copper/30 whitespace-nowrap">
                 {selectedIds.length} selected
               </span>
               <button
                 onClick={() => setSelectedIds([])}
-                className="font-sans text-xs text-stone-300 hover:text-white underline transition-colors"
+                className="font-sans text-[11px] sm:text-xs text-stone-300 hover:text-white underline transition-colors whitespace-nowrap"
               >
                 Deselect All
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <Button
                 variant="danger"
                 size="sm"
                 onClick={() => setBulkRejectOpen(true)}
-                className="h-9 px-4 text-xs font-bold gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
+                className="h-8 sm:h-9 px-2.5 sm:px-4 text-[11px] sm:text-xs font-bold gap-1 sm:gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors whitespace-nowrap"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3.5 w-3.5 shrink-0" />
                 Reject ({selectedIds.length})
               </Button>
               <Button
                 size="sm"
                 onClick={() => setBulkAcceptOpen(true)}
-                className="h-9 px-4 text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-colors"
+                className="h-8 sm:h-9 px-2.5 sm:px-4 text-[11px] sm:text-xs font-bold gap-1 sm:gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-colors whitespace-nowrap"
               >
-                <Check className="h-3.5 w-3.5" />
+                <Check className="h-3.5 w-3.5 shrink-0" />
                 Approve ({selectedIds.length})
               </Button>
             </div>
