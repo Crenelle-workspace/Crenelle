@@ -372,10 +372,23 @@ export async function acceptRegistration(attendeeId: string, eventId: string, se
 export async function rejectRegistration(attendeeId: string, eventId: string) {
   const supabase = await createClient()
 
+  // 1. Verify target attendee is not already accepted
+  const { data: attendee, error: fetchError } = await supabase
+    .from('attendees')
+    .select('registration_status')
+    .eq('id', attendeeId)
+    .single()
+
+  if (fetchError || !attendee) return { error: 'Registrant not found' }
+  if (attendee.registration_status === 'accepted') {
+    return { error: 'Cannot reject an attendee who has already been accepted' }
+  }
+
   const { error } = await supabase
     .from('attendees')
     .update({ registration_status: 'rejected' })
     .eq('id', attendeeId)
+    .neq('registration_status', 'accepted')
 
   if (error) return { error: error.message }
 
@@ -661,11 +674,16 @@ export async function bulkRejectRegistrations(attendeeIds: string[], eventId: st
     .update({ registration_status: 'rejected' })
     .eq('event_id', eventId)
     .in('id', attendeeIds)
+    .neq('registration_status', 'accepted')
     .select('id')
 
   if (error) return { error: error.message }
 
-  const rejectedCount = updatedData?.length ?? attendeeIds.length
+  const rejectedCount = updatedData?.length ?? 0
+
+  if (rejectedCount === 0) {
+    return { error: 'Selected registrants have already been accepted and cannot be rejected' }
+  }
 
   // Auto-promote waitlisted entries if event has a max capacity cap
   const { data: event } = await supabase

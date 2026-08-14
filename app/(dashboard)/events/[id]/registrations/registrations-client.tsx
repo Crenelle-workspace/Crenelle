@@ -276,18 +276,22 @@ export default function RegistrationsPage() {
   }
 
   // Selection handlers
-  const allFilteredIds = filtered.map((r) => r.id)
-  const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.includes(id))
+  const selectableFiltered = filtered.filter((r) => r.status !== 'accepted')
+  const selectableFilteredIds = selectableFiltered.map((r) => r.id)
+  const isAllSelected =
+    selectableFilteredIds.length > 0 && selectableFilteredIds.every((id) => selectedIds.includes(id))
 
   function toggleSelectAll() {
     if (isAllSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)))
+      setSelectedIds((prev) => prev.filter((id) => !selectableFilteredIds.includes(id)))
     } else {
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])))
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...selectableFilteredIds])))
     }
   }
 
   function toggleSelectOne(id: string) {
+    const reg = registrations.find((r) => r.id === id)
+    if (reg?.status === 'accepted') return
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
@@ -527,6 +531,7 @@ export default function RegistrationsPage() {
           {/* Rows */}
           {filtered.map((reg) => {
             const isSelected = selectedIds.includes(reg.id)
+            const isAccepted = reg.status === 'accepted'
 
             return (
               <div
@@ -541,8 +546,12 @@ export default function RegistrationsPage() {
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      disabled={isAccepted}
                       onChange={() => toggleSelectOne(reg.id)}
-                      className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer"
+                      className={`h-4 w-4 rounded border-border text-copper focus:ring-copper ${
+                        isAccepted ? 'cursor-not-allowed opacity-35' : 'cursor-pointer'
+                      }`}
+                      title={isAccepted ? 'Accepted registrants cannot be modified or rejected' : 'Select registrant'}
                     />
                   </div>
                   <div className="flex flex-col truncate min-w-0 pr-2">
@@ -639,8 +648,12 @@ export default function RegistrationsPage() {
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      disabled={isAccepted}
                       onChange={() => toggleSelectOne(reg.id)}
-                      className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer mt-0.5"
+                      className={`h-4 w-4 rounded border-border text-copper focus:ring-copper mt-0.5 ${
+                        isAccepted ? 'cursor-not-allowed opacity-35' : 'cursor-pointer'
+                      }`}
+                      title={isAccepted ? 'Accepted registrants cannot be modified or rejected' : 'Select registrant'}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">

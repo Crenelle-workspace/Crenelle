@@ -402,11 +402,19 @@ describe('acceptRegistration', () => {
 describe('rejectRegistration', () => {
   it('returns { success } on successful rejection', async () => {
     mockCreateClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
       from: vi.fn((table: string) => {
         if (table === 'attendees') {
-          // .update({}).eq() terminates — resolve with no error
-          const eqMock = vi.fn().mockResolvedValue({ error: null })
-          return { update: vi.fn().mockReturnValue({ eq: eqMock }) }
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { registration_status: 'pending' }, error: null }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                neq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          }
         }
         if (table === 'events') {
           return {
@@ -429,18 +437,54 @@ describe('rejectRegistration', () => {
 
   it('returns { error } when DB update fails', async () => {
     mockCreateClient.mockResolvedValue({
-      from: vi.fn(() => {
-        const eqMock = vi.fn().mockResolvedValue({ error: { message: 'DB error' } })
-        return { update: vi.fn().mockReturnValue({ eq: eqMock }) }
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'attendees') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { registration_status: 'pending' }, error: null }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                neq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
       }),
     })
 
     const result = await rejectRegistration('att-1', 'event-1')
     expect(result).toEqual({ error: 'DB error' })
   })
-})
+  it('returns { error } when trying to reject an attendee who is already accepted', async () => {
+    mockCreateClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'attendees') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { registration_status: 'accepted' }, error: null }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    })
 
-// ── promoteFromWaitlist ─────────────────────────────────────────────────────
+    const result = await rejectRegistration('att-1', 'event-1')
+    expect(result).toEqual({ error: 'Cannot reject an attendee who has already been accepted' })
+  })
+})
 
 describe('promoteFromWaitlist', () => {
   it('returns { error } when event is at capacity', async () => {
@@ -597,7 +641,9 @@ describe('bulkRejectRegistrations', () => {
             update: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
                 in: vi.fn().mockReturnValue({
-                  select: vi.fn().mockResolvedValue({ data: [{ id: 'att-1' }, { id: 'att-2' }], error: null }),
+                  neq: vi.fn().mockReturnValue({
+                    select: vi.fn().mockResolvedValue({ data: [{ id: 'att-1' }, { id: 'att-2' }], error: null }),
+                  }),
                 }),
               }),
             }),
@@ -621,5 +667,35 @@ describe('bulkRejectRegistrations', () => {
     const result = await bulkRejectRegistrations(['att-1', 'att-2'], 'event-1')
     expect(result).toEqual({ success: true, count: 2 })
   })
+
+  it('returns error when all selected attendees are already accepted', async () => {
+    mockCreateClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'attendees') {
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                in: vi.fn().mockReturnValue({
+                  neq: vi.fn().mockReturnValue({
+                    select: vi.fn().mockResolvedValue({ data: [], error: null }),
+                  }),
+                }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    })
+
+    const result = await bulkRejectRegistrations(['att-accepted-1'], 'event-1')
+    expect(result).toEqual({ error: 'Selected registrants have already been accepted and cannot be rejected' })
+  })
 })
+
 
