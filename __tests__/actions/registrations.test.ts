@@ -31,6 +31,8 @@ import {
   acceptRegistration,
   rejectRegistration,
   promoteFromWaitlist,
+  bulkAcceptRegistrations,
+  bulkRejectRegistrations,
 } from '@/app/actions/registrations'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -400,11 +402,19 @@ describe('acceptRegistration', () => {
 describe('rejectRegistration', () => {
   it('returns { success } on successful rejection', async () => {
     mockCreateClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
       from: vi.fn((table: string) => {
         if (table === 'attendees') {
-          // .update({}).eq() terminates — resolve with no error
-          const eqMock = vi.fn().mockResolvedValue({ error: null })
-          return { update: vi.fn().mockReturnValue({ eq: eqMock }) }
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { registration_status: 'pending' }, error: null }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                neq: vi.fn().mockResolvedValue({ error: null }),
+              }),
+            }),
+          }
         }
         if (table === 'events') {
           return {
@@ -427,18 +437,54 @@ describe('rejectRegistration', () => {
 
   it('returns { error } when DB update fails', async () => {
     mockCreateClient.mockResolvedValue({
-      from: vi.fn(() => {
-        const eqMock = vi.fn().mockResolvedValue({ error: { message: 'DB error' } })
-        return { update: vi.fn().mockReturnValue({ eq: eqMock }) }
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'attendees') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { registration_status: 'pending' }, error: null }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                neq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
       }),
     })
 
     const result = await rejectRegistration('att-1', 'event-1')
     expect(result).toEqual({ error: 'DB error' })
   })
-})
+  it('returns { error } when trying to reject an attendee who is already accepted', async () => {
+    mockCreateClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'attendees') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { registration_status: 'accepted' }, error: null }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    })
 
-// ── promoteFromWaitlist ─────────────────────────────────────────────────────
+    const result = await rejectRegistration('att-1', 'event-1')
+    expect(result).toEqual({ error: 'Cannot reject an attendee who has already been accepted' })
+  })
+})
 
 describe('promoteFromWaitlist', () => {
   it('returns { error } when event is at capacity', async () => {
@@ -465,3 +511,191 @@ describe('promoteFromWaitlist', () => {
     expect(result).toEqual({ error: expect.stringContaining('No capacity') })
   })
 })
+
+// ── Auto-approval & Bulk Actions ──────────────────────────────────────────
+
+describe('submitRegistration with auto-approval', () => {
+  it('automatically approves attendee and creates invitation when auto_approve_registrations is true', async () => {
+    const mockEvent = { id: 'event-1', event_type: 'open', status: 'published', max_registrations: null, auto_approve_registrations: true }
+    const mockAttendee = { id: 'att-100', name: 'Auto User', email: 'auto@x.com', registration_status: 'accepted' }
+    const mockInvitation = { id: 'inv-100' }
+
+    mockCreateAdminClient.mockReturnValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'events') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockEvent, error: null }),
+          }
+        }
+        if (table === 'email_unsubscribes') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            ilike: vi.fn().mockReturnThis(),
+            not: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }
+        }
+        if (table === 'attendees') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockAttendee, error: null }),
+              }),
+            }),
+          }
+        }
+        if (table === 'invitations') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockInvitation, error: null }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    })
+
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'Auto User' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ success: true, waitlisted: false, autoApproved: true })
+  })
+})
+
+describe('bulkAcceptRegistrations', () => {
+  it('returns error when no registrations selected', async () => {
+    const result = await bulkAcceptRegistrations([], 'event-1')
+    expect(result).toEqual({ error: 'No registrations selected' })
+  })
+
+  it('accepts multiple pending registrations successfully', async () => {
+    const mockEvent = { name: 'Tech Conf', date: '2026-10-10', venue: 'Hall', max_registrations: null }
+    const mockAttendees = [
+      { id: 'att-1', name: 'Alice', email: 'alice@x.com', phone: null, ticket_tier_id: null },
+      { id: 'att-2', name: 'Bob', email: 'bob@x.com', phone: null, ticket_tier_id: null },
+    ]
+
+    mockCreateClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'events') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockEvent, error: null }),
+          }
+        }
+        if (table === 'attendees') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            neq: vi.fn().mockResolvedValue({ data: mockAttendees, error: null }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: null }),
+            }),
+          }
+        }
+        if (table === 'invitations') {
+          return {
+            insert: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { id: 'inv-bulk' }, error: null }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    })
+
+    const result = await bulkAcceptRegistrations(['att-1', 'att-2'], 'event-1')
+    expect(result).toEqual({ success: true, count: 2, warning: undefined })
+  })
+})
+
+describe('bulkRejectRegistrations', () => {
+  it('returns error when no registrations selected', async () => {
+    const result = await bulkRejectRegistrations([], 'event-1')
+    expect(result).toEqual({ error: 'No registrations selected' })
+  })
+
+  it('rejects multiple registrations successfully', async () => {
+    mockCreateClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'attendees') {
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                in: vi.fn().mockReturnValue({
+                  neq: vi.fn().mockReturnValue({
+                    select: vi.fn().mockResolvedValue({ data: [{ id: 'att-1' }, { id: 'att-2' }], error: null }),
+                  }),
+                }),
+              }),
+            }),
+          }
+        }
+        if (table === 'events') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { max_registrations: null }, error: null }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    })
+
+    const result = await bulkRejectRegistrations(['att-1', 'att-2'], 'event-1')
+    expect(result).toEqual({ success: true, count: 2 })
+  })
+
+  it('returns error when all selected attendees are already accepted', async () => {
+    mockCreateClient.mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn((table: string) => {
+        if (table === 'attendees') {
+          return {
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                in: vi.fn().mockReturnValue({
+                  neq: vi.fn().mockReturnValue({
+                    select: vi.fn().mockResolvedValue({ data: [], error: null }),
+                  }),
+                }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    })
+
+    const result = await bulkRejectRegistrations(['att-accepted-1'], 'event-1')
+    expect(result).toEqual({ error: 'Selected registrants have already been accepted and cannot be rejected' })
+  })
+})
+
+

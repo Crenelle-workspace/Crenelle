@@ -275,11 +275,28 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
               <p className={hintCls}>Cap on how many people can sign up (leave empty for no limit)</p>
             </div>
 
+            <div className="flex items-center gap-3 pt-2">
+              <input
+                id="new-ev-auto-approve"
+                name="auto_approve_registrations"
+                type="checkbox"
+                value="true"
+                className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer"
+              />
+              <div>
+                <label htmlFor="new-ev-auto-approve" className="font-sans text-xs font-bold text-foreground cursor-pointer">
+                  Auto-Approve Registrations
+                </label>
+                <p className={hintCls}>
+                  Automatically accept registrations upon submission and dispatch pass codes without manual review.
+                </p>
+              </div>
+            </div>
+
             <div className="border-l-4 border-signal/40 pl-3">
               <p className="font-mono text-[9px] text-foreground/60 uppercase tracking-wide leading-relaxed">
                 When published, a unique registration link will be generated.
                 Share it publicly — users can register without creating an account.
-                You&apos;ll review and manually accept or reject each registration.
               </p>
             </div>
           </div>
