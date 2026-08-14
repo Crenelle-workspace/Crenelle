@@ -41,6 +41,7 @@ export interface Event {
   event_type: EventType
   registration_slug: string | null
   max_registrations: number | null
+  auto_approve_registrations?: boolean
   banner_url?: string | null
   sender_profile_id?: string | null
   email_theme?: EmailTheme

@@ -353,18 +353,39 @@ export default function EventOverviewPage() {
           </div>
 
           {editEventType === 'open' && (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="ev-max-reg" className={labelCls}>Max Registrations</label>
-              <input
-                id="ev-max-reg"
-                name="max_registrations"
-                type="number"
-                min="1"
-                defaultValue={event.max_registrations ?? ''}
-                placeholder="Leave empty for unlimited"
-                className={fieldCls}
-              />
-            </div>
+            <>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="ev-max-reg" className={labelCls}>Max Registrations</label>
+                <input
+                  id="ev-max-reg"
+                  name="max_registrations"
+                  type="number"
+                  min="1"
+                  defaultValue={event.max_registrations ?? ''}
+                  placeholder="Leave empty for unlimited"
+                  className={fieldCls}
+                />
+              </div>
+
+              <div className="flex items-center gap-3 py-1">
+                <input
+                  id="ev-auto-approve"
+                  name="auto_approve_registrations"
+                  type="checkbox"
+                  value="true"
+                  defaultChecked={event.auto_approve_registrations ?? false}
+                  className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer"
+                />
+                <div>
+                  <label htmlFor="ev-auto-approve" className="font-sans text-xs font-bold text-foreground cursor-pointer">
+                    Auto-Approve Registrations
+                  </label>
+                  <p className="font-sans text-[11px] text-muted-foreground">
+                    Automatically accept new public registrations upon submission and issue digital entry pass cards.
+                  </p>
+                </div>
+              </div>
+            </>
           )}
 
           <div className="flex flex-col gap-2">
