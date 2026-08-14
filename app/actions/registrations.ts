@@ -57,7 +57,7 @@ export async function submitRegistration(eventId: string, formData: FormData) {
   // 1. Verify the event exists, is open, and is published
   const { data: event, error: eventError } = await supabase
     .from('events')
-    .select('id, event_type, status, max_registrations')
+    .select('id, event_type, status, max_registrations, auto_approve_registrations')
     .eq('id', eventId)
     .single()
 
@@ -100,15 +100,6 @@ export async function submitRegistration(eventId: string, formData: FormData) {
   const rawTierId = (formData.get('ticket_tier_id') as string) || null
 
   // 4a. Validate the ticket tier server-side.
-  //
-  // The tier id arrives from a hidden form field, so it is fully
-  // attacker-controlled. Without this check a visitor could:
-  //   - claim a PAID tier for free through this (payment-less) path, and
-  //   - assign themselves a tier belonging to a DIFFERENT event, a private
-  //     tier, or a soft-deleted tier (IDOR).
-  //
-  // The payment flow (/api/payments/initialize) is the only sanctioned way to
-  // acquire a paid tier, so any tier with price > 0 is rejected here.
   let ticketTierId: string | null = null
   if (rawTierId) {
     const { data: tier } = await supabase
@@ -129,17 +120,44 @@ export async function submitRegistration(eventId: string, formData: FormData) {
     ticketTierId = tier.id
   }
 
-  const { error: insertError } = await supabase
-    .from('attendees')
-    .insert({
-      event_id: eventId,
-      name,
-      email,
-      phone,
-      source: 'public_registration',
-      registration_status: routeToWaitlist ? 'waitlist' : 'pending',
-      ticket_tier_id: ticketTierId,
-    })
+  const isAutoApprove = Boolean(event.auto_approve_registrations) && !routeToWaitlist
+  const initialStatus = routeToWaitlist ? 'waitlist' : (isAutoApprove ? 'accepted' : 'pending')
+
+  let insertError: { message?: string; code?: string } | null = null
+  let insertedAttendee: { id: string } | null = null
+
+  if (isAutoApprove) {
+    const res = await supabase
+      .from('attendees')
+      .insert({
+        event_id: eventId,
+        name,
+        email,
+        phone,
+        source: 'public_registration',
+        registration_status: initialStatus,
+        ticket_tier_id: ticketTierId,
+      })
+      .select()
+      .single()
+
+    insertError = res.error
+    insertedAttendee = res.data
+  } else {
+    const res = await supabase
+      .from('attendees')
+      .insert({
+        event_id: eventId,
+        name,
+        email,
+        phone,
+        source: 'public_registration',
+        registration_status: initialStatus,
+        ticket_tier_id: ticketTierId,
+      })
+
+    insertError = res.error
+  }
 
   if (insertError) {
     if (insertError.message?.includes('duplicate') || insertError.code === '23505') {
@@ -169,7 +187,57 @@ export async function submitRegistration(eventId: string, formData: FormData) {
     }
   }
 
-  return { success: true, waitlisted: routeToWaitlist }
+  // 5. If auto-approved, create invitation and dispatch pass code notifications
+  if (isAutoApprove && insertedAttendee) {
+    const { data: invitation, error: invError } = await supabase
+      .from('invitations')
+      .insert({
+        event_id: eventId,
+        attendee_id: insertedAttendee.id,
+        party_size: 1,
+        status: 'active',
+        ticket_tier_id: ticketTierId,
+      })
+      .select()
+      .single()
+
+    if (invitation && !invError) {
+      const { data: eventDetails } = await supabase
+        .from('events')
+        .select('name, date, time, venue, description, banner_url')
+        .eq('id', eventId)
+        .single()
+
+      if (eventDetails) {
+        await Promise.all([
+          email
+            ? sendInvitationEmail({
+                eventId,
+                recipientEmail: email,
+                recipientName: name,
+                invitationId: invitation.id,
+                event: eventDetails,
+              }).catch((e: unknown) => {
+                Sentry.captureException(e, { extra: { eventId, attendeeId: insertedAttendee.id, context: 'auto_approve_email' } })
+              })
+            : Promise.resolve(),
+          phone
+            ? sendInvitationWhatsApp({
+                eventId,
+                recipientPhone: phone,
+                recipientName: name,
+                invitationId: invitation.id,
+                event: eventDetails,
+              }).catch((e: unknown) => {
+                Sentry.captureException(e, { extra: { eventId, attendeeId: insertedAttendee.id, context: 'auto_approve_whatsapp' } })
+              })
+            : Promise.resolve(),
+        ])
+      }
+    }
+  }
+
+  return { success: true, waitlisted: routeToWaitlist, ...(isAutoApprove ? { autoApproved: true } : {}) }
 }
 
 /**
@@ -438,3 +506,190 @@ export async function sendReminderEmails(eventId: string, customMessage: string)
     return { error: e instanceof Error ? e.message : 'Failed to send reminder emails' }
   }
 }
+
+/**
+ * Bulk accept registrations — marks multiple attendees as accepted, creates active invitations,
+ * and sends invitation emails / WhatsApp messages.
+ */
+export async function bulkAcceptRegistrations(attendeeIds: string[], eventId: string) {
+  if (!attendeeIds || attendeeIds.length === 0) {
+    return { error: 'No registrations selected' }
+  }
+
+  const supabase = await createClient()
+
+  // 1. Verify capacity if max_registrations is set
+  const { data: event } = await supabase
+    .from('events')
+    .select('name, date, time, venue, description, banner_url, max_registrations')
+    .eq('id', eventId)
+    .single()
+
+  if (!event) return { error: 'Event not found' }
+
+  let targetIds = [...attendeeIds]
+  if (event.max_registrations) {
+    const { count } = await supabase
+      .from('attendees')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .eq('source', 'public_registration')
+      .not('registration_status', 'in', '(rejected,waitlist)')
+
+    const currentCount = count ?? 0
+    const available = Math.max(0, event.max_registrations - currentCount)
+    if (available === 0) {
+      return { error: 'Event registration capacity limit reached. Cannot accept more attendees.' }
+    }
+    if (targetIds.length > available) {
+      targetIds = targetIds.slice(0, available)
+    }
+  }
+
+  // 2. Fetch pending / waitlisted target attendees
+  const { data: attendees, error: fetchError } = await supabase
+    .from('attendees')
+    .select('*')
+    .eq('event_id', eventId)
+    .in('id', targetIds)
+    .neq('registration_status', 'accepted')
+
+  if (fetchError || !attendees || attendees.length === 0) {
+    return { error: 'No eligible registrations found to accept' }
+  }
+
+  const acceptedIds: string[] = []
+  const failedNotifications: string[] = []
+
+  // 3. Process acceptance for each attendee
+  for (const attendee of attendees) {
+    const { error: updateError } = await supabase
+      .from('attendees')
+      .update({ registration_status: 'accepted' })
+      .eq('id', attendee.id)
+
+    if (updateError) continue
+
+    acceptedIds.push(attendee.id)
+
+    const { data: invitation, error: invError } = await supabase
+      .from('invitations')
+      .insert({
+        event_id: eventId,
+        attendee_id: attendee.id,
+        party_size: 1,
+        status: 'active',
+        ticket_tier_id: attendee.ticket_tier_id ?? null,
+      })
+      .select()
+      .single()
+
+    if (!invError && invitation) {
+      const [emailRes, whatsappRes] = await Promise.all([
+        attendee.email
+          ? sendInvitationEmail({
+              eventId,
+              recipientEmail: attendee.email,
+              recipientName: attendee.name,
+              invitationId: invitation.id,
+              event,
+            }).catch((e: unknown) => {
+              Sentry.captureException(e, { extra: { attendeeId: attendee.id, eventId, context: 'bulk_accept_email' } })
+              return { error: e instanceof Error ? e.message : 'Email dispatch error' }
+            })
+          : Promise.resolve(undefined),
+        attendee.phone
+          ? sendInvitationWhatsApp({
+              eventId,
+              recipientPhone: attendee.phone,
+              recipientName: attendee.name,
+              invitationId: invitation.id,
+              event,
+            }).catch((e: unknown) => {
+              Sentry.captureException(e, { extra: { attendeeId: attendee.id, eventId, context: 'bulk_accept_whatsapp' } })
+              return { error: e instanceof Error ? e.message : 'WhatsApp dispatch error' }
+            })
+          : Promise.resolve(undefined),
+      ])
+
+      if (emailRes && 'error' in emailRes && emailRes.error) {
+        failedNotifications.push(`${attendee.name} (email: ${emailRes.error})`)
+      }
+      if (whatsappRes && 'error' in whatsappRes && whatsappRes.error) {
+        failedNotifications.push(`${attendee.name} (WhatsApp: ${whatsappRes.error})`)
+      }
+    }
+  }
+
+  revalidatePath(`/events/${eventId}/registrations`)
+  revalidatePath(`/events/${eventId}/guests`)
+
+  let warning: string | undefined
+  if (failedNotifications.length > 0) {
+    warning = `Accepted ${acceptedIds.length} registrant(s), but notification dispatches failed for: ${failedNotifications.join('; ')}`
+  }
+
+  const isTruncated = targetIds.length < attendeeIds.length
+  if (isTruncated) {
+    const cappedMsg = `Accepted ${acceptedIds.length} registrant(s) (capped at available capacity).`
+    warning = warning ? `${cappedMsg} ${warning}` : cappedMsg
+  }
+
+  return {
+    success: true,
+    count: acceptedIds.length,
+    warning,
+  }
+}
+
+/**
+ * Bulk reject registrations — marks multiple attendees as rejected and auto-promotes waitlisted entries if capacity allows.
+ */
+export async function bulkRejectRegistrations(attendeeIds: string[], eventId: string) {
+  if (!attendeeIds || attendeeIds.length === 0) {
+    return { error: 'No registrations selected' }
+  }
+
+  const supabase = await createClient()
+
+  const { data: updatedData, error } = await supabase
+    .from('attendees')
+    .update({ registration_status: 'rejected' })
+    .eq('event_id', eventId)
+    .in('id', attendeeIds)
+    .select('id')
+
+  if (error) return { error: error.message }
+
+  const rejectedCount = updatedData?.length ?? attendeeIds.length
+
+  // Auto-promote waitlisted entries if event has a max capacity cap
+  const { data: event } = await supabase
+    .from('events')
+    .select('max_registrations')
+    .eq('id', eventId)
+    .single()
+
+  if (event?.max_registrations && rejectedCount > 0) {
+    const { data: nextWaitlisted } = await supabase
+      .from('attendees')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('source', 'public_registration')
+      .eq('registration_status', 'waitlist')
+      .order('created_at', { ascending: true })
+      .limit(rejectedCount)
+
+    if (nextWaitlisted && nextWaitlisted.length > 0) {
+      const waitlistIds = nextWaitlisted.map(w => w.id)
+      await supabase
+        .from('attendees')
+        .update({ registration_status: 'pending' })
+        .in('id', waitlistIds)
+    }
+  }
+
+  revalidatePath(`/events/${eventId}/registrations`)
+  return { success: true, count: rejectedCount }
+}
+

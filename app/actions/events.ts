@@ -56,6 +56,7 @@ export async function createEvent(formData: FormData) {
       event_type: eventType,
       registration_slug: eventType === 'open' ? generateSlug(name) : null,
       max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
+      auto_approve_registrations: formData.get('auto_approve_registrations') === 'true' || formData.get('auto_approve_registrations') === 'on',
       banner_url: (formData.get('banner_url') as string) || null,
       sender_profile_id: (formData.get('sender_profile_id') as string) || null,
       location_url: (formData.get('location_url') as string) || null,
@@ -140,6 +141,7 @@ export async function updateEvent(id: string, formData: FormData) {
     event_type: eventType,
     registration_slug: registrationSlug,
     max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
+    auto_approve_registrations: formData.get('auto_approve_registrations') === 'true' || formData.get('auto_approve_registrations') === 'on',
     banner_url: newBannerUrl,
     sender_profile_id: (formData.get('sender_profile_id') as string) || null,
     location_url: (formData.get('location_url') as string) || null,
@@ -254,3 +256,20 @@ export async function updateEventStatus(id: string, status: string) {
   revalidatePath(`/events/${id}`)
   return { success: true }
 }
+
+/** Lightweight toggle for auto-approve registrations setting */
+export async function toggleAutoApprove(id: string, autoApprove: boolean) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('events')
+    .update({ auto_approve_registrations: autoApprove })
+    .eq('id', id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/events/${id}`)
+  revalidatePath(`/events/${id}/registrations`)
+  return { success: true }
+}
+

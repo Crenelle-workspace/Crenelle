@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle } from 'lucide-react'
-import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails } from '@/app/actions/registrations'
+import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, Square } from 'lucide-react'
+import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails, bulkAcceptRegistrations, bulkRejectRegistrations } from '@/app/actions/registrations'
+import { toggleAutoApprove } from '@/app/actions/events'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import { Button } from '@/components/ui/button'
@@ -52,6 +53,12 @@ export default function RegistrationsPage() {
   const [acceptTarget, setAcceptTarget] = useState<Registration | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Registration | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Selection & Auto-approve state
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isTogglingAutoApprove, setIsTogglingAutoApprove] = useState(false)
+  const [bulkAcceptOpen, setBulkAcceptOpen] = useState(false)
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -113,7 +120,6 @@ export default function RegistrationsPage() {
   useEffect(() => {
     loadData()
 
-    // Realtime subscription below drives updates; poll is a slow safety net (was 10s).
     const poll = setInterval(loadData, 60000)
 
     const supabase = createClient()
@@ -190,6 +196,69 @@ export default function RegistrationsPage() {
     setSendingReminder(false)
   }
 
+  async function handleToggleAutoApprove() {
+    if (!event) return
+    const nextVal = !event.auto_approve_registrations
+    setIsTogglingAutoApprove(true)
+    try {
+      const res = await toggleAutoApprove(eventId, nextVal)
+      if (res?.error) {
+        toast.error(res.error)
+      } else {
+        setEvent((prev) => (prev ? { ...prev, auto_approve_registrations: nextVal } : null))
+        toast.success(nextVal ? 'Auto-approval enabled for new registrations' : 'Auto-approval disabled')
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to toggle auto-approval')
+    } finally {
+      setIsTogglingAutoApprove(false)
+    }
+  }
+
+  async function confirmBulkAccept() {
+    if (selectedIds.length === 0) return
+    setIsSubmitting(true)
+    try {
+      const res = await bulkAcceptRegistrations(selectedIds, eventId)
+      if (res?.error) {
+        toast.error(res.error)
+      } else {
+        if (res.warning) {
+          toast.warning(res.warning, { duration: 6000 })
+        } else {
+          toast.success(`Successfully accepted ${res.count} registrant${res.count !== 1 ? 's' : ''}`)
+        }
+        setSelectedIds([])
+        setBulkAcceptOpen(false)
+        await loadData()
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to process bulk acceptance')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function confirmBulkReject() {
+    if (selectedIds.length === 0) return
+    setIsSubmitting(true)
+    try {
+      const res = await bulkRejectRegistrations(selectedIds, eventId)
+      if (res?.error) {
+        toast.error(res.error)
+      } else {
+        toast.success(`Rejected ${res.count} registrant${res.count !== 1 ? 's' : ''}`)
+        setSelectedIds([])
+        setBulkRejectOpen(false)
+        await loadData()
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to process bulk rejection')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   // Filter + search
   const filtered = registrations
     .filter(r => filter === 'all' || r.status === filter)
@@ -206,7 +275,27 @@ export default function RegistrationsPage() {
     waitlist: registrations.filter(r => r.status === 'waitlist').length,
   }
 
-  // Copy registration link
+  // Selection handlers
+  const allFilteredIds = filtered.map((r) => r.id)
+  const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.includes(id))
+
+  function toggleSelectAll() {
+    if (isAllSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)))
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])))
+    }
+  }
+
+  function toggleSelectOne(id: string) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  function selectAllPending() {
+    const pendingIds = registrations.filter((r) => r.status === 'pending').map((r) => r.id)
+    setSelectedIds(pendingIds)
+  }
+
   function copyRegistrationLink() {
     if (!event?.registration_slug) return
     navigator.clipboard.writeText(`${window.location.origin}/register/${event.registration_slug}`)
@@ -216,8 +305,8 @@ export default function RegistrationsPage() {
   const statusBadge = (status: string) => {
     const cls: Record<string, string> = {
       pending: 'bg-signal/20 text-signal border-signal/30',
-      accepted: 'bg-admitted/20 text-admitted border-admitted/30',
-      rejected: 'bg-denied/20 text-denied border-denied/30',
+      accepted: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+      rejected: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
       waitlist: 'bg-foreground/10 text-foreground/60 border-foreground/20',
     }
     return cls[status] ?? ''
@@ -225,11 +314,11 @@ export default function RegistrationsPage() {
 
   const paymentStatusBadge = (status: string) => {
     const cls: Record<string, string> = {
-      paid: 'bg-admitted/20 text-admitted border-admitted/30',
+      paid: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
       pending: 'bg-signal/20 text-signal border-signal/30',
       unpaid: 'bg-foreground/10 text-foreground/45 border-foreground/15',
       free: 'bg-foreground/5 text-foreground/50 border-foreground/10 border-dashed',
-      failed: 'bg-denied/20 text-denied border-denied/30',
+      failed: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
       refunded: 'bg-copper/20 text-copper border-copper/30',
       abandoned: 'bg-foreground/10 text-foreground/40 border-foreground/20',
     }
@@ -237,7 +326,7 @@ export default function RegistrationsPage() {
   }
 
   return (
-    <div>
+    <div className="relative pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
         <SectionHeader
@@ -246,7 +335,25 @@ export default function RegistrationsPage() {
           subtitle={loading ? "Loading registrations..." : `${counts.pending} pending · ${counts.accepted} accepted · ${counts.rejected} rejected · ${counts.waitlist} waitlist`}
         />
 
-        <div className="flex flex-wrap gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Auto-Approve Toggle */}
+          {event?.event_type === 'open' && (
+            <Button
+              variant="outline"
+              disabled={isTogglingAutoApprove}
+              onClick={handleToggleAutoApprove}
+              className={`gap-2 h-10 px-4 text-xs font-bold rounded-full transition-all border ${
+                event.auto_approve_registrations
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25'
+                  : 'bg-background border-border/40 text-muted-foreground hover:text-foreground'
+              }`}
+              title="Automatically accept public registrations as soon as they submit"
+            >
+              <Zap className={`h-4 w-4 ${event.auto_approve_registrations ? 'fill-current text-emerald-500' : ''}`} />
+              Auto-Approve: {event.auto_approve_registrations ? 'ON' : 'OFF'}
+            </Button>
+          )}
+
           {/* Send Reminder */}
           <Button
             variant="ghost"
@@ -271,20 +378,36 @@ export default function RegistrationsPage() {
         </div>
       </div>
 
-      {/* Registration link info */}
+      {/* Registration link info & Auto approve note */}
       {event?.registration_slug && (
-        <div className="border-l-4 border-copper p-4 bg-copper/5 rounded-r-2xl mb-6">
-          <p className="font-sans text-xs text-muted-foreground font-semibold mb-1">
-            Public Registration Link
-          </p>
-          <p className="font-sans text-xs text-copper font-medium break-all">
-            {typeof window !== 'undefined' && `${window.location.origin}/register/${event.registration_slug}`}
-          </p>
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex-1 border-l-4 border-copper p-4 bg-copper/5 rounded-r-2xl">
+            <p className="font-sans text-xs text-muted-foreground font-semibold mb-1">
+              Public Registration Link
+            </p>
+            <p className="font-sans text-xs text-copper font-medium break-all">
+              {typeof window !== 'undefined' && `${window.location.origin}/register/${event.registration_slug}`}
+            </p>
+          </div>
+
+          {event.auto_approve_registrations && (
+            <div className="border-l-4 border-emerald-500 p-4 bg-emerald-500/5 rounded-r-2xl flex items-center gap-3 shrink-0 md:max-w-xs">
+              <Zap className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <div>
+                <p className="font-sans text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  Auto-Approval Active
+                </p>
+                <p className="font-sans text-[11px] text-muted-foreground">
+                  New registrants are automatically accepted and sent pass codes.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      {/* Filters & Selection Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
         <div className="flex gap-0 border border-border/40 rounded-xl overflow-x-auto max-w-full no-scrollbar shrink-0">
           {(['all', 'pending', 'accepted', 'rejected', 'waitlist'] as const).map((f) => (
             <button
@@ -301,23 +424,37 @@ export default function RegistrationsPage() {
           ))}
         </div>
 
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-background border border-border/40 text-foreground font-sans text-xs px-4 py-2 pl-9 placeholder:text-muted-foreground focus:outline-none focus:border-copper rounded-xl transition-colors"
-          />
+        <div className="flex items-center gap-2 flex-1 sm:max-w-md justify-end">
+          {counts.pending > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={selectAllPending}
+              className="h-9 px-3 text-xs gap-1.5 font-semibold text-foreground/80 border-border/40 hover:bg-stone-500/10 rounded-xl whitespace-nowrap"
+            >
+              <CheckSquare className="h-3.5 w-3.5 text-copper" />
+              Select All Pending ({counts.pending})
+            </Button>
+          )}
+
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-background border border-border/40 text-foreground font-sans text-xs px-4 py-2 pl-9 placeholder:text-muted-foreground focus:outline-none focus:border-copper rounded-xl transition-colors"
+            />
+          </div>
         </div>
       </div>
 
       {/* Registrations list */}
       {loading ? (
         <div className="border border-border/40 rounded-2xl overflow-hidden animate-pulse">
-          {/* Table header (Desktop) */}
-          <div className="hidden sm:grid sm:grid-cols-[minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] bg-card border-b border-border/40 px-4 py-3 gap-4">
+          <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] bg-card border-b border-border/40 px-4 py-3 gap-4 items-center">
+            <Skeleton className="h-4 w-4 rounded" />
             {['Name', 'Email / Phone', 'Payment', 'Status', 'Date', ''].map((h, idx) => (
               <span
                 key={h || idx}
@@ -331,8 +468,8 @@ export default function RegistrationsPage() {
           </div>
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="p-4 border-b border-foreground/5">
-              {/* Desktop Skeleton */}
-              <div className="hidden sm:grid sm:grid-cols-[minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] items-center gap-4">
+              <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] items-center gap-4">
+                <Skeleton className="h-4 w-4 rounded" />
                 <div className="flex flex-col gap-1.5">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-16" />
@@ -346,7 +483,6 @@ export default function RegistrationsPage() {
                 <Skeleton className="h-4 w-12 ml-auto" />
                 <div className="h-8" />
               </div>
-              {/* Mobile Skeleton */}
               <div className="sm:hidden flex flex-col gap-3">
                 <div className="flex justify-between items-start">
                   <Skeleton className="h-4 w-32" />
@@ -366,7 +502,16 @@ export default function RegistrationsPage() {
       ) : (
         <div className="border border-border/40 rounded-2xl overflow-hidden">
           {/* Table header (Desktop) */}
-          <div className="hidden sm:grid sm:grid-cols-[minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] bg-card border-b border-border/40 px-4 py-3 gap-4">
+          <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] bg-card border-b border-border/40 px-4 py-3 gap-4 items-center">
+            <div className="flex items-center justify-center">
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={toggleSelectAll}
+                className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer"
+                title="Select all visible"
+              />
+            </div>
             {['Name', 'Email / Phone', 'Payment', 'Status', 'Date', ''].map((h, idx) => (
               <span
                 key={h || idx}
@@ -380,186 +525,246 @@ export default function RegistrationsPage() {
           </div>
 
           {/* Rows */}
-          {filtered.map((reg) => (
-            <div
-              key={reg.id}
-              className="border-b border-border/20 hover:bg-stone-500/5 transition-colors group"
-            >
-              {/* Desktop Row View (sm:grid) */}
-              <div className="hidden sm:grid sm:grid-cols-[minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] items-center px-4 py-4 gap-4">
-                <div className="flex flex-col truncate min-w-0 pr-2">
-                  <span className="font-sans text-sm text-foreground font-semibold truncate">{reg.full_name}</span>
-                  {reg.ticket_tier?.name && (
-                    <span className="inline-block self-start font-sans text-[10px] bg-copper/10 text-copper px-2 py-0.5 mt-1 rounded-full font-semibold truncate max-w-full">
-                      {reg.ticket_tier.name}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col truncate min-w-0 pr-2">
-                  <span className="font-sans text-xs text-muted-foreground truncate">{reg.email}</span>
-                  {reg.phone && <span className="font-sans text-[10px] text-muted-foreground/70 truncate">{reg.phone}</span>}
-                </div>
-                <div className="flex justify-center">
-                  <span
-                    className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center w-23 truncate ${paymentStatusBadge(reg.payment_status || 'unpaid')}`}
-                  >
-                    {reg.payment_status}
-                  </span>
-                </div>
-                <div className="flex justify-center">
-                  <span
-                    className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center w-23 truncate ${statusBadge(reg.status)}`}
-                  >
-                    {reg.status}
-                  </span>
-                </div>
-                <span className="font-sans text-xs text-muted-foreground whitespace-nowrap text-right pr-2">
-                  {new Date(reg.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                </span>
-                <div className="flex gap-1 justify-end">
-                  {reg.status === 'pending' && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-emerald-500 hover:bg-emerald-500/10 transition-all shrink-0 rounded-full"
-                        onClick={() => handleAccept(reg)}
-                        aria-label={`Accept ${reg.full_name}`}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-red-500 hover:bg-red-500/10 transition-all shrink-0 rounded-full"
-                        onClick={() => handleReject(reg)}
-                        aria-label={`Reject ${reg.full_name}`}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                  {reg.status === 'waitlist' && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={isSubmitting}
-                      className="h-8 w-8 text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
-                      onClick={async () => {
-                        setIsSubmitting(true)
-                        try {
-                          const result = await promoteFromWaitlist(reg.id, eventId)
-                          if (result?.error) toast.error(result.error)
-                          else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
-                        } catch (e: unknown) {
-                          toast.error(e instanceof Error ? e.message : 'An error occurred')
-                        } finally {
-                          setIsSubmitting(false)
-                        }
-                      }}
-                      aria-label={`Promote ${reg.full_name} from waitlist`}
-                      title="Promote to pending"
-                    >
-                      <ArrowUpCircle className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {reg.status === 'accepted' && (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                  )}
-                  {reg.status === 'rejected' && (
-                    <XCircle className="h-4 w-4 text-red-500/60 shrink-0" />
-                  )}
-                  {reg.status === 'waitlist' && counts.waitlist > 0 && (
-                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                  )}
-                </div>
-              </div>
+          {filtered.map((reg) => {
+            const isSelected = selectedIds.includes(reg.id)
 
-              {/* Mobile Card View (sm:hidden) */}
-              <div className="sm:hidden flex flex-col p-4 gap-3">
-                {/* Header line: Name/Tier + Badges */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-col min-w-0 pr-1">
-                    <span className="font-sans text-sm font-bold text-foreground truncate">{reg.full_name}</span>
+            return (
+              <div
+                key={reg.id}
+                className={`border-b border-border/20 transition-colors group ${
+                  isSelected ? 'bg-copper/10 dark:bg-copper/15' : 'hover:bg-stone-500/5'
+                }`}
+              >
+                {/* Desktop Row View (sm:grid) */}
+                <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] items-center px-4 py-4 gap-4">
+                  <div className="flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectOne(reg.id)}
+                      className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex flex-col truncate min-w-0 pr-2">
+                    <span className="font-sans text-sm text-foreground font-semibold truncate">{reg.full_name}</span>
                     {reg.ticket_tier?.name && (
                       <span className="inline-block self-start font-sans text-[10px] bg-copper/10 text-copper px-2 py-0.5 mt-1 rounded-full font-semibold truncate max-w-full">
                         {reg.ticket_tier.name}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center ${paymentStatusBadge(reg.payment_status || 'unpaid')}`}>
+                  <div className="flex flex-col truncate min-w-0 pr-2">
+                    <span className="font-sans text-xs text-muted-foreground truncate">{reg.email}</span>
+                    {reg.phone && <span className="font-sans text-[10px] text-muted-foreground/70 truncate">{reg.phone}</span>}
+                  </div>
+                  <div className="flex justify-center">
+                    <span
+                      className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center w-23 truncate ${paymentStatusBadge(reg.payment_status || 'unpaid')}`}
+                    >
                       {reg.payment_status}
                     </span>
-                    <span className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center ${statusBadge(reg.status)}`}>
+                  </div>
+                  <div className="flex justify-center">
+                    <span
+                      className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center w-23 truncate ${statusBadge(reg.status)}`}
+                    >
                       {reg.status}
                     </span>
                   </div>
-                </div>
-
-                {/* Details line: Email/Phone & Date */}
-                <div className="flex items-end justify-between gap-2 pt-1 border-t border-border/20 font-sans">
-                  <div className="flex flex-col min-w-0 pr-2">
-                    <span className="text-xs text-muted-foreground truncate">{reg.email}</span>
-                    {reg.phone && <span className="text-[10px] text-muted-foreground/70 truncate">{reg.phone}</span>}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
+                  <span className="font-sans text-xs text-muted-foreground whitespace-nowrap text-right pr-2">
                     {new Date(reg.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                   </span>
+                  <div className="flex gap-1 justify-end">
+                    {reg.status === 'pending' && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-all shrink-0 rounded-full"
+                          onClick={() => handleAccept(reg)}
+                          aria-label={`Accept ${reg.full_name}`}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all shrink-0 rounded-full"
+                          onClick={() => handleReject(reg)}
+                          aria-label={`Reject ${reg.full_name}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {reg.status === 'waitlist' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={isSubmitting}
+                        className="h-8 w-8 text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
+                        onClick={async () => {
+                          setIsSubmitting(true)
+                          try {
+                            const result = await promoteFromWaitlist(reg.id, eventId)
+                            if (result?.error) toast.error(result.error)
+                            else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
+                          } catch (e: unknown) {
+                            toast.error(e instanceof Error ? e.message : 'An error occurred')
+                          } finally {
+                            setIsSubmitting(false)
+                          }
+                        }}
+                        aria-label={`Promote ${reg.full_name} from waitlist`}
+                        title="Promote to pending"
+                      >
+                        <ArrowUpCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {reg.status === 'accepted' && (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    )}
+                    {reg.status === 'rejected' && (
+                      <XCircle className="h-4 w-4 text-red-600/70 dark:text-red-400/70 shrink-0" />
+                    )}
+                    {reg.status === 'waitlist' && counts.waitlist > 0 && (
+                      <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                    )}
+                  </div>
                 </div>
 
-                {/* Actions line (Mobile buttons) */}
-                {reg.status === 'pending' && (
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/20">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 text-red-500 border border-red-500/30 hover:bg-red-500/10 rounded-full"
-                      onClick={() => handleReject(reg)}
-                    >
-                      <X className="h-3.5 w-3.5" /> Reject
-                    </Button>
-                    <Button
-                      variant="copper"
-                      size="sm"
-                      className="h-8 px-3 text-xs gap-1.5 rounded-full"
-                      onClick={() => handleAccept(reg)}
-                    >
-                      <Check className="h-3.5 w-3.5" /> Accept
-                    </Button>
+                {/* Mobile Card View (sm:hidden) */}
+                <div className="sm:hidden flex flex-col p-4 gap-3">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectOne(reg.id)}
+                      className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col min-w-0 pr-1">
+                          <span className="font-sans text-sm font-bold text-foreground truncate">{reg.full_name}</span>
+                          {reg.ticket_tier?.name && (
+                            <span className="inline-block self-start font-sans text-[10px] bg-copper/10 text-copper px-2 py-0.5 mt-1 rounded-full font-semibold truncate max-w-full">
+                              {reg.ticket_tier.name}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center ${paymentStatusBadge(reg.payment_status || 'unpaid')}`}>
+                            {reg.payment_status}
+                          </span>
+                          <span className={`font-sans text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border text-center ${statusBadge(reg.status)}`}>
+                            {reg.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
-                {reg.status === 'waitlist' && (
-                  <div className="flex items-center justify-end pt-2 border-t border-border/20">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={isSubmitting}
-                      className="h-8 px-3 text-xs gap-1.5 text-copper border border-copper/30 hover:bg-copper/10 rounded-full"
-                      onClick={async () => {
-                        setIsSubmitting(true)
-                        try {
-                          const result = await promoteFromWaitlist(reg.id, eventId)
-                          if (result?.error) toast.error(result.error)
-                          else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
-                        } catch (e: unknown) {
-                          toast.error(e instanceof Error ? e.message : 'An error occurred')
-                        } finally {
-                          setIsSubmitting(false)
-                        }
-                      }}
-                    >
-                      <ArrowUpCircle className="h-3.5 w-3.5" /> Promote to Pending
-                    </Button>
+
+                  <div className="flex items-end justify-between gap-2 pt-1 border-t border-border/20 font-sans pl-7">
+                    <div className="flex flex-col min-w-0 pr-2">
+                      <span className="text-xs text-muted-foreground truncate">{reg.email}</span>
+                      {reg.phone && <span className="text-[10px] text-muted-foreground/70 truncate">{reg.phone}</span>}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {new Date(reg.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                    </span>
                   </div>
-                )}
+
+                  {reg.status === 'pending' && (
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/20 pl-7">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-3 text-xs gap-1.5 text-red-600 dark:text-red-400 border border-red-500/30 hover:bg-red-500/10 rounded-full"
+                        onClick={() => handleReject(reg)}
+                      >
+                        <X className="h-3.5 w-3.5" /> Reject
+                      </Button>
+                      <Button
+                        variant="copper"
+                        size="sm"
+                        className="h-8 px-3 text-xs gap-1.5 rounded-full"
+                        onClick={() => handleAccept(reg)}
+                      >
+                        <Check className="h-3.5 w-3.5" /> Accept
+                      </Button>
+                    </div>
+                  )}
+                  {reg.status === 'waitlist' && (
+                    <div className="flex items-center justify-end pt-2 border-t border-border/20 pl-7">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={isSubmitting}
+                        className="h-8 px-3 text-xs gap-1.5 text-copper border border-copper/30 hover:bg-copper/10 rounded-full"
+                        onClick={async () => {
+                          setIsSubmitting(true)
+                          try {
+                            const result = await promoteFromWaitlist(reg.id, eventId)
+                            if (result?.error) toast.error(result.error)
+                            else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
+                          } catch (e: unknown) {
+                            toast.error(e instanceof Error ? e.message : 'An error occurred')
+                          } finally {
+                            setIsSubmitting(false)
+                          }
+                        }}
+                      >
+                        <ArrowUpCircle className="h-3.5 w-3.5" /> Promote to Pending
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
-      {/* Accept Confirmation Dialog */}
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4">
+          <div className="bg-stone-900/95 dark:bg-stone-950/95 text-stone-100 backdrop-blur-md border border-stone-800 shadow-2xl rounded-full px-5 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="font-sans text-xs font-bold bg-copper/20 text-copper px-2.5 py-1 rounded-full border border-copper/30">
+                {selectedIds.length} selected
+              </span>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="font-sans text-xs text-stone-300 hover:text-white underline transition-colors"
+              >
+                Deselect All
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkRejectOpen(true)}
+                className="h-9 px-4 text-xs font-bold gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+                Reject ({selectedIds.length})
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setBulkAcceptOpen(true)}
+                className="h-9 px-4 text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition-colors"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Approve ({selectedIds.length})
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Accept Single Confirmation Dialog */}
       <ConfirmDialog
         open={!!acceptTarget}
         onOpenChange={(open) => !open && setAcceptTarget(null)}
@@ -573,7 +778,7 @@ export default function RegistrationsPage() {
         onConfirm={confirmAccept}
       />
 
-      {/* Reject Confirmation Dialog */}
+      {/* Reject Single Confirmation Dialog */}
       <ConfirmDialog
         open={!!rejectTarget}
         onOpenChange={(open) => !open && setRejectTarget(null)}
@@ -585,6 +790,34 @@ export default function RegistrationsPage() {
         confirmLabel="Reject Registration"
         isPending={isSubmitting}
         onConfirm={confirmReject}
+      />
+
+      {/* Bulk Accept Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkAcceptOpen}
+        onOpenChange={setBulkAcceptOpen}
+        title={`Approve ${selectedIds.length} Registration${selectedIds.length !== 1 ? 's' : ''}`}
+        description="Bulk approval confirmation"
+        subject={`${selectedIds.length} Registrant${selectedIds.length !== 1 ? 's' : ''}`}
+        subjectLabel="Selected Batch"
+        body={`Approving will mark all ${selectedIds.length} selected registrants as accepted, generate active entry passes, and send invitation emails/WhatsApp passes automatically.`}
+        confirmLabel={`Approve ${selectedIds.length} Registrations`}
+        isPending={isSubmitting}
+        onConfirm={confirmBulkAccept}
+      />
+
+      {/* Bulk Reject Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkRejectOpen}
+        onOpenChange={setBulkRejectOpen}
+        title={`Reject ${selectedIds.length} Registration${selectedIds.length !== 1 ? 's' : ''}`}
+        description="Bulk rejection confirmation"
+        subject={`${selectedIds.length} Registrant${selectedIds.length !== 1 ? 's' : ''}`}
+        subjectLabel="Selected Batch"
+        body={`This will mark all ${selectedIds.length} selected registrants as rejected. If this event has a capacity cap, waitlisted guests will be automatically promoted.`}
+        confirmLabel={`Reject ${selectedIds.length} Registrations`}
+        isPending={isSubmitting}
+        onConfirm={confirmBulkReject}
       />
 
       {/* Reminder Dialog */}
