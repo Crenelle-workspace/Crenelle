@@ -10,11 +10,15 @@ import { sendInvitationWhatsApp } from '@/lib/whatsapp'
 import { RegistrationInputSchema } from '@/lib/validations/registration'
 import * as Sentry from '@sentry/nextjs'
 
+export type SubmitRegistrationResult =
+  | { success: true; waitlisted: boolean; autoApproved?: boolean; error?: undefined }
+  | { success?: false; error: string; waitlisted?: undefined; autoApproved?: undefined }
+
 /**
  * Public registration — called from the public registration form.
  * Uses admin client to bypass RLS (no user session exists for public visitors).
  */
-export async function submitRegistration(eventId: string, formData: FormData) {
+export async function submitRegistration(eventId: string, formData: FormData): Promise<SubmitRegistrationResult> {
   const supabase = createAdminClient()
 
   // ── Rate limiting (CAN-SPAM / anti-spam) ──────────────────────
@@ -183,7 +187,7 @@ export async function submitRegistration(eventId: string, formData: FormData) {
       }
     } else {
       Sentry.captureException(insertError, { extra: { eventId, context: 'submit_registration_insert' } })
-      return { error: insertError.message }
+      return { error: insertError.message || 'Registration failed. Please try again.' }
     }
   }
 

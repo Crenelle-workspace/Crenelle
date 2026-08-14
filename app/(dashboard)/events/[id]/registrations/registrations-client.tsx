@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, Square } from 'lucide-react'
+import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare } from 'lucide-react'
 import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails, bulkAcceptRegistrations, bulkRejectRegistrations } from '@/app/actions/registrations'
 import { toggleAutoApprove } from '@/app/actions/events'
 import { createClient } from '@/lib/supabase/client'
@@ -743,7 +743,7 @@ export default function RegistrationsPage() {
 
             <div className="flex items-center gap-2">
               <Button
-                variant="destructive"
+                variant="danger"
                 size="sm"
                 onClick={() => setBulkRejectOpen(true)}
                 className="h-9 px-4 text-xs font-bold gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
