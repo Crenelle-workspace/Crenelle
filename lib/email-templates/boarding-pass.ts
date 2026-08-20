@@ -30,7 +30,7 @@ export function renderBoardingPassTheme(options: RenderOptions & {
 
   const passCode = qrToken
     ? qrToken.replace(/-/g, '').slice(0, 10).toUpperCase()
-    : 'CRN-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+    : 'CRN-' + crypto.randomUUID().split('-')[0].toUpperCase()
 
   const gateZone = seatInfo || tierName || 'MAIN GATE'
   const seatDisplay = seatInfo || partySizeText
