@@ -147,17 +147,25 @@ export async function checkRateLimitAsync(
     const url = `${redisUrl}/pipeline`
     const pttlKey = `rl:${options.key}`
 
-    // Upstash pipeline: INCR key, PTTL key, EXPIRE key px windowMs if new
+    // Upstash pipeline: INCR, PTTL, and a conditional PEXPIRE — all in one
+    // round-trip using JSON body only. The rate-limit key is NEVER interpolated
+    // into the URL path, which would open an SSRF vector if options.key
+    // contained path traversal or a host-override sequence.
+    const pipeline: unknown[] = [
+      ['INCR', pttlKey],
+      ['PTTL', pttlKey],
+      // PEXPIRE is always sent; Redis no-ops it when the key already has a TTL
+      // set (i.e. not first hit). The result is ignored — we use the PTTL result.
+      ['PEXPIRE', pttlKey, Math.ceil(options.windowMs / 1000)],
+    ]
+
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${redisToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify([
-        ['INCR', pttlKey],
-        ['PTTL', pttlKey],
-      ]),
+      body: JSON.stringify(pipeline),
     })
 
     if (!res.ok) {
@@ -171,15 +179,9 @@ export async function checkRateLimitAsync(
 
     const data = await res.json()
     const currentCount = Number(data[0]?.result ?? 1)
-    let ttlMs = Number(data[1]?.result ?? options.windowMs)
-
-    // Set expiration on first hit
-    if (currentCount === 1 || ttlMs < 0) {
-      await fetch(`${redisUrl}/pexpire/${pttlKey}/${options.windowMs}`, {
-        headers: { Authorization: `Bearer ${redisToken}` },
-      })
-      ttlMs = options.windowMs
-    }
+    // PTTL: -1 = key exists but no TTL, -2 = key doesn't exist, otherwise ms
+    const rawTtl = Number(data[1]?.result ?? options.windowMs)
+    const ttlMs = rawTtl > 0 ? rawTtl : options.windowMs
 
     const now = Date.now()
     const resetAt = now + Math.max(0, ttlMs)
