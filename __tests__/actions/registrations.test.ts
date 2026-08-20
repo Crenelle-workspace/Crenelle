@@ -208,7 +208,11 @@ describe('submitRegistration', () => {
           eq: vi.fn().mockReturnThis(),
           not: vi.fn().mockReturnThis(),
           count: 0,
-          insert: vi.fn().mockResolvedValue({ error: { message: 'duplicate', code: '23505' } }),
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: null, error: { message: 'duplicate', code: '23505' } }),
+            }),
+          }),
           maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
           single: vi.fn().mockResolvedValue({ data: null, error: null }),
         }
@@ -265,7 +269,11 @@ describe('submitRegistration', () => {
           count: 0,
           insert: vi.fn((payload: Record<string, unknown>) => {
             onInsert?.(payload)
-            return Promise.resolve({ error: null })
+            return {
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { id: 'att-new' }, error: null }),
+              }),
+            }
           }),
           maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
           single: vi.fn().mockResolvedValue({ data: null, error: null }),

@@ -9,10 +9,21 @@ export function getOptimizedBannerUrl(
 ): string {
   if (!url) return ''
 
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    // If it's not a valid URL (e.g. relative path), just return it
+    return url
+  }
+
   // 1. Handle Supabase Storage bucket URLs
   // Standard Supabase URL: https://[project-ref].supabase.co/storage/v1/object/public/banners/[filename]
   // Transform URL: https://[project-ref].supabase.co/storage/v1/render/image/public/banners/[filename]
-  if (url.includes('/storage/v1/object/public/banners/')) {
+  if (
+    parsed.hostname.endsWith('.supabase.co') &&
+    parsed.pathname.includes('/storage/v1/object/public/banners/')
+  ) {
     const isTransformationEnabled = process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORMATION === 'true'
     
     if (!isTransformationEnabled) {
@@ -33,7 +44,7 @@ export function getOptimizedBannerUrl(
 
   // 2. Handle Unsplash URLs (very common pasted URLs)
   // Standard format: https://images.unsplash.com/photo-xxx?auto=format&fit=crop&w=xxx&q=xxx
-  if (url.includes('images.unsplash.com/')) {
+  if (parsed.hostname === 'images.unsplash.com') {
     const baseUrl = url.split('?')[0]
     
     if (type === 'email') {
@@ -67,12 +78,19 @@ function extFromFile(file: File): string {
   return allowedExts.includes(rawExt) ? rawExt : 'jpg'
 }
 
-/** Helper to generate a unique filename prefix */
 function generateUniqueId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
-  return `${Math.random().toString(36).substring(2, 15)}_${Date.now()}`
+  
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const arr = new Uint32Array(2)
+    crypto.getRandomValues(arr)
+    return `${arr[0].toString(36)}${arr[1].toString(36)}_${Date.now()}`
+  }
+
+  // Absolute last resort fallback for extremely old browsers without crypto
+  return `id_${Date.now()}_${Date.now()}`
 }
 
 let cachedHas2DCanvas: boolean | null = null

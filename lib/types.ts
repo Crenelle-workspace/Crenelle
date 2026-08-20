@@ -28,6 +28,18 @@ export interface FAQItem {
   answer: string
 }
 
+export type RegistrationQuestionType = 'text' | 'radio' | 'checkbox'
+
+export interface RegistrationQuestion {
+  id: string
+  label: string
+  type: RegistrationQuestionType
+  required: boolean
+  /** Only present for `radio` and `checkbox` types */
+  options?: string[]
+  sort_order: number
+}
+
 export interface Event {
   id: string
   organizer_id: string
@@ -49,6 +61,7 @@ export interface Event {
   agenda?: AgendaItem[] | null
   speakers?: SpeakerInfo[] | null
   faqs?: FAQItem[] | null
+  registration_questions?: RegistrationQuestion[] | null
   location_url?: string | null
   created_at: string
   updated_at: string

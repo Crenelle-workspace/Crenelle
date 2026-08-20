@@ -13,6 +13,27 @@ interface EventBannerInputProps {
   defaultValue?: string | null
 }
 
+function getSafeSrc(url: string) {
+  if (!url) return ''
+
+  try {
+    const parsed = new URL(url, window.location.origin)
+
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href
+    }
+
+    // Allow local blob preview URLs created in this browser context
+    if (parsed.protocol === 'blob:' && parsed.href.startsWith(`blob:${window.location.origin}/`)) {
+      return parsed.href
+    }
+  } catch {
+    return ''
+  }
+
+  return ''
+}
+
 export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
   const [bannerUrl, setBannerUrl] = useState<string>(defaultValue || '')
   const [uploading, setUploading] = useState(false)
@@ -131,7 +152,7 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
             <label className="relative flex border-2 border-foreground/30 aspect-video w-full overflow-hidden bg-void/50 group cursor-pointer select-none">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={bannerUrl}
+                src={getSafeSrc(bannerUrl)}
                 alt="Event banner preview"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
@@ -196,7 +217,7 @@ export function EventBannerInput({ defaultValue }: EventBannerInputProps) {
         <div className="relative border-2 border-foreground/30 aspect-video w-full overflow-hidden bg-void/50 group select-none mt-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={bannerUrl}
+            src={getSafeSrc(bannerUrl)}
             alt="Event banner preview"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />

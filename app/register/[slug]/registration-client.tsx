@@ -36,6 +36,14 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
   const [selectedTierId, setSelectedTierId] = useState(event.tiers[0]?.id ?? '')
   const [redirectingToPaystack, setRedirectingToPaystack] = useState(false)
   const [isFormVisible, setIsFormVisible] = useState(false)
+  // custom question answers keyed by question.id
+  const [customAnswers, setCustomAnswers] = useState<Record<string, string | string[]>>(() => {
+    const init: Record<string, string | string[]> = {}
+    for (const q of event.registration_questions) {
+      init[q.id] = q.type === 'checkbox' ? [] : ''
+    }
+    return init
+  })
   const [previewDetails, setPreviewDetails] = useState<{
     fullName: string
     email: string
@@ -155,6 +163,28 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
     const email = (formData.get('email') as string) || ''
     const phone = (formData.get('phone') as string) || ''
     const tierId = (formData.get('ticket_tier_id') as string) || selectedTierId
+
+    // Client-side required question validation (server also validates)
+    for (const q of event.registration_questions) {
+      if (!q.required) continue
+      const val = customAnswers[q.id]
+      const isEmpty =
+        val === undefined ||
+        val === null ||
+        (typeof val === 'string' && val.trim() === '') ||
+        (Array.isArray(val) && val.length === 0)
+      if (isEmpty) {
+        setError(`Please answer the required question: "${q.label}"`)
+        isSubmitting.current = false
+        setSubmitting(false)
+        return
+      }
+    }
+
+    // Serialize custom answers into formData
+    if (event.registration_questions.length > 0) {
+      formData.set('custom_answers', JSON.stringify(customAnswers))
+    }
 
     const selectedTier = event.tiers?.find((t) => t.id === tierId)
     const isPaidTier = selectedTier ? selectedTier.price > 0 : false
@@ -295,6 +325,127 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
     'w-full border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-colors placeholder:text-muted-foreground/40 focus:border-copper focus:outline-none'
   const submitClass =
     'mt-1 flex w-full items-center justify-center gap-2 bg-foreground py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-background transition-colors hover:bg-copper hover:text-white disabled:cursor-not-allowed disabled:opacity-50'
+
+  // ── Custom question answer helpers ──
+  function setTextAnswer(id: string, value: string) {
+    setCustomAnswers((prev) => ({ ...prev, [id]: value }))
+  }
+  function setRadioAnswer(id: string, value: string) {
+    setCustomAnswers((prev) => ({ ...prev, [id]: value }))
+  }
+  function toggleCheckboxAnswer(id: string, option: string, checked: boolean) {
+    setCustomAnswers((prev) => {
+      const current = (prev[id] as string[]) || []
+      return {
+        ...prev,
+        [id]: checked ? [...current, option] : current.filter((o) => o !== option),
+      }
+    })
+  }
+
+  /** Renders custom questions — returns null if event has none (zero overhead). */
+  function renderCustomQuestions() {
+    if (!event.registration_questions || event.registration_questions.length === 0) return null
+    return (
+      <>
+        {event.registration_questions
+          .slice()
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((q) => (
+            <div key={q.id}>
+              <label className={labelClass}>
+                {q.label}
+                {q.required && <span className="ml-1 text-copper">*</span>}
+              </label>
+
+              {q.type === 'text' && (
+                <input
+                  type="text"
+                  value={(customAnswers[q.id] as string) || ''}
+                  onChange={(e) => setTextAnswer(q.id, e.target.value)}
+                  placeholder="Your answer…"
+                  className={inputClass}
+                />
+              )}
+
+              {q.type === 'radio' && (
+                <fieldset className="mt-0.5 space-y-2">
+                  {(q.options ?? []).map((opt) => (
+                    <label
+                      key={opt}
+                      className={`flex cursor-pointer items-center gap-3 border px-3.5 py-2.5 text-sm transition-colors ${
+                        customAnswers[q.id] === opt
+                          ? 'border-copper bg-copper/5 text-foreground'
+                          : 'border-border text-muted-foreground hover:border-border/70 hover:text-foreground'
+                      }`}
+                    >
+                      <span
+                        className={`h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center ${
+                          customAnswers[q.id] === opt
+                            ? 'border-copper'
+                            : 'border-border'
+                        }`}
+                      >
+                        {customAnswers[q.id] === opt && (
+                          <span className="h-2 w-2 rounded-full bg-copper" />
+                        )}
+                      </span>
+                      <input
+                        type="radio"
+                        name={`q_${q.id}`}
+                        value={opt}
+                        checked={customAnswers[q.id] === opt}
+                        onChange={() => setRadioAnswer(q.id, opt)}
+                        className="sr-only"
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+
+              {q.type === 'checkbox' && (
+                <fieldset className="mt-0.5 space-y-2">
+                  {(q.options ?? []).map((opt) => {
+                    const isChecked = ((customAnswers[q.id] as string[]) || []).includes(opt)
+                    return (
+                      <label
+                        key={opt}
+                        className={`flex cursor-pointer items-center gap-3 border px-3.5 py-2.5 text-sm transition-colors ${
+                          isChecked
+                            ? 'border-copper bg-copper/5 text-foreground'
+                            : 'border-border text-muted-foreground hover:border-border/70 hover:text-foreground'
+                        }`}
+                      >
+                        <span
+                          className={`h-4 w-4 shrink-0 rounded border-2 flex items-center justify-center ${
+                            isChecked ? 'border-copper bg-copper' : 'border-border'
+                          }`}
+                        >
+                          {isChecked && (
+                            <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 10 10" fill="none">
+                              <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </span>
+                        <input
+                          type="checkbox"
+                          value={opt}
+                          checked={isChecked}
+                          onChange={(e) => toggleCheckboxAnswer(q.id, opt, e.target.checked)}
+                          className="sr-only"
+                        />
+                        {opt}
+                      </label>
+                    )
+                  })}
+                </fieldset>
+              )}
+            </div>
+          ))}
+      </>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-copper selection:text-black">
@@ -562,6 +713,7 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                         className={inputClass}
                       />
                     </div>
+                    {renderCustomQuestions()}
                     <button type="submit" disabled={submitting} className={submitClass}>
                       {submitting ? 'Joining…' : 'Join the waitlist'}
                       {!submitting && <ArrowRight size={15} strokeWidth={2} />}
@@ -607,6 +759,8 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                     </label>
                     <input name="phone" placeholder="+234…" className={inputClass} />
                   </div>
+
+                  {renderCustomQuestions()}
 
                   {event.tiers && event.tiers.length > 0 && (
                     <div>
