@@ -15,10 +15,22 @@ interface EventBannerInputProps {
 
 function getSafeSrc(url: string) {
   if (!url) return ''
-  // Allow http, https, and blob (for local upload previews)
-  if (/^(https?|blob):/i.test(url)) {
-    return url
+
+  try {
+    const parsed = new URL(url, window.location.origin)
+
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href
+    }
+
+    // Allow local blob preview URLs created in this browser context
+    if (parsed.protocol === 'blob:' && parsed.href.startsWith(`blob:${window.location.origin}/`)) {
+      return parsed.href
+    }
+  } catch {
+    return ''
   }
+
   return ''
 }
 
