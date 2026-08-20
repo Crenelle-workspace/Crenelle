@@ -94,7 +94,7 @@ export function RegistrationQuestionsEditor({ questions, onChange }: Registratio
   return (
     <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
             Custom Registration Questions
@@ -108,7 +108,7 @@ export function RegistrationQuestionsEditor({ questions, onChange }: Registratio
           variant="outline"
           size="sm"
           onClick={handleAdd}
-          className="h-8 gap-1.5 text-xs shrink-0"
+          className="h-8 gap-1.5 text-xs shrink-0 self-start sm:self-auto"
         >
           <Plus className="h-3.5 w-3.5" />
           Add Question
@@ -131,26 +131,9 @@ export function RegistrationQuestionsEditor({ questions, onChange }: Registratio
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <GripVertical className="h-4 w-4 text-zinc-300 dark:text-zinc-600 shrink-0" />
-                  <span className="font-mono text-[10px] font-medium text-zinc-400">
+                  <span className="font-mono text-xs font-semibold text-zinc-500 dark:text-zinc-400">
                     Q{index + 1}
                   </span>
-                  {/* Type selector */}
-                  <div className="flex gap-px rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                    {(Object.keys(TYPE_LABELS) as RegistrationQuestionType[]).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => handleTypeChange(q.id, t)}
-                        className={`px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                          q.type === t
-                            ? 'bg-foreground text-background'
-                            : 'bg-background text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        {TYPE_LABELS[t]}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
@@ -158,7 +141,7 @@ export function RegistrationQuestionsEditor({ questions, onChange }: Registratio
                   <button
                     type="button"
                     onClick={() => handleChange(q.id, 'required', !q.required)}
-                    className={`flex items-center gap-1.5 text-[10px] font-semibold transition-colors ${
+                    className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
                       q.required ? 'text-copper' : 'text-muted-foreground hover:text-foreground'
                     }`}
                     title={q.required ? 'Required — click to make optional' : 'Optional — click to make required'}
@@ -179,6 +162,29 @@ export function RegistrationQuestionsEditor({ questions, onChange }: Registratio
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                </div>
+              </div>
+
+              {/* Type selector */}
+              <div>
+                <label className={`${labelCls} mb-1.5 block`}>
+                  Question Type
+                </label>
+                <div className="grid grid-cols-3 gap-1 rounded-lg border border-zinc-200 bg-zinc-100/70 p-1 dark:border-zinc-700/80 dark:bg-zinc-800/60">
+                  {(Object.keys(TYPE_LABELS) as RegistrationQuestionType[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => handleTypeChange(q.id, t)}
+                      className={`rounded-md py-1.5 px-2 text-center text-xs font-medium transition-all ${
+                        q.type === t
+                          ? 'bg-white text-zinc-900 shadow-sm font-semibold dark:bg-zinc-700 dark:text-zinc-100'
+                          : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                      }`}
+                    >
+                      {TYPE_LABELS[t]}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -206,7 +212,7 @@ export function RegistrationQuestionsEditor({ questions, onChange }: Registratio
               {(q.type === 'radio' || q.type === 'checkbox') && (
                 <div className="space-y-2">
                   <label className={labelCls}>
-                    Options <span className="text-muted-foreground/60 normal-case font-normal">(one per line)</span>
+                    Options <span className="text-muted-foreground/60 normal-case font-normal">(one per option)</span>
                   </label>
                   {(q.options ?? []).map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
