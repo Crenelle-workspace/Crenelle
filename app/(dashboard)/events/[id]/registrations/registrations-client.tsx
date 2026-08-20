@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare } from 'lucide-react'
+import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, MessageSquare } from 'lucide-react'
 import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails, bulkAcceptRegistrations, bulkRejectRegistrations } from '@/app/actions/registrations'
 import { toggleAutoApprove } from '@/app/actions/events'
 import { createClient } from '@/lib/supabase/client'
@@ -14,7 +14,7 @@ import { SectionHeader } from '@/components/section-header'
 import { EmptyState } from '@/components/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
-import type { Event, TicketTier } from '@/lib/types'
+import type { Event, TicketTier, RegistrationQuestion } from '@/lib/types'
 
 interface Registration {
   id: string
@@ -26,6 +26,8 @@ interface Registration {
   created_at: string
   ticket_tier?: TicketTier | null
   payment_status?: 'paid' | 'pending' | 'failed' | 'refunded' | 'abandoned' | 'unpaid' | 'free'
+  /** Custom question answers — keyed by question id */
+  custom_answers?: Record<string, string | string[]> | null
 }
 
 interface AttendeeRow {
@@ -60,10 +62,14 @@ export default function RegistrationsPage() {
   const [bulkAcceptOpen, setBulkAcceptOpen] = useState(false)
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false)
 
+  // Answers sheet state
+  const [answersTarget, setAnswersTarget] = useState<Registration | null>(null)
+  const [eventQuestions, setEventQuestions] = useState<RegistrationQuestion[]>([])
+
   const loadData = useCallback(async () => {
     try {
       const supabase = createClient()
-      const [{ data: attendees }, { data: ev }] = await Promise.all([
+      const [{ data: attendees }, { data: ev }, { data: answers }] = await Promise.all([
         supabase
           .from('attendees')
           .select('*, ticket_tier:ticket_tiers(*), payments(*)')
@@ -75,7 +81,17 @@ export default function RegistrationsPage() {
           .select('*')
           .eq('id', eventId)
           .single(),
+        supabase
+          .from('registration_answers')
+          .select('attendee_id, answers')
+          .eq('event_id', eventId),
       ])
+
+      // Build an answers lookup map: attendee_id → answers
+      const answersMap = new Map<string, Record<string, string | string[]>>();
+      (answers ?? []).forEach((row) => {
+        answersMap.set(row.attendee_id, row.answers as Record<string, string | string[]>)
+      })
 
       const rows = (attendees ?? []) as unknown as AttendeeRow[]
       const mappedRegs: Registration[] = rows.map((a) => {
@@ -107,11 +123,16 @@ export default function RegistrationsPage() {
           created_at: a.created_at,
           ticket_tier: a.ticket_tier ?? null,
           payment_status: paymentStatus,
+          custom_answers: answersMap.get(a.id) ?? null,
         }
       })
 
       setRegistrations(mappedRegs)
       setEvent(ev)
+      // Sync question definitions whenever data refreshes
+      if (ev?.registration_questions) {
+        setEventQuestions((ev.registration_questions as RegistrationQuestion[]) || [])
+      }
     } finally {
       setLoading(false)
     }
@@ -639,6 +660,19 @@ export default function RegistrationsPage() {
                     {reg.status === 'waitlist' && counts.waitlist > 0 && (
                       <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                     )}
+                    {/* Answers button — only visible when event has questions */}
+                    {eventQuestions.length > 0 && reg.custom_answers && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
+                        onClick={() => setAnswersTarget(reg)}
+                        aria-label={`View answers from ${reg.full_name}`}
+                        title="View registration answers"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -728,6 +762,19 @@ export default function RegistrationsPage() {
                         }}
                       >
                         <ArrowUpCircle className="h-3.5 w-3.5" /> Promote to Pending
+                      </Button>
+                    </div>
+                  )}
+                  {/* Mobile answers button */}
+                  {eventQuestions.length > 0 && reg.custom_answers && (
+                    <div className="flex items-center justify-end pt-2 border-t border-border/20 pl-7">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-3 text-xs gap-1.5 text-muted-foreground border border-border/40 hover:text-copper hover:border-copper/30 rounded-full"
+                        onClick={() => setAnswersTarget(reg)}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" /> View Answers
                       </Button>
                     </div>
                   )}
@@ -875,6 +922,99 @@ export default function RegistrationsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Answers Sheet ── */}
+      {/* Backdrop */}
+      <div
+        aria-hidden="true"
+        onClick={() => setAnswersTarget(null)}
+        className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-200 ${
+          answersTarget ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      />
+      {/* Slide-in panel (right edge, pure CSS transform) */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={answersTarget ? `Registration answers for ${answersTarget.full_name}` : 'Registration answers'}
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-background border-l border-border/40 shadow-2xl flex flex-col transition-transform duration-200 ease-out will-change-transform ${
+          answersTarget ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {answersTarget && (
+          <>
+            {/* Sheet header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
+              <div>
+                <p className="font-sans text-xs font-bold uppercase tracking-wider text-copper">Registration Answers</p>
+                <p className="font-sans text-sm font-semibold text-foreground mt-0.5 truncate max-w-56">{answersTarget.full_name}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAnswersTarget(null)}
+                className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground shrink-0"
+                aria-label="Close answers panel"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Sheet body */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+              {eventQuestions
+                .slice()
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map((q) => {
+                  const answer = answersTarget.custom_answers?.[q.id]
+                  const isEmpty =
+                    answer === undefined ||
+                    answer === null ||
+                    (typeof answer === 'string' && answer.trim() === '') ||
+                    (Array.isArray(answer) && answer.length === 0)
+
+                  return (
+                    <div key={q.id} className="space-y-1.5">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {q.label}
+                        {q.required && <span className="ml-1 text-copper">*</span>}
+                      </p>
+                      {isEmpty ? (
+                        <p className="font-sans text-xs italic text-muted-foreground/50">No answer provided</p>
+                      ) : Array.isArray(answer) ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {answer.map((v) => (
+                            <span
+                              key={v}
+                              className="font-sans text-xs bg-copper/10 text-copper border border-copper/20 px-2.5 py-0.5 rounded-full font-medium"
+                            >
+                              {v}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="font-sans text-sm text-foreground leading-relaxed">{answer}</p>
+                      )}
+                    </div>
+                  )
+                })}
+
+              {eventQuestions.length > 0 && !answersTarget.custom_answers && (
+                <p className="font-sans text-sm text-muted-foreground italic">
+                  This registrant did not answer any custom questions.
+                </p>
+              )}
+            </div>
+
+            {/* Sheet footer */}
+            <div className="px-5 py-4 border-t border-border/40">
+              <p className="font-sans text-[11px] text-muted-foreground">
+                Registered on {new Date(answersTarget.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

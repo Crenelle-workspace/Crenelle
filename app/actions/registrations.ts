@@ -8,6 +8,7 @@ import { sendInvitationEmail, sendReminderEmailsDirect, type ReminderEmailRecipi
 import { checkRateLimitAsync } from '@/lib/rate-limit'
 import { sendInvitationWhatsApp } from '@/lib/whatsapp'
 import { RegistrationInputSchema } from '@/lib/validations/registration'
+import type { RegistrationQuestion } from '@/lib/types'
 import * as Sentry from '@sentry/nextjs'
 
 export type SubmitRegistrationResult =
@@ -61,7 +62,7 @@ export async function submitRegistration(eventId: string, formData: FormData): P
   // 1. Verify the event exists, is open, and is published
   const { data: event, error: eventError } = await supabase
     .from('events')
-    .select('id, event_type, status, max_registrations, auto_approve_registrations')
+    .select('id, event_type, status, max_registrations, auto_approve_registrations, registration_questions')
     .eq('id', eventId)
     .single()
 
@@ -124,6 +125,33 @@ export async function submitRegistration(eventId: string, formData: FormData): P
     ticketTierId = tier.id
   }
 
+  // 4b. Validate and parse custom question answers (server-side enforcement)
+  const questions = (event.registration_questions ?? []) as RegistrationQuestion[]
+  let parsedAnswers: Record<string, string | string[]> = {}
+  if (questions.length > 0) {
+    const rawAnswers = formData.get('custom_answers') as string | null
+    if (rawAnswers) {
+      try {
+        parsedAnswers = JSON.parse(rawAnswers) as Record<string, string | string[]>
+      } catch {
+        return { error: 'Invalid form submission. Please try again.' }
+      }
+    }
+    // Enforce required questions
+    for (const q of questions) {
+      if (!q.required) continue
+      const val = parsedAnswers[q.id]
+      const isEmpty =
+        val === undefined ||
+        val === null ||
+        (typeof val === 'string' && val.trim() === '') ||
+        (Array.isArray(val) && val.length === 0)
+      if (isEmpty) {
+        return { error: `Please answer the required question: "${q.label}"` }
+      }
+    }
+  }
+
   const isAutoApprove = Boolean(event.auto_approve_registrations) && !routeToWaitlist
   const initialStatus = routeToWaitlist ? 'waitlist' : (isAutoApprove ? 'accepted' : 'pending')
 
@@ -159,8 +187,11 @@ export async function submitRegistration(eventId: string, formData: FormData): P
         registration_status: initialStatus,
         ticket_tier_id: ticketTierId,
       })
+      .select()
+      .single()
 
     insertError = res.error
+    insertedAttendee = res.data
   }
 
   if (insertError) {
@@ -170,7 +201,7 @@ export async function submitRegistration(eventId: string, formData: FormData): P
     // DB trigger fired — cap was hit between our check and the insert
     if (insertError.code === 'P0001' && insertError.message?.includes('REGISTRATION_CAP_REACHED')) {
       routeToWaitlist = true
-      const { error: waitlistError } = await supabase
+      const { data: waitlistAttendee, error: waitlistError } = await supabase
         .from('attendees')
         .insert({
           event_id: eventId,
@@ -181,17 +212,36 @@ export async function submitRegistration(eventId: string, formData: FormData): P
           registration_status: 'waitlist',
           ticket_tier_id: ticketTierId,
         })
+        .select()
+        .single()
       if (waitlistError) {
         Sentry.captureException(waitlistError, { extra: { eventId, context: 'waitlist_insert_after_cap' } })
         return { error: waitlistError.message }
       }
+      insertedAttendee = waitlistAttendee
     } else {
       Sentry.captureException(insertError, { extra: { eventId, context: 'submit_registration_insert' } })
       return { error: insertError.message || 'Registration failed. Please try again.' }
     }
   }
 
-  // 5. If auto-approved, create invitation and dispatch pass code notifications
+  // 5. Persist custom question answers (non-blocking — answers failing should not block registration)
+  if (insertedAttendee && questions.length > 0 && Object.keys(parsedAnswers).length > 0) {
+    supabase
+      .from('registration_answers')
+      .insert({
+        attendee_id: insertedAttendee.id,
+        event_id: eventId,
+        answers: parsedAnswers,
+      })
+      .then(({ error: answerErr }) => {
+        if (answerErr) {
+          Sentry.captureException(answerErr, { extra: { eventId, attendeeId: insertedAttendee!.id, context: 'save_registration_answers' } })
+        }
+      })
+  }
+
+  // 6. If auto-approved, create invitation and dispatch pass code notifications
   if (isAutoApprove && insertedAttendee) {
     const { data: invitation, error: invError } = await supabase
       .from('invitations')

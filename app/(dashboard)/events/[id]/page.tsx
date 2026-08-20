@@ -14,7 +14,8 @@ import { toast } from 'sonner'
 import { AgendaEditor } from '@/components/event-editor/AgendaEditor'
 import { SpeakerEditor } from '@/components/event-editor/SpeakerEditor'
 import { FAQEditor } from '@/components/event-editor/FAQEditor'
-import type { Event, AgendaItem, SpeakerInfo, FAQItem } from '@/lib/types'
+import { RegistrationQuestionsEditor } from '@/components/event-editor/RegistrationQuestionsEditor'
+import type { Event, AgendaItem, SpeakerInfo, FAQItem, RegistrationQuestion } from '@/lib/types'
 import { EventBannerInput } from '@/components/event-banner-input'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { EventStatusBadge } from './event-status-badge'
@@ -38,6 +39,7 @@ export default function EventOverviewPage() {
   const [editAgenda, setEditAgenda] = useState<AgendaItem[]>([])
   const [editSpeakers, setEditSpeakers] = useState<SpeakerInfo[]>([])
   const [editFaqs, setEditFaqs] = useState<FAQItem[]>([])
+  const [editRegistrationQuestions, setEditRegistrationQuestions] = useState<RegistrationQuestion[]>([])
 
   // Reminder dialog state
   const [reminderOpen, setReminderOpen] = useState(false)
@@ -81,6 +83,7 @@ export default function EventOverviewPage() {
           setEditAgenda(data.agenda || [])
           setEditSpeakers(data.speakers || [])
           setEditFaqs(data.faqs || [])
+          setEditRegistrationQuestions((data.registration_questions as RegistrationQuestion[]) || [])
         }
       }
     }
@@ -212,6 +215,7 @@ export default function EventOverviewPage() {
       setEditAgenda(event.agenda || [])
       setEditSpeakers(event.speakers || [])
       setEditFaqs(event.faqs || [])
+      setEditRegistrationQuestions((event.registration_questions as RegistrationQuestion[]) || [])
     }
     setEditing(true)
   }
@@ -440,6 +444,20 @@ export default function EventOverviewPage() {
 
           <FAQEditor faqs={editFaqs} onChange={setEditFaqs} />
           <input type="hidden" name="faqs" value={JSON.stringify(editFaqs)} />
+
+          {editEventType === 'open' && (
+            <>
+              <RegistrationQuestionsEditor
+                questions={editRegistrationQuestions}
+                onChange={setEditRegistrationQuestions}
+              />
+              <input
+                type="hidden"
+                name="registration_questions"
+                value={JSON.stringify(editRegistrationQuestions)}
+              />
+            </>
+          )}
 
           <div className="flex gap-3 pt-2 border-t-2 border-foreground/10">
             <Button type="submit" variant="signal" disabled={loading} className="gap-2 h-12 px-6 text-sm">

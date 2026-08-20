@@ -41,6 +41,10 @@ export async function createEvent(formData: FormData) {
   if (formData.has('faqs')) {
     try { faqs = JSON.parse(formData.get('faqs') as string) } catch {}
   }
+  let registrationQuestions: unknown[] = []
+  if (formData.has('registration_questions')) {
+    try { registrationQuestions = JSON.parse(formData.get('registration_questions') as string) } catch {}
+  }
 
   const { data, error } = await supabase
     .from('events')
@@ -64,6 +68,7 @@ export async function createEvent(formData: FormData) {
       agenda,
       speakers,
       faqs,
+      registration_questions: registrationQuestions,
     })
     .select()
     .single()
@@ -170,6 +175,14 @@ export async function updateEvent(id: string, formData: FormData) {
   if (formData.has('faqs')) {
     try {
       updateData.faqs = JSON.parse(formData.get('faqs') as string)
+    } catch {
+      // invalid json fallback
+    }
+  }
+
+  if (formData.has('registration_questions')) {
+    try {
+      updateData.registration_questions = JSON.parse(formData.get('registration_questions') as string)
     } catch {
       // invalid json fallback
     }

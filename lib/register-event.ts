@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { AgendaItem, SpeakerInfo, FAQItem } from '@/lib/types'
+import type { AgendaItem, SpeakerInfo, FAQItem, RegistrationQuestion } from '@/lib/types'
 
 /** Public event payload powering the registration page. */
 export interface RegisterEventInfo {
@@ -17,6 +17,7 @@ export interface RegisterEventInfo {
   agenda: AgendaItem[]
   speakers: SpeakerInfo[]
   faqs: FAQItem[]
+  registration_questions: RegistrationQuestion[]
   location_url: string | null
   tiers: Array<{ id: string; name: string; price: number; currency: string }>
   platform_fee_percent: number
@@ -39,7 +40,7 @@ export async function getRegisterEvent(slug: string): Promise<RegisterEventResul
 
   const { data: event, error } = await supabase
     .from('events')
-    .select('id, organizer_id, name, date, time, timezone, venue, description, status, event_type, max_registrations, banner_url, agenda, speakers, faqs, location_url')
+    .select('id, organizer_id, name, date, time, timezone, venue, description, status, event_type, max_registrations, banner_url, agenda, speakers, faqs, registration_questions, location_url')
     .eq('registration_slug', slug)
     .eq('event_type', 'open')
     .single()
@@ -86,6 +87,7 @@ export async function getRegisterEvent(slug: string): Promise<RegisterEventResul
       agenda: (event.agenda as AgendaItem[]) || [],
       speakers: (event.speakers as SpeakerInfo[]) || [],
       faqs: (event.faqs as FAQItem[]) || [],
+      registration_questions: (event.registration_questions as RegistrationQuestion[]) || [],
       location_url: event.location_url || null,
       tiers: tiers ?? [],
       platform_fee_percent: paymentSettings?.platform_fee_percent ?? 5,
