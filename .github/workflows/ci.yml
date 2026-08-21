@@ -18,6 +18,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Verify .gitignore integrity & secret rules
+        run: |
+          grep -q -E "^\.env$" .gitignore || (echo "CRITICAL: .env has been removed from .gitignore!" && exit 1)
+          if git ls-files | grep -E "^\.env($|\.)" | grep -v "\.example$"; then
+            echo "CRITICAL: Sensitive .env file is tracked in git history!"
+            exit 1
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
