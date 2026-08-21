@@ -12,6 +12,7 @@ export interface RegisterEventInfo {
   description: string | null
   status: string
   max_registrations: number | null
+  auto_approve_registrations?: boolean
   registration_count: number
   banner_url: string | null
   agenda: AgendaItem[]
@@ -40,7 +41,7 @@ export async function getRegisterEvent(slug: string): Promise<RegisterEventResul
 
   const { data: event, error } = await supabase
     .from('events')
-    .select('id, organizer_id, name, date, time, timezone, venue, description, status, event_type, max_registrations, banner_url, agenda, speakers, faqs, registration_questions, location_url')
+    .select('id, organizer_id, name, date, time, timezone, venue, description, status, event_type, max_registrations, auto_approve_registrations, banner_url, agenda, speakers, faqs, registration_questions, location_url')
     .eq('registration_slug', slug)
     .eq('event_type', 'open')
     .single()
@@ -82,6 +83,7 @@ export async function getRegisterEvent(slug: string): Promise<RegisterEventResul
       description: event.description,
       status: event.status,
       max_registrations: event.max_registrations,
+      auto_approve_registrations: event.auto_approve_registrations ?? false,
       registration_count: count ?? 0,
       banner_url: event.banner_url,
       agenda: (event.agenda as AgendaItem[]) || [],

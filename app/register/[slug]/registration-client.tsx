@@ -33,6 +33,7 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [waitlisted, setWaitlisted] = useState(false)
+  const [autoApproved, setAutoApproved] = useState(false)
   const [selectedTierId, setSelectedTierId] = useState(event.tiers[0]?.id ?? '')
   const [redirectingToPaystack, setRedirectingToPaystack] = useState(false)
   const [isFormVisible, setIsFormVisible] = useState(false)
@@ -214,6 +215,9 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
         if (result.waitlisted) {
           setWaitlisted(true)
         }
+        if (result.autoApproved) {
+          setAutoApproved(true)
+        }
         setSubmitted(true)
       }
     } catch {
@@ -295,7 +299,7 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                 <span className="text-foreground">{event.name}</span> is at capacity. We&apos;ll notify you the moment a spot opens up.
               </p>
             </>
-          ) : (
+          ) : autoApproved ? (
             <>
               <CheckCircle2 size={40} strokeWidth={1.5} className="mx-auto mb-5 text-emerald-600 dark:text-emerald-400" />
               <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">
@@ -306,6 +310,19 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
               </h1>
               <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
                 Your spot is confirmed. Check your email for your entry pass.
+              </p>
+            </>
+          ) : (
+            <>
+              <Clock size={40} strokeWidth={1.5} className="mx-auto mb-5 text-amber-500" />
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-amber-500">
+                Pending host approval
+              </p>
+              <h1 className="mt-3 font-display text-3xl font-medium leading-tight tracking-tight text-foreground">
+                Application received
+              </h1>
+              <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
+                Your registration for <span className="text-foreground">{event.name}</span> is awaiting host approval. You&apos;ll receive an email once approved.
               </p>
             </>
           )}
@@ -810,7 +827,9 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                             ? `Pay ₦${Math.ceil(
                                 (selectedTier?.price ?? 0) / 100
                               ).toLocaleString('en-NG')} & register`
-                            : 'Confirm registration'}
+                            : event.auto_approve_registrations
+                            ? 'Confirm registration'
+                            : 'Submit application'}
                           {!isProcessing && <ArrowRight size={15} strokeWidth={2} />}
                         </button>
                         <p className="mt-3 text-center font-sans text-[11px] leading-relaxed text-muted-foreground/80">
