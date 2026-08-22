@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Users, UserCheck, Clock, TrendingUp, DoorOpen, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -8,7 +8,7 @@ import { StatCard } from '@/components/stat-card'
 import { SectionHeader } from '@/components/section-header'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import type { Invitation, Event } from '@/lib/types'
+import type { Invitation, Event, TicketTier, Attendee, Payment, RegistrationQuestion } from '@/lib/types'
 import dynamic from 'next/dynamic'
 import { EventSummaryReport } from '@/components/event-summary-pdf'
 
@@ -20,16 +20,19 @@ const PDFDownloadLink = dynamic(
 type EntryWithGuest = {
   id: string
   scanned_at: string
+  scanner_link_id?: string | null
+  gate_name?: string | null
   invitation: {
     party_size: number
     seat_info: string | null
+    tier_name?: string | null
     guest: { name: string }
   }
 }
 
 type GuestName = { name: string }
 
-type InvitationRaw = Pick<Invitation, 'id' | 'party_size' | 'seat_info' | 'status'> & {
+type InvitationRaw = Pick<Invitation, 'id' | 'party_size' | 'seat_info' | 'status' | 'ticket_tier_id'> & {
   guest: GuestName
 }
 
@@ -38,18 +41,21 @@ type RawDbInvitation = {
   party_size: number
   seat_info: string | null
   status: Invitation['status']
+  ticket_tier_id: string | null
   attendee: GuestName | GuestName[] | null
 }
 
 type RawDbLog = {
   id: string
   scanned_at: string
+  scanner_link_id: string | null
   invitation: {
     id: string
     party_size: number
     seat_info: string | null
+    ticket_tier_id: string | null
     attendee: GuestName | GuestName[] | null
-  } | { id: string; party_size: number; seat_info: string | null; attendee: GuestName | GuestName[] | null }[] | null
+  } | { id: string; party_size: number; seat_info: string | null; ticket_tier_id: string | null; attendee: GuestName | GuestName[] | null }[] | null
 }
 
 export default function LiveDashboardPage() {
@@ -59,11 +65,71 @@ export default function LiveDashboardPage() {
   const [arrived, setArrived] = useState(0)
   const [arrivedSeats, setArrivedSeats] = useState(0)
   const [entries, setEntries] = useState<EntryWithGuest[]>([])
-  const [pending, setPending] = useState<Array<{ name: string; party_size: number; seat_info: string | null }>>([])
+  const [pending, setPending] = useState<Array<{ name: string; party_size: number; seat_info: string | null; tier_name?: string | null }>>([])
   const [entranceStats, setEntranceStats] = useState<Array<{ label: string; count: number }>>([])  
   const [loading, setLoading] = useState(true)
   const [event, setEvent] = useState<Event | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+
+  // Rich feature states for report
+  const [financials, setFinancials] = useState<{
+    grossRevenueKobo: number
+    platformFeeKobo: number
+    organiserPayoutKobo: number
+    currency: string
+    paidTicketsCount: number
+    freeTicketsCount: number
+  }>({
+    grossRevenueKobo: 0,
+    platformFeeKobo: 0,
+    organiserPayoutKobo: 0,
+    currency: 'NGN',
+    paidTicketsCount: 0,
+    freeTicketsCount: 0,
+  })
+
+  const [tierBreakdown, setTierBreakdown] = useState<Array<{
+    id: string
+    name: string
+    priceKobo: number
+    currency: string
+    capacity: number | null
+    allocatedCount: number
+    arrivedCount: number
+    revenueKobo: number
+  }>>([])
+
+  const [registrationFunnel, setRegistrationFunnel] = useState<{
+    totalApplications: number
+    accepted: number
+    pending: number
+    waitlist: number
+    rejected: number
+    sources: {
+      publicRegistration: number
+      csvImport: number
+      manual: number
+    }
+  }>({
+    totalApplications: 0,
+    accepted: 0,
+    pending: 0,
+    waitlist: 0,
+    rejected: 0,
+    sources: {
+      publicRegistration: 0,
+      csvImport: 0,
+      manual: 0,
+    },
+  })
+
+  const [customQuestions, setCustomQuestions] = useState<Array<{
+    id: string
+    label: string
+    type: string
+    responsesCount: number
+    topAnswers?: Array<{ text: string; count: number }>
+  }>>([])
 
   const getPeakCheckInTime = (entriesList: EntryWithGuest[]) => {
     if (entriesList.length === 0) return 'N/A'
@@ -96,135 +162,275 @@ export default function LiveDashboardPage() {
     setIsMounted(true)
   }, [])
 
-  useEffect(() => {
-    const supabase = createClient()
+  const loadData = useCallback(async () => {
+    try {
+      const supabase = createClient()
 
-    async function loadData() {
-      try {
-        const { data: eventData } = await supabase
-          .from('events')
-          .select('*')
-          .eq('id', eventId)
-          .single()
-        setEvent(eventData)
+      // Fetch all required data in parallel
+      const [
+        { data: eventData },
+        { data: invitations },
+        { data: logs },
+        { data: scanLinks },
+        { data: tiersData },
+        { data: paymentsData },
+        { data: attendeesData },
+        { data: answersData },
+      ] = await Promise.all([
+        supabase.from('events').select('*').eq('id', eventId).single(),
+        supabase.from('invitations').select('id, party_size, seat_info, status, ticket_tier_id, attendee:attendees(name)').eq('event_id', eventId),
+        supabase.from('entry_logs').select('id, scanned_at, scanner_link_id, invitation:invitations(id, party_size, seat_info, ticket_tier_id, attendee:attendees(name))').order('scanned_at', { ascending: false }),
+        supabase.from('scanner_links').select('id, label, is_active').eq('event_id', eventId),
+        supabase.from('ticket_tiers').select('*').eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: true }),
+        supabase.from('payments').select('*').eq('event_id', eventId).eq('status', 'paid'),
+        supabase.from('attendees').select('*').eq('event_id', eventId),
+        supabase.from('registration_answers').select('attendee_id, answers').eq('event_id', eventId),
+      ])
 
-        const { data: invitations } = await supabase
-          .from('invitations')
-          .select('id, party_size, seat_info, status, attendee:attendees(name)')
-          .eq('event_id', eventId)
+      setEvent(eventData as Event)
 
-        const { data: logs } = await supabase
-          .from('entry_logs')
-          .select('id, scanned_at, invitation:invitations(id, party_size, seat_info, attendee:attendees(name))')
-          .in('invitation_id', (invitations ?? []).map(i => i.id))
-          .order('scanned_at', { ascending: false })
+      // Scanner Gate Map
+      const gateMap = new Map<string, string>()
+      ;(scanLinks ?? []).forEach((sl) => {
+        gateMap.set(sl.id, sl.label)
+      })
 
-        const logsArr = (logs ?? []) as unknown as RawDbLog[]
-        const invArrRaw = (invitations ?? []) as unknown as RawDbInvitation[]
+      // Tier Map
+      const tierMap = new Map<string, TicketTier>()
+      const tiersList = (tiersData ?? []) as TicketTier[]
+      tiersList.forEach((t) => {
+        tierMap.set(t.id, t)
+      })
 
-        const invArr: InvitationRaw[] = invArrRaw.map(i => {
-          const att = Array.isArray(i.attendee) ? i.attendee[0] : i.attendee
-          return {
-            id: i.id,
-            party_size: i.party_size,
-            seat_info: i.seat_info,
-            status: i.status,
-            guest: att ? { name: att.name } : { name: 'Unknown' }
+      const logsArr = (logs ?? []) as unknown as RawDbLog[]
+      const invArrRaw = (invitations ?? []) as unknown as RawDbInvitation[]
+
+      const invArr: InvitationRaw[] = invArrRaw.map(i => {
+        const att = Array.isArray(i.attendee) ? i.attendee[0] : i.attendee
+        return {
+          id: i.id,
+          party_size: i.party_size,
+          seat_info: i.seat_info,
+          status: i.status,
+          ticket_tier_id: i.ticket_tier_id,
+          guest: att ? { name: att.name } : { name: 'Unknown' }
+        }
+      })
+
+      const logsPerInv = new Map<string, number>()
+      logsArr.forEach((l) => {
+        const invRaw = Array.isArray(l.invitation) ? l.invitation[0] : l.invitation
+        const invId = invRaw?.id
+        if (invId) logsPerInv.set(invId, (logsPerInv.get(invId) ?? 0) + 1)
+      })
+
+      setTotalInvited(invArr.length)
+      setTotalSeats(invArr.reduce((a, i) => a + (i.party_size ?? 1), 0))
+      setArrived(logsArr.length)
+      setArrivedSeats(logsPerInv.size)
+
+      setEntries(logsArr.map(l => {
+        const invRaw = Array.isArray(l.invitation) ? l.invitation[0] : l.invitation
+        const attRaw = invRaw ? (Array.isArray(invRaw.attendee) ? invRaw.attendee[0] : invRaw.attendee) : null
+        const tierName = invRaw?.ticket_tier_id ? tierMap.get(invRaw.ticket_tier_id)?.name : null
+        return {
+          id: l.id,
+          scanned_at: l.scanned_at,
+          scanner_link_id: l.scanner_link_id,
+          gate_name: l.scanner_link_id ? gateMap.get(l.scanner_link_id) : 'Main Door',
+          invitation: {
+            party_size: invRaw?.party_size ?? 1,
+            seat_info:  invRaw?.seat_info ?? null,
+            tier_name:  tierName ?? null,
+            guest:      attRaw ?? { name: 'Unknown' }
           }
-        })
+        }
+      }))
 
-        const logsPerInv = new Map<string, number>()
-        logsArr.forEach((l) => {
-          const invRaw = Array.isArray(l.invitation) ? l.invitation[0] : l.invitation
-          const invId = invRaw?.id
-          if (invId) logsPerInv.set(invId, (logsPerInv.get(invId) ?? 0) + 1)
-        })
-
-        setTotalInvited(invArr.length)
-        setTotalSeats(invArr.reduce((a, i) => a + (i.party_size ?? 1), 0))
-        setArrived(logsArr.length)
-        setArrivedSeats(logsPerInv.size)
-        setEntries(logsArr.map(l => {
-          const invRaw = Array.isArray(l.invitation) ? l.invitation[0] : l.invitation
-          const attRaw = invRaw ? (Array.isArray(invRaw.attendee) ? invRaw.attendee[0] : invRaw.attendee) : null
-          return {
-            id: l.id,
-            scanned_at: l.scanned_at,
-            invitation: {
-              party_size: invRaw?.party_size ?? 1,
-              seat_info:  invRaw?.seat_info ?? null,
-              guest:      attRaw ?? { name: 'Unknown' }
+      setPending(
+        invArr
+          .map((i) => {
+            const arrivedInParty   = logsPerInv.get(i.id) ?? 0
+            const remainingInParty = (i.party_size ?? 1) - arrivedInParty
+            return { ...i, remainingInParty }
+          })
+          .filter((i) => i.remainingInParty > 0)
+          .map((i) => {
+            return {
+              name:       i.guest?.name ?? 'Unknown',
+              party_size: i.remainingInParty,
+              seat_info:  i.seat_info,
+              tier_name:  i.ticket_tier_id ? tierMap.get(i.ticket_tier_id)?.name : null,
             }
+          })
+      )
+
+      // --- Per-entrance breakdown ---
+      if (scanLinks && scanLinks.length > 0) {
+        const countByLink = new Map<string, number>()
+        logsArr.forEach((el) => {
+          if (el.scanner_link_id) {
+            countByLink.set(el.scanner_link_id, (countByLink.get(el.scanner_link_id) ?? 0) + 1)
           }
-        }))
-        setPending(
-          invArr
-            .map((i) => {
-              const arrivedInParty   = logsPerInv.get(i.id) ?? 0
-              const remainingInParty = (i.party_size ?? 1) - arrivedInParty
-              return { ...i, remainingInParty }
-            })
-            .filter((i) => i.remainingInParty > 0)
-            .map((i) => {
-              return {
-                name:       i.guest?.name ?? 'Unknown',
-                party_size: i.remainingInParty,
-                seat_info:  i.seat_info
-              }
-            })
+        })
+
+        setEntranceStats(
+          scanLinks
+            .map((sl) => ({ label: sl.label, count: countByLink.get(sl.id) ?? 0 }))
+            .sort((a, b) => b.count - a.count)
         )
+      }
 
-        // --- Per-entrance breakdown ---
-        const { data: scanLinks } = await supabase
-          .from('scanner_links')
-          .select('id, label')
-          .eq('event_id', eventId)
+      // --- Financials Computation ---
+      const paymentsList = (paymentsData ?? []) as Payment[]
+      const grossRevenueKobo = paymentsList.reduce((sum, p) => sum + (p.amount_kobo || 0), 0)
+      const platformFeeKobo = paymentsList.reduce((sum, p) => sum + (p.platform_fee_kobo || 0), 0)
+      const organiserPayoutKobo = paymentsList.reduce((sum, p) => sum + (p.organiser_amount_kobo || 0), 0)
+      const currency = paymentsList[0]?.currency || 'NGN'
 
-        if (scanLinks && scanLinks.length > 0) {
-          const linkIds = scanLinks.map((sl) => sl.id)
-          const { data: entranceLogs } = await supabase
-            .from('entry_logs')
-            .select('scanner_link_id')
-            .in('scanner_link_id', linkIds)
+      // Free vs Paid tickets count
+      let paidTicketsCount = 0
+      let freeTicketsCount = 0
+      invArr.forEach((inv) => {
+        const tier = inv.ticket_tier_id ? tierMap.get(inv.ticket_tier_id) : null
+        if (tier && tier.price > 0) {
+          paidTicketsCount += (inv.party_size ?? 1)
+        } else {
+          freeTicketsCount += (inv.party_size ?? 1)
+        }
+      })
 
-          const countByLink = new Map<string, number>()
-          ;(entranceLogs ?? []).forEach((el) => {
-            if (el.scanner_link_id) {
-              countByLink.set(el.scanner_link_id, (countByLink.get(el.scanner_link_id) ?? 0) + 1)
+      setFinancials({
+        grossRevenueKobo,
+        platformFeeKobo,
+        organiserPayoutKobo,
+        currency,
+        paidTicketsCount,
+        freeTicketsCount,
+      })
+
+      // --- Ticket Tiers Breakdown ---
+      const mappedTierBreakdown = tiersList.map((tier) => {
+        const allocatedCount = invArr
+          .filter((inv) => inv.ticket_tier_id === tier.id)
+          .reduce((sum, inv) => sum + (inv.party_size ?? 1), 0)
+
+        const arrivedCount = logsArr
+          .filter((log) => {
+            const invRaw = Array.isArray(log.invitation) ? log.invitation[0] : log.invitation
+            return invRaw?.ticket_tier_id === tier.id
+          })
+          .length
+
+        const tierRevenueKobo = paymentsList
+          .filter((p) => p.ticket_tier_id === tier.id)
+          .reduce((sum, p) => sum + (p.amount_kobo || 0), 0)
+
+        return {
+          id: tier.id,
+          name: tier.name,
+          priceKobo: tier.price,
+          currency: tier.currency || 'NGN',
+          capacity: tier.capacity,
+          allocatedCount,
+          arrivedCount,
+          revenueKobo: tierRevenueKobo,
+        }
+      })
+      setTierBreakdown(mappedTierBreakdown)
+
+      // --- Registration Pipeline & Sources ---
+      const allAttendees = (attendeesData ?? []) as Attendee[]
+      const publicRegistrations = allAttendees.filter((a) => a.source === 'public_registration')
+      const csvImports = allAttendees.filter((a) => a.source === 'imported')
+      const manuals = allAttendees.filter((a) => a.source === 'manual')
+
+      const accepted = publicRegistrations.filter((a) => a.registration_status === 'accepted').length
+      const pendingRegs = publicRegistrations.filter((a) => a.registration_status === 'pending').length
+      const waitlist = publicRegistrations.filter((a) => a.registration_status === 'waitlist').length
+      const rejected = publicRegistrations.filter((a) => a.registration_status === 'rejected').length
+
+      setRegistrationFunnel({
+        totalApplications: publicRegistrations.length,
+        accepted,
+        pending: pendingRegs,
+        waitlist,
+        rejected,
+        sources: {
+          publicRegistration: publicRegistrations.length,
+          csvImport: csvImports.length,
+          manual: manuals.length,
+        },
+      })
+
+      // --- Custom Questions Summary ---
+      const questionsList = (eventData?.registration_questions ?? []) as RegistrationQuestion[]
+      if (questionsList.length > 0 && answersData && answersData.length > 0) {
+        const summary = questionsList.map((q) => {
+          const counts: Record<string, number> = {}
+          let totalResponses = 0
+
+          answersData.forEach((row) => {
+            const ansObj = row.answers as Record<string, string | string[]> | null
+            if (!ansObj || !ansObj[q.id]) return
+
+            totalResponses++
+            const val = ansObj[q.id]
+            if (Array.isArray(val)) {
+              val.forEach((item) => {
+                counts[item] = (counts[item] ?? 0) + 1
+              })
+            } else if (typeof val === 'string' && val.trim().length > 0) {
+              counts[val] = (counts[val] ?? 0) + 1
             }
           })
 
-          setEntranceStats(
-            scanLinks
-              .map((sl) => ({ label: sl.label, count: countByLink.get(sl.id) ?? 0 }))
-              .sort((a, b) => b.count - a.count)
-          )
-        }
-      } finally {
-        setLoading(false)
+          const topAnswers = Object.entries(counts)
+            .map(([text, count]) => ({ text, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5)
+
+          return {
+            id: q.id,
+            label: q.label,
+            type: q.type,
+            responsesCount: totalResponses,
+            topAnswers,
+          }
+        })
+        setCustomQuestions(summary)
       }
+    } finally {
+      setLoading(false)
     }
+  }, [eventId])
 
-    loadData()
+  useEffect(() => {
+    void loadData()
 
-    // Realtime subscriptions below drive live updates. The interval is only a
-    // slow safety net for the rare case Realtime drops (was 5s, which double-
-    // refetched on top of every realtime event — pure redundant DB egress).
+    // Realtime subscriptions
+    const supabase = createClient()
     const poll = setInterval(loadData, 60000)
 
     const channel = supabase
       .channel(`entry-logs-${eventId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'entry_logs' },  () => loadData())
-      .on('postgres_changes', { event: '*',      schema: 'public', table: 'invitations' }, () => loadData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'entry_logs' }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invitations' }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => void loadData())
       .subscribe()
 
     return () => {
       clearInterval(poll)
       supabase.removeChannel(channel)
     }
-  }, [eventId])
+  }, [eventId, loadData])
 
-  const arrivalRate = totalSeats > 0 ? Math.round((arrived / totalSeats) * 100) : 0
+  const venueCapacity = event?.capacity && event.capacity > 0 ? event.capacity : null
+  const effectiveCapacity = venueCapacity ? Math.max(venueCapacity, totalSeats, arrived) : Math.max(totalSeats, arrived, 1)
+  const arrivalRate = totalSeats > 0 ? Math.min(100, Math.round((arrivedSeats / totalSeats) * 100)) : (arrived > 0 ? 100 : 0)
+  const pendingSeats = Math.max(0, totalSeats - arrivedSeats)
+  const capacityUsagePct = Math.min(100, Math.round((arrived / effectiveCapacity) * 100))
 
   if (loading) {
     return (
@@ -261,7 +467,6 @@ export default function LiveDashboardPage() {
 
         {/* Recent + Pending columns skeleton */}
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Column 1 */}
           <div className="space-y-4">
             <Skeleton className="h-6 w-32" />
             <div className="space-y-2">
@@ -276,7 +481,6 @@ export default function LiveDashboardPage() {
               ))}
             </div>
           </div>
-          {/* Column 2 */}
           <div className="space-y-4">
             <Skeleton className="h-6 w-36" />
             <div className="space-y-2">
@@ -322,20 +526,26 @@ export default function LiveDashboardPage() {
               <EventSummaryReport
                 event={event}
                 stats={{
-                  totalSeats,
+                  totalSeats: effectiveCapacity,
                   totalInvited,
                   arrived,
                   arrivedSeats,
-                  pendingSeats: totalSeats - arrived,
+                  pendingSeats,
                   arrivalRate,
                   peakCheckInTime: getPeakCheckInTime(entries),
                   entranceStats,
-                  recentEntries: entries.slice(0, 10).map(e => ({
+                  recentEntries: entries.slice(0, 20).map(e => ({
                     guestName: e.invitation.guest.name,
                     seatInfo: e.invitation.seat_info,
+                    tierName: e.invitation.tier_name,
                     scannedAt: e.scanned_at,
-                    partySize: e.invitation.party_size
-                  }))
+                    partySize: e.invitation.party_size,
+                    scannerGate: e.gate_name,
+                  })),
+                  financials,
+                  tierBreakdown,
+                  registrationFunnel,
+                  customQuestions,
                 }}
               />
             }
@@ -348,7 +558,7 @@ export default function LiveDashboardPage() {
                 disabled={pdfLoading}
               >
                 <FileText className="h-4 w-4" aria-hidden="true" />
-                {pdfLoading ? 'Generating PDF...' : 'Download Report'}
+                {pdfLoading ? 'Generating PDF...' : 'Download Executive Report'}
               </Button>
             )}
           </PDFDownloadLink>
@@ -360,8 +570,8 @@ export default function LiveDashboardPage() {
         <StatCard
           icon={<Users className="h-5 w-5 text-copper" aria-hidden="true" />}
           label="Total Seats"
-          value={totalSeats}
-          subtext="Configured capacity"
+          value={venueCapacity ?? totalSeats}
+          subtext={venueCapacity ? `${totalSeats} seats invited` : "Configured capacity"}
         />
         <StatCard
           icon={<UserCheck className="h-5 w-5 text-copper" aria-hidden="true" />}
@@ -379,7 +589,7 @@ export default function LiveDashboardPage() {
           icon={<Clock className="h-5 w-5 text-amber-500" aria-hidden="true" />}
           label="Attendance Rate"
           value={`${arrivalRate}%`}
-          subtext="Of capacity filled"
+          subtext="Of invitations attended"
         />
       </div>
 
@@ -387,19 +597,19 @@ export default function LiveDashboardPage() {
       <div>
         <div className="flex justify-between items-end mb-2">
           <span className="font-sans text-xs font-semibold text-muted-foreground">Capacity Usage</span>
-          <span className="font-sans text-xs font-bold text-copper">{arrived} / {totalSeats}</span>
+          <span className="font-sans text-xs font-bold text-copper">{arrived} / {effectiveCapacity}</span>
         </div>
         <div
           className="w-full h-4 bg-card border border-border/40 rounded-full relative p-0.5 overflow-hidden"
           role="progressbar"
-          aria-valuenow={arrivalRate}
+          aria-valuenow={capacityUsagePct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Arrival rate: ${arrivalRate}%`}
+          aria-label={`Capacity usage: ${capacityUsagePct}%`}
         >
           <div
             className="h-full bg-copper rounded-full transition-all duration-1000 ease-out"
-            style={{ width: `${arrivalRate}%` }}
+            style={{ width: `${capacityUsagePct}%` }}
           />
         </div>
       </div>
@@ -452,6 +662,7 @@ export default function LiveDashboardPage() {
                   <div>
                     <p className="font-sans text-sm font-semibold text-foreground">{entry.invitation.guest.name}</p>
                     <p className="font-sans text-xs text-muted-foreground mt-0.5">
+                      {entry.invitation?.tier_name && <span className="mr-2 text-copper font-medium">{entry.invitation.tier_name}</span>}
                       {entry.invitation?.seat_info && <span className="mr-3">{entry.invitation.seat_info}</span>}
                       {new Date(entry.scanned_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -475,19 +686,20 @@ export default function LiveDashboardPage() {
               <p className="font-sans text-xs font-bold text-emerald-500">All guests have arrived!</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-px max-h-96 overflow-y-auto">
+            <div className="flex flex-col gap-2 max-h-96 overflow-y-auto pr-1">
               {pending.map((p, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between px-4 py-3 bg-background border border-foreground/10 hover:border-foreground/20 transition-colors"
+                  className="flex items-center justify-between px-4 py-3 bg-card border border-border/40 rounded-xl hover:border-copper/40 transition-colors"
                 >
                   <div>
-                    <p className="font-mono text-sm text-foreground">{p.name}</p>
-                    {p.seat_info && (
-                      <p className="font-mono text-[10px] text-foreground/40 uppercase tracking-widest mt-0.5">{p.seat_info}</p>
-                    )}
+                    <p className="font-sans text-sm font-semibold text-foreground">{p.name}</p>
+                    <p className="font-sans text-xs text-muted-foreground mt-0.5">
+                      {p.tier_name && <span className="mr-2 text-copper font-medium">{p.tier_name}</span>}
+                      {p.seat_info && <span>{p.seat_info}</span>}
+                    </p>
                   </div>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-signal/60 border border-signal/20 px-2 py-1">
+                  <span className="font-sans text-xs font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full">
                     +{p.party_size}
                   </span>
                 </div>
