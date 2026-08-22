@@ -88,6 +88,7 @@ export interface EventSummaryReportProps {
       type: string
       responsesCount: number
       topAnswers?: Array<{ text: string; count: number }>
+      aiSummary?: string  // Gemini-generated prose for 'text' type questions
     }>
   }
 }
@@ -454,7 +455,69 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     fontSize: 7.5,
     color: '#0C0B09',
+    marginBottom: 5,
+  },
+  questionTypeBadge: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 6,
+    letterSpacing: 0.5,
+    color: '#8A847C',
+    marginBottom: 4,
+  },
+  // Bar chart rows (radio / checkbox)
+  chartRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 3,
+    gap: 5,
+  },
+  chartBarLabel: {
+    fontFamily: 'Helvetica',
+    fontSize: 6.5,
+    color: '#171512',
+    width: '38%',
+  },
+  chartBarTrack: {
+    flex: 1,
+    height: 5,
+    backgroundColor: '#E8E4DC',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  chartBarFillCopper: {
+    height: '100%',
+    backgroundColor: '#BF8430',
+    borderRadius: 2,
+  },
+  chartBarCount: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 6,
+    color: '#6E6A62',
+    width: '16%',
+    textAlign: 'right',
+  },
+  // AI Summary box (text questions)
+  aiSummaryBox: {
+    backgroundColor: '#F5F3EE',
+    borderLeftWidth: 2,
+    borderLeftColor: '#BF8430',
+    paddingVertical: 5,
+    paddingHorizontal: 7,
+    marginTop: 2,
+    borderRadius: 2,
+  },
+  aiSummaryLabel: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 6,
+    color: '#BF8430',
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  aiSummaryText: {
+    fontFamily: 'Helvetica',
+    fontSize: 7,
+    color: '#171512',
+    lineHeight: 1.45,
   },
   answerRow: {
     flexDirection: 'row',
@@ -932,19 +995,73 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
               </View>
 
               <View style={{ marginBottom: 12 }}>
-                {stats.customQuestions?.map((q) => (
-                  <View key={q.id} style={styles.questionBox}>
-                    <Text style={styles.questionTitle}>
-                      {q.label} ({q.responsesCount} responses)
-                    </Text>
-                    {q.topAnswers?.map((ans, aIdx) => (
-                      <View key={aIdx} style={styles.answerRow}>
-                        <Text style={styles.answerText}>• {ans.text}</Text>
-                        <Text style={styles.answerCount}>{ans.count} selections</Text>
-                      </View>
-                    ))}
-                  </View>
-                ))}
+                {stats.customQuestions?.map((q) => {
+                  const isChoice = q.type === 'radio' || q.type === 'checkbox'
+                  const isText = q.type === 'text'
+                  const topCount = q.topAnswers?.[0]?.count ?? 1
+
+                  return (
+                    <View key={q.id} style={styles.questionBox}>
+                      {/* Question header */}
+                      <Text style={styles.questionTitle}>
+                        {q.label} ({q.responsesCount} responses)
+                      </Text>
+                      <Text style={styles.questionTypeBadge}>
+                        {isChoice
+                          ? (q.type === 'checkbox' ? 'MULTI-SELECT' : 'SINGLE CHOICE')
+                          : 'SHORT ANSWER'}
+                      </Text>
+
+                      {/* Radio / Checkbox — bar chart */}
+                      {isChoice && q.topAnswers && q.topAnswers.length > 0 && (
+                        <View>
+                          {q.topAnswers.map((ans, aIdx) => {
+                            const pct = Math.round((ans.count / topCount) * 100)
+                            const displayPct = q.responsesCount > 0
+                              ? Math.round((ans.count / q.responsesCount) * 100)
+                              : 0
+                            return (
+                              <View key={aIdx} style={styles.chartRow}>
+                                <Text style={styles.chartBarLabel} numberOfLines={1}>
+                                  {ans.text}
+                                </Text>
+                                <View style={styles.chartBarTrack}>
+                                  <View
+                                    style={[
+                                      styles.chartBarFillCopper,
+                                      { width: `${pct}%` },
+                                    ]}
+                                  />
+                                </View>
+                                <Text style={styles.chartBarCount}>
+                                  {ans.count} ({displayPct}%)
+                                </Text>
+                              </View>
+                            )
+                          })}
+                        </View>
+                      )}
+
+                      {/* Text — AI prose summary */}
+                      {isText && (
+                        <View style={styles.aiSummaryBox}>
+                          <Text style={styles.aiSummaryLabel}>AI INSIGHT</Text>
+                          {q.aiSummary ? (
+                            <Text style={styles.aiSummaryText}>{q.aiSummary}</Text>
+                          ) : (
+                            // Graceful fallback: top answers as plain list
+                            (q.topAnswers ?? []).map((ans, aIdx) => (
+                              <View key={aIdx} style={styles.answerRow}>
+                                <Text style={styles.answerText}>• {ans.text}</Text>
+                                <Text style={styles.answerCount}>{ans.count}</Text>
+                              </View>
+                            ))
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  )
+                })}
               </View>
             </>
           )}
