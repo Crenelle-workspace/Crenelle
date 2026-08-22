@@ -1,11 +1,38 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
-interface EventSummaryReportProps {
+export interface EventSummaryReportProps {
   event: {
     name: string
     date: string
     time: string | null
+    timezone?: string
     venue: string
+    description?: string | null
+    capacity?: number | null
+    event_type?: 'open' | 'closed'
+    registration_slug?: string | null
+    auto_approve_registrations?: boolean
+    agenda?: Array<{
+      id: string
+      time: string
+      title: string
+      description?: string
+      speaker?: string
+    }> | null
+    speakers?: Array<{
+      id: string
+      name: string
+      role: string
+      company?: string
+      bio?: string
+    }> | null
+    registration_questions?: Array<{
+      id: string
+      label: string
+      type: string
+      options?: string[]
+      required?: boolean
+    }> | null
   } | null
   stats: {
     totalSeats: number
@@ -14,177 +41,468 @@ interface EventSummaryReportProps {
     arrivedSeats: number
     pendingSeats: number
     arrivalRate: number
+    capacityUtilization?: number
     peakCheckInTime: string
-    entranceStats: Array<{ label: string; count: number }>
+    entranceStats: Array<{ label: string; count: number; percentage?: number }>
     recentEntries: Array<{
       guestName: string
       seatInfo: string | null
+      tierName?: string | null
       scannedAt: string
       partySize: number
+      scannerGate?: string | null
+    }>
+    financials?: {
+      grossRevenueKobo: number
+      platformFeeKobo: number
+      organiserPayoutKobo: number
+      currency: string
+      paidTicketsCount: number
+      freeTicketsCount: number
+    }
+    tierBreakdown?: Array<{
+      id: string
+      name: string
+      priceKobo: number
+      currency: string
+      capacity: number | null
+      allocatedCount: number
+      arrivedCount: number
+      revenueKobo: number
+    }>
+    registrationFunnel?: {
+      totalApplications: number
+      accepted: number
+      pending: number
+      waitlist: number
+      rejected: number
+      sources: {
+        publicRegistration: number
+        csvImport: number
+        manual: number
+      }
+    }
+    customQuestions?: Array<{
+      id: string
+      label: string
+      type: string
+      responsesCount: number
+      topAnswers?: Array<{ text: string; count: number }>
     }>
   }
 }
 
+// ── Crenelle Luxury Editorial PDF Design System ────────────────────────────
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    paddingTop: 36,
+    paddingBottom: 48,
+    paddingHorizontal: 36,
     fontFamily: 'Helvetica',
     backgroundColor: '#FFFFFF',
-    color: '#000000',
-    position: 'relative',
+    color: '#0C0B09',
   },
+  // Top Banner & Branding
   header: {
-    marginBottom: 15,
+    marginBottom: 16,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#0C0B09',
+    paddingBottom: 12,
   },
-  brand: {
-    fontFamily: 'Courier',
-    fontSize: 10,
-    color: '#B8860B', // Crenelle Copper Accent
-    letterSpacing: 2,
+  brandRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
+  },
+  brandTag: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 8.5,
+    color: '#BF8430', // Crenelle Signature Copper
+    letterSpacing: 1.5,
+  },
+  badgePill: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E8E4DC',
+    backgroundColor: '#FAF9F6',
+  },
+  badgeText: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    color: '#171512',
+    letterSpacing: 0.8,
   },
   title: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 24,
-    textTransform: 'uppercase',
-    marginBottom: 8,
+    fontSize: 20,
+    color: '#0C0B09',
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
-  metaContainer: {
+  metaBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderBottomWidth: 2,
-    borderBottomColor: '#000000',
-    paddingBottom: 12,
-    marginBottom: 20,
+    flexWrap: 'wrap',
+    gap: 14,
+    marginTop: 4,
   },
   metaItem: {
-    fontSize: 9,
-    fontFamily: 'Courier',
-    color: '#555555',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaLabel: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#8A847C',
+    marginRight: 4,
+    letterSpacing: 0.5,
+  },
+  metaValue: {
+    fontFamily: 'Helvetica',
+    fontSize: 8,
+    color: '#171512',
+  },
+
+  // Section Headers
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8E4DC',
+    paddingBottom: 4,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  sectionTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionAccentBar: {
+    width: 3,
+    height: 10,
+    backgroundColor: '#BF8430',
+    marginRight: 6,
+    borderRadius: 1,
   },
   sectionTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 12,
+    fontSize: 9.5,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#000000',
-    paddingBottom: 3,
-    marginBottom: 10,
-    marginTop: 10,
+    letterSpacing: 1,
+    color: '#0C0B09',
   },
+  sectionSubtext: {
+    fontFamily: 'Helvetica',
+    fontSize: 7.5,
+    color: '#8A847C',
+  },
+
+  // KPI Scorecard Grid
   kpiGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 20,
-    width: '100%',
+    gap: 8,
+    marginBottom: 10,
   },
-  kpiBox: {
-    width: '48%',
+  kpiCard: {
+    width: '23.5%',
+    backgroundColor: '#FAF9F6',
     borderWidth: 1,
-    borderColor: '#000000',
-    padding: 10,
-    marginRight: '2%',
-    marginBottom: 8,
-    backgroundColor: '#FAF9F6', // Crenelle paper background representation
+    borderColor: '#E8E4DC',
+    borderRadius: 6,
+    padding: 8,
   },
   kpiLabel: {
-    fontFamily: 'Courier',
-    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 6.5,
     textTransform: 'uppercase',
-    color: '#666666',
+    color: '#8A847C',
+    letterSpacing: 0.8,
     marginBottom: 4,
+  },
+  kpiValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
   },
   kpiValue: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 16,
-    color: '#000000',
+    fontSize: 14,
+    color: '#0C0B09',
+    letterSpacing: -0.2,
   },
-  kpiSubtext: {
+  kpiValueEmerald: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 14,
+    color: '#10B981', // Vibrant Emerald (AGENTS.md)
+  },
+  kpiValueCopper: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 14,
+    color: '#BF8430', // Crenelle Copper
+  },
+  kpiValueCoral: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 14,
+    color: '#EF4444', // Vibrant Coral (AGENTS.md)
+  },
+  kpiSub: {
     fontFamily: 'Helvetica',
-    fontSize: 8,
-    color: '#666666',
-    marginTop: 2,
+    fontSize: 6.5,
+    color: '#6E6A62',
+    marginTop: 3,
+    lineHeight: 1.2,
   },
-  twoColumnContainer: {
+
+  // Two Column Container
+  twoCol: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 10,
   },
-  column: {
-    width: '48%',
+  col: {
+    flex: 1,
+  },
+
+  // Tables
+  table: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E8E4DC',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 10,
   },
   tableHeader: {
     flexDirection: 'row',
+    backgroundColor: '#F5F3EE',
     borderBottomWidth: 1,
-    borderBottomColor: '#000000',
-    paddingBottom: 4,
-    marginBottom: 6,
+    borderBottomColor: '#E8E4DC',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
   },
   tableHeaderCell: {
-    fontFamily: 'Courier',
-    fontSize: 8,
-    color: '#666666',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    textTransform: 'uppercase',
+    color: '#6E6A62',
+    letterSpacing: 0.5,
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-    paddingVertical: 4,
+    borderBottomColor: '#F0ECE4',
+    paddingVertical: 4.5,
+    paddingHorizontal: 8,
     alignItems: 'center',
   },
+  tableRowEven: {
+    backgroundColor: '#FFFFFF',
+  },
+  tableRowOdd: {
+    backgroundColor: '#FAF9F6',
+  },
   tableCell: {
-    fontSize: 8,
-    fontFamily: 'Courier',
-    color: '#111111',
+    fontFamily: 'Helvetica',
+    fontSize: 7.5,
+    color: '#171512',
   },
-  gateRow: {
-    marginBottom: 8,
+  tableCellBold: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#0C0B09',
   },
-  gateLabelRow: {
+  tableCellMuted: {
+    fontFamily: 'Helvetica',
+    fontSize: 7,
+    color: '#8A847C',
+  },
+  tableCellEmerald: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#10B981',
+  },
+  tableCellCopper: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#BF8430',
+  },
+
+  // Gate Progress Rows
+  gateItem: {
+    marginBottom: 6,
+  },
+  gateMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 2,
   },
   gateLabel: {
-    fontFamily: 'Courier',
-    fontSize: 8,
-    color: '#333333',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#171512',
   },
   gateCount: {
-    fontFamily: 'Courier',
-    fontSize: 8,
-    color: '#B8860B',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#BF8430',
   },
-  progressContainer: {
+  progressBarBg: {
     width: '100%',
-    height: 6,
-    backgroundColor: '#EEEEEE',
-    borderWidth: 1,
-    borderColor: '#000000',
+    height: 4.5,
+    backgroundColor: '#E8E4DC',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  progressBar: {
+  progressBarFill: {
     height: '100%',
-    backgroundColor: '#B8860B',
+    backgroundColor: '#BF8430',
+    borderRadius: 2,
   },
+
+  // Registration Funnel Pill Card
+  funnelRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 8,
+  },
+  funnelCard: {
+    flex: 1,
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#E8E4DC',
+    borderRadius: 6,
+    padding: 6,
+    alignItems: 'center',
+  },
+  funnelLabel: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 6,
+    textTransform: 'uppercase',
+    color: '#8A847C',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  funnelValue: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 11,
+    color: '#0C0B09',
+  },
+
+  // Agenda & Speaker List
+  agendaItem: {
+    flexDirection: 'row',
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0ECE4',
+  },
+  agendaTimeBadge: {
+    width: 65,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    color: '#BF8430',
+  },
+  agendaContent: {
+    flex: 1,
+  },
+  agendaTitle: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#0C0B09',
+  },
+  agendaSpeaker: {
+    fontFamily: 'Helvetica',
+    fontSize: 7,
+    color: '#6E6A62',
+    marginTop: 1,
+  },
+
+  speakerCard: {
+    width: '48%',
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#E8E4DC',
+    borderRadius: 6,
+    padding: 6,
+    marginBottom: 6,
+  },
+  speakerName: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 8,
+    color: '#0C0B09',
+  },
+  speakerRole: {
+    fontFamily: 'Helvetica',
+    fontSize: 7,
+    color: '#BF8430',
+    marginTop: 1,
+  },
+
+  // Custom Questions Grid
+  questionBox: {
+    backgroundColor: '#FAF9F6',
+    borderWidth: 1,
+    borderColor: '#E8E4DC',
+    borderRadius: 6,
+    padding: 7,
+    marginBottom: 6,
+  },
+  questionTitle: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    color: '#0C0B09',
+    marginBottom: 3,
+  },
+  answerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 1.5,
+  },
+  answerText: {
+    fontFamily: 'Helvetica',
+    fontSize: 7,
+    color: '#6E6A62',
+  },
+  answerCount: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    color: '#BF8430',
+  },
+
+  // Dynamic Footer
   footer: {
     position: 'absolute',
-    bottom: 25,
-    left: 40,
-    right: 40,
+    bottom: 20,
+    left: 36,
+    right: 36,
     borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+    borderTopColor: '#E8E4DC',
     paddingTop: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  footerText: {
-    fontSize: 7,
-    fontFamily: 'Courier',
-    color: '#999999',
-  }
+  footerBrand: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 6.5,
+    color: '#8A847C',
+    letterSpacing: 0.8,
+  },
+  footerPageNum: {
+    fontFamily: 'Helvetica',
+    fontSize: 6.5,
+    color: '#8A847C',
+  },
 })
+
+// Currency Formatter Helper
+function formatCurrency(kobo: number, currency: string = 'NGN'): string {
+  const major = Math.round(kobo / 100)
+  return `${currency} ${major.toLocaleString('en-NG')}`
+}
 
 export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
   const formattedDate = event?.date
@@ -192,155 +510,495 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
         weekday: 'short',
         day: '2-digit',
         month: 'short',
-        year: 'numeric'
+        year: 'numeric',
       })
     : 'N/A'
 
-  const totalCapacity = event ? (event as unknown as { capacity?: number | null }).capacity : null
-  const capacityPctStr = totalCapacity ? ` / ${totalCapacity} capacity` : ''
+  const totalCapacity = event?.capacity ?? null
+  const capacityPct = totalCapacity && totalCapacity > 0
+    ? Math.round((stats.arrived / totalCapacity) * 100)
+    : null
+
+  const isPaidEvent = Boolean(stats.financials && stats.financials.grossRevenueKobo > 0)
+  const hasTierData = Boolean(stats.tierBreakdown && stats.tierBreakdown.length > 0)
+  const hasFunnelData = Boolean(stats.registrationFunnel && stats.registrationFunnel.totalApplications > 0)
+  const hasAgenda = Boolean(event?.agenda && event.agenda.length > 0)
+  const hasSpeakers = Boolean(event?.speakers && event.speakers.length > 0)
+  const hasQuestions = Boolean(stats.customQuestions && stats.customQuestions.length > 0)
 
   return (
-    <Document>
+    <Document title={`${event?.name || 'Event'} - Executive Summary`} author="Crenelle">
+      {/* ── PAGE 1: Executive Overview, Financials & Attendance Intelligence ── */}
       <Page size="A4" style={styles.page}>
-        {/* Header */}
+        {/* Top Header */}
         <View style={styles.header}>
-          <Text style={styles.brand}>CRENELLE // POST_EVENT_SUMMARY</Text>
+          <View style={styles.brandRow}>
+            <Text style={styles.brandTag}>CRENELLE // EXECUTIVE POST-EVENT INTELLIGENCE</Text>
+            <View style={styles.badgePill}>
+              <Text style={styles.badgeText}>
+                {event?.event_type === 'open' ? 'OPEN REGISTRATION' : 'PRIVATE INVITATION'}
+              </Text>
+            </View>
+          </View>
           <Text style={styles.title}>{event?.name || 'Untitled Event'}</Text>
+          <View style={styles.metaBar}>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>DATE:</Text>
+              <Text style={styles.metaValue}>{formattedDate}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>TIME:</Text>
+              <Text style={styles.metaValue}>
+                {event?.time || 'N/A'} {event?.timezone ? `(${event.timezone})` : ''}
+              </Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>VENUE:</Text>
+              <Text style={styles.metaValue}>{event?.venue || 'N/A'}</Text>
+            </View>
+            {totalCapacity ? (
+              <View style={styles.metaItem}>
+                <Text style={styles.metaLabel}>CAPACITY:</Text>
+                <Text style={styles.metaValue}>{totalCapacity} Seats</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
-        {/* Metadata bar */}
-        <View style={styles.metaContainer}>
-          <Text style={styles.metaItem}>DATE: {formattedDate}</Text>
-          <Text style={styles.metaItem}>VENUE: {event?.venue || 'N/A'}</Text>
-          <Text style={styles.metaItem}>TIME: {event?.time || 'N/A'}</Text>
+        {/* Section 1: Executive KPIs Scorecard */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleWrap}>
+            <View style={styles.sectionAccentBar} />
+            <Text style={styles.sectionTitle}>Executive Scorecard</Text>
+          </View>
+          <Text style={styles.sectionSubtext}>Key Performance & Attendance Metrics</Text>
         </View>
 
-        {/* Section: Key Performance Indicators */}
-        <Text style={styles.sectionTitle}>Key Performance Indicators</Text>
         <View style={styles.kpiGrid}>
-          {/* KPI 1 */}
-          <View style={styles.kpiBox}>
+          {/* KPI 1: Attendance Rate */}
+          <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>ATTENDANCE RATE</Text>
-            <Text style={styles.kpiValue}>{stats.arrivalRate}%</Text>
-            <Text style={styles.kpiSubtext}>Percentage of total seats checked in</Text>
+            <View style={styles.kpiValueRow}>
+              <Text style={styles.kpiValueEmerald}>{stats.arrivalRate}%</Text>
+            </View>
+            <Text style={styles.kpiSub}>
+              {stats.arrivedSeats} of {stats.totalInvited} invited checked in
+            </Text>
           </View>
-          {/* KPI 2 */}
-          <View style={styles.kpiBox}>
+
+          {/* KPI 2: Total Admitted */}
+          <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>TOTAL ADMITTED</Text>
-            <Text style={styles.kpiValue}>
-              {stats.arrived} {stats.arrived === 1 ? 'person' : 'people'}
-            </Text>
-            <Text style={styles.kpiSubtext}>
-              {stats.arrivedSeats} of {stats.totalInvited} invitations checked in{capacityPctStr}
+            <View style={styles.kpiValueRow}>
+              <Text style={styles.kpiValue}>{stats.arrived}</Text>
+              <Text style={styles.tableCellMuted}>guests</Text>
+            </View>
+            <Text style={styles.kpiSub}>
+              {capacityPct !== null ? `${capacityPct}% venue capacity reached` : `${stats.totalSeats} total seats`}
             </Text>
           </View>
-          {/* KPI 3 */}
-          <View style={styles.kpiBox}>
-            <Text style={styles.kpiLabel}>NO-SHOWS</Text>
-            <Text style={styles.kpiValue}>{stats.pendingSeats}</Text>
-            <Text style={styles.kpiSubtext}>Remaining seats that did not check in</Text>
+
+          {/* KPI 3: Revenue or No-shows */}
+          <View style={styles.kpiCard}>
+            {isPaidEvent && stats.financials ? (
+              <>
+                <Text style={styles.kpiLabel}>GROSS REVENUE</Text>
+                <View style={styles.kpiValueRow}>
+                  <Text style={styles.kpiValueCopper}>
+                    {formatCurrency(stats.financials.grossRevenueKobo, stats.financials.currency)}
+                  </Text>
+                </View>
+                <Text style={styles.kpiSub}>
+                  Payout: {formatCurrency(stats.financials.organiserPayoutKobo, stats.financials.currency)}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.kpiLabel}>NO-SHOWS</Text>
+                <View style={styles.kpiValueRow}>
+                  <Text style={styles.kpiValueCoral}>{stats.pendingSeats}</Text>
+                  <Text style={styles.tableCellMuted}>seats</Text>
+                </View>
+                <Text style={styles.kpiSub}>
+                  {Math.round(100 - stats.arrivalRate)}% pending invitations
+                </Text>
+              </>
+            )}
           </View>
-          {/* KPI 4 */}
-          <View style={styles.kpiBox}>
-            <Text style={styles.kpiLabel}>PEAK CHECK-IN TIME</Text>
-            <Text style={styles.kpiValue}>{stats.peakCheckInTime.split(' (')[0]}</Text>
-            <Text style={styles.kpiSubtext}>
+
+          {/* KPI 4: Peak Check-in Velocity */}
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>PEAK CHECK-IN</Text>
+            <View style={styles.kpiValueRow}>
+              <Text style={styles.kpiValue}>{stats.peakCheckInTime.split(' (')[0]}</Text>
+            </View>
+            <Text style={styles.kpiSub}>
               {stats.peakCheckInTime.includes('(')
                 ? stats.peakCheckInTime.substring(stats.peakCheckInTime.indexOf('('))
-                : 'Highest 30-min window activity'}
+                : 'Highest 30-min window'}
             </Text>
           </View>
         </View>
 
-        {/* Section: Traffic Breakdown */}
-        <View style={styles.twoColumnContainer}>
-          {/* Column 1: Entrance Gate Traffic */}
-          <View style={styles.column}>
-            <Text style={styles.sectionTitle}>Entrance Gate Traffic</Text>
+        {/* Section 2: Ticket Tiers & Financial Performance (If configured) */}
+        {hasTierData && (
+          <>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleWrap}>
+                <View style={styles.sectionAccentBar} />
+                <Text style={styles.sectionTitle}>Ticket Tiers & Revenue Breakdown</Text>
+              </View>
+              {stats.financials ? (
+                <Text style={styles.sectionSubtext}>
+                  {stats.financials.paidTicketsCount} Paid • {stats.financials.freeTicketsCount} Free
+                </Text>
+              ) : null}
+            </View>
+
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, { width: '28%' }]}>TIER NAME</Text>
+                <Text style={[styles.tableHeaderCell, { width: '18%' }]}>PRICE</Text>
+                <Text style={[styles.tableHeaderCell, { width: '18%', textAlign: 'center' }]}>ALLOCATED</Text>
+                <Text style={[styles.tableHeaderCell, { width: '18%', textAlign: 'center' }]}>ADMITTED</Text>
+                <Text style={[styles.tableHeaderCell, { width: '18%', textAlign: 'right' }]}>REVENUE</Text>
+              </View>
+
+              {stats.tierBreakdown?.map((tier, index) => {
+                const turnOut = tier.allocatedCount > 0
+                  ? Math.round((tier.arrivedCount / tier.allocatedCount) * 100)
+                  : 0
+                return (
+                  <View
+                    key={tier.id}
+                    style={[styles.tableRow, index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}
+                  >
+                    <Text style={[styles.tableCellBold, { width: '28%' }]}>{tier.name}</Text>
+                    <Text style={[styles.tableCell, { width: '18%' }]}>
+                      {tier.priceKobo > 0 ? formatCurrency(tier.priceKobo, tier.currency) : 'Free'}
+                    </Text>
+                    <Text style={[styles.tableCell, { width: '18%', textAlign: 'center' }]}>
+                      {tier.allocatedCount} {tier.capacity ? `/ ${tier.capacity}` : ''}
+                    </Text>
+                    <Text style={[styles.tableCellEmerald, { width: '18%', textAlign: 'center' }]}>
+                      {tier.arrivedCount} ({turnOut}%)
+                    </Text>
+                    <Text style={[styles.tableCellCopper, { width: '18%', textAlign: 'right' }]}>
+                      {tier.revenueKobo > 0 ? formatCurrency(tier.revenueKobo, tier.currency) : '—'}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
+          </>
+        )}
+
+        {/* Section 3: Registration Funnel & Gate Logistics */}
+        <View style={styles.twoCol}>
+          {/* Column 1: Public Registration Pipeline */}
+          <View style={styles.col}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleWrap}>
+                <View style={styles.sectionAccentBar} />
+                <Text style={styles.sectionTitle}>Registration Pipeline</Text>
+              </View>
+            </View>
+
+            {hasFunnelData && stats.registrationFunnel ? (
+              <>
+                <View style={styles.funnelRow}>
+                  <View style={styles.funnelCard}>
+                    <Text style={styles.funnelLabel}>ACCEPTED</Text>
+                    <Text style={[styles.funnelValue, { color: '#10B981' }]}>
+                      {stats.registrationFunnel.accepted}
+                    </Text>
+                  </View>
+                  <View style={styles.funnelCard}>
+                    <Text style={styles.funnelLabel}>PENDING</Text>
+                    <Text style={[styles.funnelValue, { color: '#D97706' }]}>
+                      {stats.registrationFunnel.pending}
+                    </Text>
+                  </View>
+                  <View style={styles.funnelCard}>
+                    <Text style={styles.funnelLabel}>WAITLIST</Text>
+                    <Text style={styles.funnelValue}>
+                      {stats.registrationFunnel.waitlist}
+                    </Text>
+                  </View>
+                  <View style={styles.funnelCard}>
+                    <Text style={styles.funnelLabel}>REJECTED</Text>
+                    <Text style={[styles.funnelValue, { color: '#EF4444' }]}>
+                      {stats.registrationFunnel.rejected}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ fontFamily: 'Helvetica', fontSize: 7, color: '#6E6A62', lineHeight: 1.3 }}>
+                  Source: {stats.registrationFunnel.sources.publicRegistration} via Web Portal •{' '}
+                  {stats.registrationFunnel.sources.csvImport} via CSV Import •{' '}
+                  {stats.registrationFunnel.sources.manual} Direct Additions
+                </Text>
+              </>
+            ) : (
+              <View style={[styles.kpiCard, { width: '100%' }]}>
+                <Text style={styles.kpiLabel}>INVITATION DISTRIBUTION</Text>
+                <Text style={{ fontFamily: 'Helvetica', fontSize: 7.5, color: '#171512', lineHeight: 1.4 }}>
+                  Total Invitations: {stats.totalInvited}{'\n'}
+                  Checked-in Seats: {stats.arrived}{'\n'}
+                  No-show Rate: {Math.round(100 - stats.arrivalRate)}%
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Column 2: Entrance Gate Logistics */}
+          <View style={styles.col}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleWrap}>
+                <View style={styles.sectionAccentBar} />
+                <Text style={styles.sectionTitle}>Entrance Gate Traffic</Text>
+              </View>
+            </View>
+
             {stats.entranceStats.length === 0 ? (
-              <Text style={{ fontFamily: 'Courier', fontSize: 8, color: '#666666', marginTop: 5 }}>
-                NO_ENTRANCE_DATA_AVAILABLE
+              <Text style={{ fontFamily: 'Helvetica', fontSize: 7.5, color: '#8A847C', marginTop: 4 }}>
+                No entrance scan data recorded
               </Text>
             ) : (
               stats.entranceStats.map((gate) => {
                 const gatePct = stats.arrived > 0 ? Math.round((gate.count / stats.arrived) * 100) : 0
                 return (
-                  <View key={gate.label} style={styles.gateRow}>
-                    <View style={styles.gateLabelRow}>
+                  <View key={gate.label} style={styles.gateItem}>
+                    <View style={styles.gateMeta}>
                       <Text style={styles.gateLabel}>{gate.label.toUpperCase()}</Text>
                       <Text style={styles.gateCount}>
-                        {gate.count} ({gatePct}%)
+                        {gate.count} scans ({gatePct}%)
                       </Text>
                     </View>
-                    <View style={styles.progressContainer}>
-                      <View style={[styles.progressBar, { width: `${gatePct}%` }]} />
+                    <View style={styles.progressBarBg}>
+                      <View style={[styles.progressBarFill, { width: `${gatePct}%` }]} />
                     </View>
                   </View>
                 )
               })
             )}
           </View>
+        </View>
 
-          {/* Column 2: Attendance Overview */}
-          <View style={styles.column}>
-            <Text style={styles.sectionTitle}>Report Summary</Text>
-            <Text style={{ fontFamily: 'Courier', fontSize: 8, color: '#333333', lineHeight: 1.4 }}>
-              This document contains check-in metrics recorded by scanners at gate entrances. All check-in entries are logged securely using encrypted scan tokens.
-            </Text>
-            <Text style={{ fontFamily: 'Courier', fontSize: 8, color: '#333333', lineHeight: 1.4, marginTop: 6 }}>
-              Total Invitations Issued: {stats.totalInvited}{'\n'}
-              Total Invited Seats: {stats.totalSeats}{'\n'}
-              Admitted Invitations: {stats.arrivedSeats}{'\n'}
-              Admitted Seats: {stats.arrived}{'\n'}
-              No-show Seats: {stats.pendingSeats} ({Math.round(100 - stats.arrivalRate)}%)
-            </Text>
+        {/* Section 4: Recent Arrivals Ledger (Top 8 for Page 1) */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleWrap}>
+            <View style={styles.sectionAccentBar} />
+            <Text style={styles.sectionTitle}>Recent Admissions Audit Log</Text>
           </View>
+          <Text style={styles.sectionSubtext}>Timestamped Door Scanner Entries</Text>
         </View>
 
-        {/* Section: Recent Arrivals */}
-        <Text style={styles.sectionTitle}>Recent Arrivals (Top 10)</Text>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderCell, { width: '40%' }]}>NAME</Text>
-          <Text style={[styles.tableHeaderCell, { width: '20%' }]}>SEAT INFO</Text>
-          <Text style={[styles.tableHeaderCell, { width: '25%' }]}>TIME</Text>
-          <Text style={[styles.tableHeaderCell, { width: '15%', textAlign: 'right' }]}>PARTY</Text>
-        </View>
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, { width: '32%' }]}>GUEST NAME</Text>
+            <Text style={[styles.tableHeaderCell, { width: '22%' }]}>TIER / SEAT</Text>
+            <Text style={[styles.tableHeaderCell, { width: '20%' }]}>TIME</Text>
+            <Text style={[styles.tableHeaderCell, { width: '16%' }]}>GATE</Text>
+            <Text style={[styles.tableHeaderCell, { width: '10%', textAlign: 'right' }]}>PARTY</Text>
+          </View>
 
-        {stats.recentEntries.length === 0 ? (
-          <Text style={{ fontFamily: 'Helvetica', fontSize: 8, color: '#666666', marginTop: 5 }}>
-            No arrivals recorded yet
-          </Text>
-        ) : (
-          stats.recentEntries.map((entry, index) => (
-            <View key={index} style={styles.tableRow}>
-              <Text style={[styles.tableCell, { width: '40%' }]}>
-                {entry.guestName}
-              </Text>
-              <Text style={[styles.tableCell, { width: '20%' }]}>
-                {entry.seatInfo || '-'}
-              </Text>
-              <Text style={[styles.tableCell, { width: '25%' }]}>
-                {new Date(entry.scannedAt).toLocaleTimeString('en-GB', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit'
-                })}
-              </Text>
-              <Text style={[styles.tableCell, { width: '15%', textAlign: 'right' }]}>
-                {entry.partySize > 1 ? `+${entry.partySize}` : '1 guest'}
+          {stats.recentEntries.length === 0 ? (
+            <View style={{ padding: 10 }}>
+              <Text style={{ fontFamily: 'Helvetica', fontSize: 7.5, color: '#8A847C', textAlign: 'center' }}>
+                No arrivals recorded yet
               </Text>
             </View>
-          ))
-        )}
+          ) : (
+            stats.recentEntries.slice(0, 8).map((entry, index) => (
+              <View
+                key={index}
+                style={[styles.tableRow, index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}
+              >
+                <Text style={[styles.tableCellBold, { width: '32%' }]}>{entry.guestName}</Text>
+                <Text style={[styles.tableCellMuted, { width: '22%' }]}>
+                  {entry.tierName || entry.seatInfo || 'Standard'}
+                </Text>
+                <Text style={[styles.tableCell, { width: '20%' }]}>
+                  {new Date(entry.scannedAt).toLocaleTimeString('en-GB', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </Text>
+                <Text style={[styles.tableCellMuted, { width: '16%' }]}>
+                  {entry.scannerGate || 'Main Gate'}
+                </Text>
+                <Text style={[styles.tableCellEmerald, { width: '10%', textAlign: 'right' }]}>
+                  {entry.partySize > 1 ? `+${entry.partySize}` : '1'}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
 
-        {/* Footer */}
+        {/* Dynamic Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Crenelle Event Summary Report</Text>
-          <Text style={styles.footerText}>
-            Generated: {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-          </Text>
+          <Text style={styles.footerBrand}>CRENELLE INTELLIGENCE // EVENT PERFORMANCE REPORT</Text>
+          <Text
+            style={styles.footerPageNum}
+            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+          />
         </View>
       </Page>
+
+      {/* ── PAGE 2: Program Lineup, Speakers & Custom Survey Insights (If data exists) ── */}
+      {(hasAgenda || hasSpeakers || hasQuestions || stats.recentEntries.length > 8) && (
+        <Page size="A4" style={styles.page}>
+          {/* Header on Page 2 */}
+          <View style={styles.header}>
+            <View style={styles.brandRow}>
+              <Text style={styles.brandTag}>CRENELLE // PRODUCTION DETAILS & INSIGHTS</Text>
+              <Text style={styles.badgeText}>{event?.name || 'Untitled Event'}</Text>
+            </View>
+          </View>
+
+          {/* Agenda Schedule */}
+          {hasAgenda && (
+            <>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleWrap}>
+                  <View style={styles.sectionAccentBar} />
+                  <Text style={styles.sectionTitle}>Event Schedule & Agenda</Text>
+                </View>
+              </View>
+
+              <View style={{ marginBottom: 12 }}>
+                {event?.agenda?.map((item) => (
+                  <View key={item.id} style={styles.agendaItem}>
+                    <Text style={styles.agendaTimeBadge}>{item.time}</Text>
+                    <View style={styles.agendaContent}>
+                      <Text style={styles.agendaTitle}>{item.title}</Text>
+                      {item.speaker ? (
+                        <Text style={styles.agendaSpeaker}>Speaker: {item.speaker}</Text>
+                      ) : null}
+                      {item.description ? (
+                        <Text style={styles.tableCellMuted}>{item.description}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Featured Speakers */}
+          {hasSpeakers && (
+            <>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleWrap}>
+                  <View style={styles.sectionAccentBar} />
+                  <Text style={styles.sectionTitle}>Featured Speakers & Keynotes</Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                {event?.speakers?.map((s) => (
+                  <View key={s.id} style={styles.speakerCard}>
+                    <Text style={styles.speakerName}>{s.name}</Text>
+                    <Text style={styles.speakerRole}>
+                      {s.role} {s.company ? `• ${s.company}` : ''}
+                    </Text>
+                    {s.bio ? (
+                      <Text style={[styles.tableCellMuted, { marginTop: 2 }]}>
+                        {s.bio.slice(0, 120)}{s.bio.length > 120 ? '...' : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Custom Questions / Form Responses Insights */}
+          {hasQuestions && (
+            <>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleWrap}>
+                  <View style={styles.sectionAccentBar} />
+                  <Text style={styles.sectionTitle}>Custom Registration Question Responses</Text>
+                </View>
+              </View>
+
+              <View style={{ marginBottom: 12 }}>
+                {stats.customQuestions?.map((q) => (
+                  <View key={q.id} style={styles.questionBox}>
+                    <Text style={styles.questionTitle}>
+                      {q.label} ({q.responsesCount} responses)
+                    </Text>
+                    {q.topAnswers?.map((ans, aIdx) => (
+                      <View key={aIdx} style={styles.answerRow}>
+                        <Text style={styles.answerText}>• {ans.text}</Text>
+                        <Text style={styles.answerCount}>{ans.count} selections</Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Additional Recent Arrivals (if more than 8) */}
+          {stats.recentEntries.length > 8 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleWrap}>
+                  <View style={styles.sectionAccentBar} />
+                  <Text style={styles.sectionTitle}>Extended Arrivals Log</Text>
+                </View>
+              </View>
+
+              <View style={styles.table}>
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderCell, { width: '32%' }]}>GUEST NAME</Text>
+                  <Text style={[styles.tableHeaderCell, { width: '22%' }]}>TIER / SEAT</Text>
+                  <Text style={[styles.tableHeaderCell, { width: '20%' }]}>TIME</Text>
+                  <Text style={[styles.tableHeaderCell, { width: '16%' }]}>GATE</Text>
+                  <Text style={[styles.tableHeaderCell, { width: '10%', textAlign: 'right' }]}>PARTY</Text>
+                </View>
+
+                {stats.recentEntries.slice(8, 20).map((entry, index) => (
+                  <View
+                    key={index}
+                    style={[styles.tableRow, index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}
+                  >
+                    <Text style={[styles.tableCellBold, { width: '32%' }]}>{entry.guestName}</Text>
+                    <Text style={[styles.tableCellMuted, { width: '22%' }]}>
+                      {entry.tierName || entry.seatInfo || 'Standard'}
+                    </Text>
+                    <Text style={[styles.tableCell, { width: '20%' }]}>
+                      {new Date(entry.scannedAt).toLocaleTimeString('en-GB', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}
+                    </Text>
+                    <Text style={[styles.tableCellMuted, { width: '16%' }]}>
+                      {entry.scannerGate || 'Main Gate'}
+                    </Text>
+                    <Text style={[styles.tableCellEmerald, { width: '10%', textAlign: 'right' }]}>
+                      {entry.partySize > 1 ? `+${entry.partySize}` : '1'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Dynamic Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerBrand}>CRENELLE INTELLIGENCE // EVENT PERFORMANCE REPORT</Text>
+            <Text
+              style={styles.footerPageNum}
+              render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+            />
+          </View>
+        </Page>
+      )}
     </Document>
   )
 }
