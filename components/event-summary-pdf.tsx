@@ -514,9 +514,16 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
       })
     : 'N/A'
 
-  const totalCapacity = event?.capacity ?? null
+  const safeArrivalRate = Math.min(100, Math.max(0, stats.arrivalRate))
+  const safePendingSeats = Math.max(0, stats.pendingSeats)
+  const safeNoShowRate = Math.max(0, 100 - safeArrivalRate)
+
+  const totalCapacity = event?.capacity && event.capacity > 0
+    ? Math.max(event.capacity, stats.totalSeats, stats.arrived)
+    : (stats.totalSeats > 0 ? stats.totalSeats : null)
+
   const capacityPct = totalCapacity && totalCapacity > 0
-    ? Math.round((stats.arrived / totalCapacity) * 100)
+    ? Math.min(100, Math.round((stats.arrived / totalCapacity) * 100))
     : null
 
   const isPaidEvent = Boolean(stats.financials && stats.financials.grossRevenueKobo > 0)
@@ -579,7 +586,7 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>ATTENDANCE RATE</Text>
             <View style={styles.kpiValueRow}>
-              <Text style={styles.kpiValueEmerald}>{stats.arrivalRate}%</Text>
+              <Text style={styles.kpiValueEmerald}>{safeArrivalRate}%</Text>
             </View>
             <Text style={styles.kpiSub}>
               {stats.arrivedSeats} of {stats.totalInvited} invited checked in
@@ -616,11 +623,11 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
               <>
                 <Text style={styles.kpiLabel}>NO-SHOWS</Text>
                 <View style={styles.kpiValueRow}>
-                  <Text style={styles.kpiValueCoral}>{stats.pendingSeats}</Text>
+                  <Text style={styles.kpiValueCoral}>{safePendingSeats}</Text>
                   <Text style={styles.tableCellMuted}>seats</Text>
                 </View>
                 <Text style={styles.kpiSub}>
-                  {Math.round(100 - stats.arrivalRate)}% pending invitations
+                  {safeNoShowRate}% pending invitations
                 </Text>
               </>
             )}
@@ -744,7 +751,7 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
                 <Text style={{ fontFamily: 'Helvetica', fontSize: 7.5, color: '#171512', lineHeight: 1.4 }}>
                   Total Invitations: {stats.totalInvited}{'\n'}
                   Checked-in Seats: {stats.arrived}{'\n'}
-                  No-show Rate: {Math.round(100 - stats.arrivalRate)}%
+                  No-show Rate: {safeNoShowRate}%
                 </Text>
               </View>
             )}

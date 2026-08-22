@@ -81,8 +81,8 @@ export function useDashboardData({
         0,
       )
 
-      // Expected capacity: use explicit event capacity if > 0, otherwise total invited seats
-      const capacity = event.capacity && event.capacity > 0 ? event.capacity : totalInvited
+      // Expected capacity: use explicit event capacity if > 0, dynamically expanding if invitations or check-ins exceed it
+      const capacity = Math.max(event.capacity && event.capacity > 0 ? event.capacity : totalInvited, totalInvited, checkedIn)
 
       acc[event.id] = {
         totalCapacity: capacity,

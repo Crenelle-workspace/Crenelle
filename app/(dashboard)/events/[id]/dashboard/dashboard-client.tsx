@@ -417,6 +417,7 @@ export default function LiveDashboardPage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'entry_logs' }, () => void loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invitations' }, () => void loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => void loadData())
       .subscribe()
 
     return () => {
@@ -425,7 +426,11 @@ export default function LiveDashboardPage() {
     }
   }, [eventId, loadData])
 
-  const arrivalRate = totalSeats > 0 ? Math.round((arrived / totalSeats) * 100) : 0
+  const venueCapacity = event?.capacity && event.capacity > 0 ? event.capacity : null
+  const effectiveCapacity = venueCapacity ? Math.max(venueCapacity, totalSeats, arrived) : Math.max(totalSeats, arrived, 1)
+  const arrivalRate = totalSeats > 0 ? Math.min(100, Math.round((arrivedSeats / totalSeats) * 100)) : (arrived > 0 ? 100 : 0)
+  const pendingSeats = Math.max(0, totalSeats - arrivedSeats)
+  const capacityUsagePct = Math.min(100, Math.round((arrived / effectiveCapacity) * 100))
 
   if (loading) {
     return (
@@ -521,11 +526,11 @@ export default function LiveDashboardPage() {
               <EventSummaryReport
                 event={event}
                 stats={{
-                  totalSeats,
+                  totalSeats: effectiveCapacity,
                   totalInvited,
                   arrived,
                   arrivedSeats,
-                  pendingSeats: totalSeats - arrived,
+                  pendingSeats,
                   arrivalRate,
                   peakCheckInTime: getPeakCheckInTime(entries),
                   entranceStats,
@@ -565,8 +570,8 @@ export default function LiveDashboardPage() {
         <StatCard
           icon={<Users className="h-5 w-5 text-copper" aria-hidden="true" />}
           label="Total Seats"
-          value={totalSeats}
-          subtext="Configured capacity"
+          value={venueCapacity ?? totalSeats}
+          subtext={venueCapacity ? `${totalSeats} seats invited` : "Configured capacity"}
         />
         <StatCard
           icon={<UserCheck className="h-5 w-5 text-copper" aria-hidden="true" />}
@@ -584,7 +589,7 @@ export default function LiveDashboardPage() {
           icon={<Clock className="h-5 w-5 text-amber-500" aria-hidden="true" />}
           label="Attendance Rate"
           value={`${arrivalRate}%`}
-          subtext="Of capacity filled"
+          subtext="Of invitations attended"
         />
       </div>
 
@@ -592,19 +597,19 @@ export default function LiveDashboardPage() {
       <div>
         <div className="flex justify-between items-end mb-2">
           <span className="font-sans text-xs font-semibold text-muted-foreground">Capacity Usage</span>
-          <span className="font-sans text-xs font-bold text-copper">{arrived} / {totalSeats}</span>
+          <span className="font-sans text-xs font-bold text-copper">{arrived} / {effectiveCapacity}</span>
         </div>
         <div
           className="w-full h-4 bg-card border border-border/40 rounded-full relative p-0.5 overflow-hidden"
           role="progressbar"
-          aria-valuenow={arrivalRate}
+          aria-valuenow={capacityUsagePct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Arrival rate: ${arrivalRate}%`}
+          aria-label={`Capacity usage: ${capacityUsagePct}%`}
         >
           <div
             className="h-full bg-copper rounded-full transition-all duration-1000 ease-out"
-            style={{ width: `${arrivalRate}%` }}
+            style={{ width: `${capacityUsagePct}%` }}
           />
         </div>
       </div>
