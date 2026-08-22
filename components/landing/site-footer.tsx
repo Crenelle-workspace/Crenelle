@@ -36,11 +36,16 @@ const SOCIAL_LINKS = [
   { label: "TikTok", href: "#", icon: "tiktok" as const },
 ];
 
-const EXPLORE_LINKS: Array<[string, string]> = [
-  // Overview/Showcase were dropped on purpose: anyone reading the footer has
-  // already scrolled past every section, so those were circular navigation.
+const PRODUCT_LINKS: Array<[string, string]> = [
   ["/#features", "Features"],
   ["/#process", "How it works"],
+  ["/pricing", "Pricing"],
+  ["/faq", "FAQ"],
+];
+
+const COMPANY_LINKS: Array<[string, string]> = [
+  ["/about", "About & Team"],
+  [`mailto:${CONTACT_EMAIL}`, "Support"],
 ];
 
 const LEGAL_LINKS: Array<[string, string]> = [
@@ -99,7 +104,7 @@ export function SiteFooter({ className }: { className?: string }) {
       <div className="relative z-10 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
           {/* ── Brand ── */}
-          <div className="md:col-span-6 space-y-6">
+          <div className="md:col-span-4 space-y-6">
             <Link href="/" className="inline-flex items-center" aria-label="Crenelle — home">
               <Image
                 src="/Brand Logos/CRENELLE FULLH W.png"
@@ -141,11 +146,11 @@ export function SiteFooter({ className }: { className?: string }) {
             )}
           </div>
 
-          {/* ── Explore ── */}
+          {/* ── Product ── */}
           <div className="md:col-span-2 space-y-4">
-            <ColumnHeading>Explore</ColumnHeading>
+            <ColumnHeading>Product</ColumnHeading>
             <ul className="space-y-2.5">
-              {EXPLORE_LINKS.map(([href, label]) => (
+              {PRODUCT_LINKS.map(([href, label]) => (
                 <li key={href}>
                   <Link
                     href={href}
@@ -153,6 +158,32 @@ export function SiteFooter({ className }: { className?: string }) {
                   >
                     {label}
                   </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── Company ── */}
+          <div className="md:col-span-2 space-y-4">
+            <ColumnHeading>Company</ColumnHeading>
+            <ul className="space-y-2.5">
+              {COMPANY_LINKS.map(([href, label]) => (
+                <li key={href}>
+                  {href.startsWith("mailto:") ? (
+                    <a
+                      href={href}
+                      className="font-sans text-sm text-muted-foreground hover:text-copper transition-colors duration-300"
+                    >
+                      {label}
+                    </a>
+                  ) : (
+                    <Link
+                      href={href}
+                      className="font-sans text-sm text-muted-foreground hover:text-copper transition-colors duration-300"
+                    >
+                      {label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
