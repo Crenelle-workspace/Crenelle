@@ -1022,8 +1022,8 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
                               : 0
                             return (
                               <View key={aIdx} style={styles.chartRow}>
-                                <Text style={styles.chartBarLabel} numberOfLines={1}>
-                                  {ans.text}
+                                <Text style={styles.chartBarLabel}>
+                                  {ans.text.length > 30 ? `${ans.text.slice(0, 28)}…` : ans.text}
                                 </Text>
                                 <View style={styles.chartBarTrack}>
                                   <View
