@@ -35,12 +35,10 @@ describe("Marketing & Trust Pages", () => {
       expect(screen.getByText("Crenelle Technologies")).toBeDefined();
     });
 
-    it("renders company origin and trust metrics", () => {
+    it("renders company origin and mission", () => {
       render(<AboutPage />);
-      expect(screen.getByText("Our Origin Story")).toBeDefined();
-      expect(screen.getByText("0")).toBeDefined();
-      expect(screen.getByText("App Installs Needed")).toBeDefined();
-      expect(screen.getByText("Gate Verification")).toBeDefined();
+      expect(screen.getByText("Born in Lagos out of real hosting frustration.")).toBeDefined();
+      expect(screen.getByText("The Founders")).toBeDefined();
     });
   });
 
@@ -62,7 +60,7 @@ describe("Marketing & Trust Pages", () => {
   describe("PricingCalculator Component", () => {
     it("calculates NGN earnings with 5% platform fee", () => {
       render(<PricingCalculator />);
-      expect(screen.getByText("Calculate Your Event Earnings")).toBeDefined();
+      expect(screen.getByText("Earnings Calculator")).toBeDefined();
       expect(screen.getByText("Estimated Net Payout")).toBeDefined();
       expect(screen.getByText("Crenelle Platform Fee (5%)")).toBeDefined();
     });
@@ -79,7 +77,7 @@ describe("Marketing & Trust Pages", () => {
     it("exports proper FAQ metadata and renders full page", () => {
       expect(faqMetadata.title).toContain("Frequently Asked Questions");
       render(<FaqPage />);
-      expect(screen.getByText("Knowledge Base & Support")).toBeDefined();
+      expect(screen.getByText("Questions.")).toBeDefined();
     });
 
     it("renders categorized questions and filters on search", () => {

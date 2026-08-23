@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import {
   Search,
   ChevronDown,
-  Sparkles,
   Mail,
   MessageCircle,
   HelpCircle,
@@ -199,18 +198,18 @@ export function FaqClient() {
   };
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10 w-full max-w-full overflow-hidden">
       {/* ── Search & Filter Controls ── */}
-      <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="space-y-6 max-w-3xl mx-auto w-full">
         {/* Search Bar */}
-        <div className="relative">
+        <div className="relative w-full">
           <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search questions (e.g. payouts, refund policy, scanner link, currencies)..."
-            className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-card/70 border border-border/60 text-sm font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all shadow-lg"
+            className="w-full pl-12 pr-12 py-3.5 rounded-2xl bg-card/70 border border-border/60 text-sm font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-copper/50 focus:border-copper transition-all shadow-md"
           />
           {searchQuery && (
             <button
@@ -223,31 +222,33 @@ export function FaqClient() {
           )}
         </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none justify-start md:justify-center">
-          {CATEGORIES.map((cat) => {
-            const active = selectedCategory === cat;
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border",
-                  active
-                    ? "bg-foreground text-background border-foreground font-bold shadow-md"
-                    : "bg-card/40 border-border/40 text-muted-foreground hover:text-foreground hover:border-copper/40"
-                )}
-              >
-                {cat}
-              </button>
-            );
-          })}
+        {/* Category Filter Pills Container */}
+        <div className="w-full overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-2 min-w-max px-1">
+            {CATEGORIES.map((cat) => {
+              const active = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border",
+                    active
+                      ? "bg-foreground text-background border-foreground font-bold shadow-sm"
+                      : "bg-card/40 border-border/40 text-muted-foreground hover:text-foreground hover:border-copper/40"
+                  )}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* ── FAQ List ── */}
-      <div className="max-w-3xl mx-auto space-y-4">
+      <div className="max-w-3xl mx-auto space-y-3.5 w-full">
         {filteredFaqs.length === 0 ? (
           <div className="text-center py-16 rounded-3xl border border-dashed border-border/60 p-8 space-y-3">
             <HelpCircle className="w-10 h-10 text-muted-foreground mx-auto" />
@@ -275,14 +276,14 @@ export function FaqClient() {
                 className={cn(
                   "rounded-2xl border transition-all duration-300 overflow-hidden",
                   isOpen
-                    ? "border-copper/40 bg-card/80 shadow-lg ring-1 ring-copper/20"
+                    ? "border-copper/40 bg-card/80 shadow-md ring-1 ring-copper/20"
                     : "border-border/50 bg-card/40 hover:border-border/80"
                 )}
               >
                 <button
                   type="button"
                   onClick={() => toggleAccordion(faq.id)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left gap-4"
+                  className="w-full px-6 py-4.5 flex items-center justify-between text-left gap-4"
                   aria-expanded={isOpen}
                 >
                   <div className="space-y-1">
@@ -295,16 +296,16 @@ export function FaqClient() {
                   </div>
                   <div
                     className={cn(
-                      "w-8 h-8 rounded-full border border-border/60 flex items-center justify-center text-muted-foreground shrink-0 transition-transform duration-300",
+                      "w-7 h-7 rounded-full border border-border/60 flex items-center justify-center text-muted-foreground shrink-0 transition-transform duration-300",
                       isOpen && "rotate-180 bg-copper/10 text-copper border-copper/30"
                     )}
                   >
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-3.5 h-3.5" />
                   </div>
                 </button>
 
                 {isOpen && (
-                  <div className="px-6 pb-6 pt-2 text-sm sm:text-[15px] text-muted-foreground leading-relaxed border-t border-border/30">
+                  <div className="px-6 pb-5 pt-1 text-sm text-muted-foreground leading-relaxed border-t border-border/30">
                     <p>{faq.answer}</p>
                   </div>
                 )}
@@ -315,31 +316,27 @@ export function FaqClient() {
       </div>
 
       {/* ── Direct Support Contact Card ── */}
-      <div className="max-w-3xl mx-auto rounded-3xl border border-copper/30 bg-linear-to-br from-copper/10 to-card/60 p-8 md:p-10 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl">
-        <div className="space-y-2 text-center sm:text-left">
-          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-mono uppercase tracking-wider text-copper font-bold">
-            <Sparkles className="w-4 h-4" />
-            Still have a question?
-          </div>
-          <h4 className="text-xl font-bold text-foreground">Talk directly with our team</h4>
+      <div className="max-w-3xl mx-auto rounded-3xl border border-copper/30 bg-linear-to-br from-copper/10 to-card/60 p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl w-full">
+        <div className="space-y-1.5 text-center sm:text-left">
+          <h4 className="text-lg sm:text-xl font-bold text-foreground">Still have a question?</h4>
           <p className="text-xs text-muted-foreground max-w-sm">
-            We respond promptly to organizer inquiries regarding bespoke events, bulk volume, and gate logistics.
+            We respond promptly to organizer inquiries regarding custom events, bulk volume, and gate logistics.
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto shrink-0">
           <a
             href="mailto:support@crenelle.org"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full border border-border/60 bg-card text-xs font-bold text-foreground hover:text-copper hover:border-copper/40 transition-colors shadow-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-border/60 bg-card text-xs font-bold text-foreground hover:text-copper hover:border-copper/40 transition-colors shadow-sm"
           >
             <Mail className="w-3.5 h-3.5 text-copper" />
-            Email Support
+            Email Us
           </a>
           <a
             href="https://wa.me/2349014724115"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-sm"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors shadow-sm"
           >
             <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
             WhatsApp

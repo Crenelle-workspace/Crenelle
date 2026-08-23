@@ -126,31 +126,6 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             </motion.div>
           </div>
         </div>
-
-        {/* ── HIGH-CREDIBILITY PROOF & TRUST METRICS BAR ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="mt-16 pt-8 border-t border-border/40 grid grid-cols-2 md:grid-cols-4 gap-6 text-center"
-        >
-          <div className="space-y-1">
-            <p className="font-mono text-2xl md:text-3xl font-black text-foreground">2,400+</p>
-            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Passes Issued</p>
-          </div>
-          <div className="space-y-1">
-            <p className="font-mono text-2xl md:text-3xl font-black text-foreground">&lt; 1s</p>
-            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Door Scan Velocity</p>
-          </div>
-          <div className="space-y-1">
-            <p className="font-mono text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400">100%</p>
-            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Direct Bank Payouts</p>
-          </div>
-          <div className="space-y-1">
-            <p className="font-mono text-2xl md:text-3xl font-black text-copper">5%</p>
-            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Transparent Take Rate</p>
-          </div>
-        </motion.div>
       </section>
 
       {/* ── EVENT FORMAT BENTO GRID SHOWCASE ── */}
