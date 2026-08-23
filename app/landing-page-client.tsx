@@ -17,6 +17,7 @@ import { InteractiveTicketStack } from "@/components/landing/interactive-ticket-
 import { FeaturesGrid } from "@/components/landing/features-grid";
 import { ProcessTimeline } from "@/components/landing/process-timeline";
 import { SiteFooter } from "@/components/landing/site-footer";
+import { SiteHeader } from "@/components/landing/site-header";
 
 interface LandingPageClientProps {
   user: unknown;
@@ -59,55 +60,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[6rem_6rem] opacity-35 dark:opacity-10 pointer-events-none z-0" />
 
       {/* ── HEADER ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 md:px-12 py-5 border-b border-border/45 bg-background/60 backdrop-blur-lg">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <Image
-              src="/Brand Logos/CRENELLE FULLH W.png"
-              alt="Crenelle"
-              width={160}
-              height={36}
-              className="h-8 w-auto hidden dark:block object-contain"
-              priority
-            />
-            <Image
-              src="/Brand Logos/CRENELLE FULLH B.png"
-              alt="Crenelle"
-              width={160}
-              height={36}
-              className="h-8 w-auto block dark:hidden object-contain"
-              priority
-            />
-          </Link>
-
-          <div className="hidden md:flex items-center gap-8 font-semibold text-xs">
-            {[
-              ["#showcase", "Showcase"],
-              ["#features", "Features"],
-              ["#process", "Process"],
-            ].map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="text-muted-foreground hover:text-foreground transition-colors relative group py-1"
-              >
-                {label}
-                <span className="absolute bottom-0 left-0 w-0 h-px bg-copper group-hover:w-full transition-all duration-300" />
-              </a>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-4">
-            <ModeToggle />
-            <Link
-              href={user ? "/events" : "/login"}
-              className="inline-flex items-center justify-center rounded-full bg-foreground text-background font-sans text-xs font-bold px-6 py-2.5 hover:bg-copper hover:text-white transition-colors duration-300"
-            >
-              {user ? "Go to Dashboard" : "Sign In"}
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <SiteHeader user={user} />
 
       {/* ── IMMERSIVE SPACIOUS SPLIT HERO SECTION ── */}
       <section
@@ -173,6 +126,31 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
             </motion.div>
           </div>
         </div>
+
+        {/* ── HIGH-CREDIBILITY PROOF & TRUST METRICS BAR ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="mt-16 pt-8 border-t border-border/40 grid grid-cols-2 md:grid-cols-4 gap-6 text-center"
+        >
+          <div className="space-y-1">
+            <p className="font-mono text-2xl md:text-3xl font-black text-foreground">2,400+</p>
+            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Passes Issued</p>
+          </div>
+          <div className="space-y-1">
+            <p className="font-mono text-2xl md:text-3xl font-black text-foreground">&lt; 1s</p>
+            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Door Scan Velocity</p>
+          </div>
+          <div className="space-y-1">
+            <p className="font-mono text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400">100%</p>
+            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Direct Bank Payouts</p>
+          </div>
+          <div className="space-y-1">
+            <p className="font-mono text-2xl md:text-3xl font-black text-copper">5%</p>
+            <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Transparent Take Rate</p>
+          </div>
+        </motion.div>
       </section>
 
       {/* ── EVENT FORMAT BENTO GRID SHOWCASE ── */}

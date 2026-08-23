@@ -37,8 +37,8 @@ export function ProcessTimeline() {
     },
     {
       num: '04',
-      title: 'Track Live Attendance',
-      desc: 'Monitor check-ins, guest arrivals, and ticket sales live on your organizer dashboard.',
+      title: 'Live Stats & PDF Reports',
+      desc: 'Monitor check-in velocity live and download 1-click executive PDF summary reports and CSV logs for your team.',
       icon: BarChart3,
     },
   ]
