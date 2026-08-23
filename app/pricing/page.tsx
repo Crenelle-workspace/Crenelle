@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Check,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
   CreditCard,
   Building2,
-  HelpCircle,
 } from "lucide-react";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
@@ -22,7 +20,6 @@ export const metadata: Metadata = {
 const TIERS = [
   {
     name: "Free & Community",
-    badge: "Free Forever",
     price: "₦0",
     period: "always free",
     description:
@@ -33,7 +30,7 @@ const TIERS = [
       "Instant 1-click browser scanner links",
       "Email invitations & automated reminders",
       "Guest approval & waitlist workflows",
-      "Real-time check-in stats & export",
+      "Executive PDF summary reports & CSV logs",
     ],
     cta: "Start Free",
     href: "/signup",
@@ -41,7 +38,6 @@ const TIERS = [
   },
   {
     name: "Paid Events",
-    badge: "Most Popular",
     price: "5%",
     period: "per paid ticket + processing",
     description:
@@ -52,7 +48,7 @@ const TIERS = [
       "Multi-currency: NGN, USD, GHS, KES, ZAR",
       "Multi-tier tickets & early-bird pricing",
       "Capacity limits & automated sold-out stops",
-      "Financial dashboards, tax & CSV/Excel export",
+      "Full attendance & financial reports (PDF/CSV/Excel)",
       "Dedicated co-host permissions",
     ],
     cta: "Create Paid Event",
@@ -61,7 +57,6 @@ const TIERS = [
   },
   {
     name: "Enterprise & Scale",
-    badge: "Custom Scale",
     price: "Custom",
     period: "tailored volume rates",
     description:
@@ -82,40 +77,35 @@ const TIERS = [
 
 const COMPARISON_ROWS = [
   { feature: "Free event registrations", free: "Unlimited", paid: "Unlimited", enterprise: "Unlimited" },
-  { feature: "Per-ticket platform commission", free: "0%", paid: "5%", enterprise: "Volume Discount" },
+  { feature: "Platform commission per ticket", free: "0%", paid: "5%", enterprise: "Volume Discount" },
   { feature: "QR access passes", free: "Included", paid: "Included", enterprise: "Included" },
   { feature: "Browser scanner links (no app required)", free: "Unlimited", paid: "Unlimited", enterprise: "Unlimited" },
   { feature: "Email invites & reminders", free: "Included", paid: "Included", enterprise: "Included + Custom Sender" },
-  { feature: "Multi-currency Paystack settlements", free: "—", paid: "NGN, USD, GHS, KES, ZAR", paidHighlight: true, enterprise: "All Supported" },
+  { feature: "Multi-currency Paystack settlements", free: "—", paid: "NGN, USD, GHS, KES, ZAR", enterprise: "All Supported" },
   { feature: "Direct bank account payout", free: "—", paid: "Automatic (T+1)", enterprise: "Automatic + Custom Schedule" },
   { feature: "Tiered tickets & capacity caps", free: "Single Tier", paid: "Unlimited Tiers", enterprise: "Unlimited Tiers" },
   { feature: "Co-host team roles (Viewer/Scanner/Co-Organiser)", free: "Included", paid: "Included", enterprise: "Custom Permissions" },
-  { feature: "Attendance & financial reports (CSV / Excel)", free: "Included", paid: "Included", enterprise: "Custom Exports" },
-  { feature: "On-site gate support", free: "Self-serve", paid: "Documentation & Chat", enterprise: "Dedicated On-Site Team" },
+  { feature: "Executive PDF reports & CSV exports", free: "Included", paid: "Included", enterprise: "Custom Exports" },
+  { feature: "On-site gate support", free: "Self-serve", paid: "Self-serve & Support", enterprise: "Dedicated On-Site Team" },
 ];
 
 export default function PricingPage() {
   return (
-    <div className="bg-background text-foreground min-h-screen flex flex-col font-['Inter',ui-sans-serif,system-ui,sans-serif] selection:bg-copper/30 selection:text-white">
-      {/* Ambient background glows */}
-      <div className="absolute top-[-10%] right-[-10%] w-[55vw] h-[55vw] rounded-full bg-copper/8 dark:bg-copper/5 blur-[140px] pointer-events-none z-0" />
-      <div className="absolute top-[35%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-amber-500/6 dark:bg-amber-500/4 blur-[130px] pointer-events-none z-0" />
-
-      {/* Grid overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[6rem_6rem] opacity-35 dark:opacity-10 pointer-events-none z-0" />
+    <div className="bg-background text-foreground min-h-screen flex flex-col font-['Inter',ui-sans-serif,system-ui,sans-serif] selection:bg-copper/30 selection:text-white overflow-x-hidden w-full">
+      {/* Background atmosphere glows - contained safely to prevent horizontal overflow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden select-none z-0">
+        <div className="absolute -top-[10%] -right-[10%] w-[55vw] max-w-150 h-[55vw] max-h-150 rounded-full bg-copper/8 dark:bg-copper/5 blur-[140px]" />
+        <div className="absolute top-[35%] -left-[10%] w-[50vw] max-w-130 h-[50vw] max-h-130 rounded-full bg-amber-500/6 dark:bg-amber-500/4 blur-[130px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-size-[6rem_6rem] opacity-35 dark:opacity-10" />
+      </div>
 
       <SiteHeader />
 
-      <main className="flex-1 relative z-10 pt-32 md:pt-40 pb-20">
+      <main className="flex-1 relative z-10 pt-32 md:pt-40 pb-20 w-full max-w-7xl mx-auto px-6 md:px-12 space-y-24 md:space-y-32">
         {/* ── HERO SECTION ── */}
-        <section className="max-w-5xl mx-auto px-6 md:px-10 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-copper/30 bg-copper/10 text-copper text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-copper" />
-            Simple & Transparent
-          </div>
-
+        <section className="max-w-4xl mx-auto text-center space-y-6 pt-4">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.08] text-foreground">
-            Predictable pricing.{" "}
+            Simple, honest pricing.{" "}
             <span className="text-transparent bg-clip-text bg-linear-to-r from-copper to-amber-400">
               Zero hidden fees.
             </span>
@@ -128,7 +118,7 @@ export default function PricingPage() {
         </section>
 
         {/* ── PRICING CARDS ── */}
-        <section className="max-w-7xl mx-auto px-6 md:px-10 mt-16 md:mt-24">
+        <section className="w-full max-w-full">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
             {TIERS.map((tier, idx) => (
               <div
@@ -139,21 +129,10 @@ export default function PricingPage() {
                     : "border-border/50 bg-card/50 backdrop-blur-xl hover:border-copper/40"
                 }`}
               >
-                {tier.highlight && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-copper text-white text-[11px] font-bold uppercase tracking-wider shadow-md">
-                    {tier.badge}
-                  </div>
-                )}
-
                 <div className="space-y-6">
                   <div>
-                    {!tier.highlight && (
-                      <span className="inline-block text-[11px] font-mono uppercase tracking-wider text-muted-foreground bg-secondary/60 px-3 py-0.5 rounded-full mb-3 border border-border/40">
-                        {tier.badge}
-                      </span>
-                    )}
                     <h3 className="text-2xl font-bold text-foreground">{tier.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed min-h-10">
                       {tier.description}
                     </p>
                   </div>
@@ -169,11 +148,11 @@ export default function PricingPage() {
                     </div>
                   </div>
 
-                  <ul className="space-y-3.5 text-sm">
+                  <ul className="space-y-3 text-sm">
                     {tier.features.map((feat, fIdx) => (
                       <li key={fIdx} className="flex items-start gap-3 text-muted-foreground">
                         <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                        <span className="text-foreground/90">{feat}</span>
+                        <span className="text-foreground/90 text-xs sm:text-sm">{feat}</span>
                       </li>
                     ))}
                   </ul>
@@ -198,39 +177,39 @@ export default function PricingPage() {
         </section>
 
         {/* ── CALCULATOR SECTION ── */}
-        <section className="max-w-4xl mx-auto px-6 md:px-10 mt-24 md:mt-32">
+        <section className="max-w-4xl mx-auto w-full">
           <PricingCalculator />
         </section>
 
         {/* ── COMPARISON MATRIX TABLE ── */}
-        <section className="max-w-6xl mx-auto px-6 md:px-10 mt-24 md:mt-32 space-y-8">
+        <section className="w-full max-w-5xl mx-auto space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-3">
-            <h2 className="text-xs font-mono font-bold uppercase tracking-[0.16em] text-copper">
-              Detailed Breakdown
-            </h2>
-            <p className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
+            <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
               Compare Plan Features
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Everything you need to host professional events of any size.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+          <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur-xl overflow-hidden shadow-xl w-full max-w-full">
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left border-collapse min-w-140">
                 <thead>
                   <tr className="border-b border-border/50 bg-card/80 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                    <th className="p-4 md:p-6 font-bold">Feature</th>
-                    <th className="p-4 md:p-6 font-bold">Free</th>
-                    <th className="p-4 md:p-6 font-bold text-copper">Paid</th>
-                    <th className="p-4 md:p-6 font-bold">Enterprise</th>
+                    <th className="p-4 md:p-5 font-bold">Feature</th>
+                    <th className="p-4 md:p-5 font-bold">Free</th>
+                    <th className="p-4 md:p-5 font-bold text-copper">Paid</th>
+                    <th className="p-4 md:p-5 font-bold">Enterprise</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40 text-xs md:text-sm">
                   {COMPARISON_ROWS.map((row, idx) => (
                     <tr key={idx} className="hover:bg-card/40 transition-colors">
-                      <td className="p-4 md:p-6 font-semibold text-foreground">{row.feature}</td>
-                      <td className="p-4 md:p-6 text-muted-foreground">{row.free}</td>
-                      <td className="p-4 md:p-6 font-medium text-foreground">{row.paid}</td>
-                      <td className="p-4 md:p-6 text-muted-foreground">{row.enterprise}</td>
+                      <td className="p-4 md:p-5 font-semibold text-foreground">{row.feature}</td>
+                      <td className="p-4 md:p-5 text-muted-foreground">{row.free}</td>
+                      <td className="p-4 md:p-5 font-medium text-foreground">{row.paid}</td>
+                      <td className="p-4 md:p-5 text-muted-foreground">{row.enterprise}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -240,7 +219,7 @@ export default function PricingPage() {
         </section>
 
         {/* ── TRUST HIGHLIGHTS ── */}
-        <section className="max-w-5xl mx-auto px-6 md:px-10 mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+        <section className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
           <div className="p-6 rounded-2xl border border-border/40 bg-card/40 space-y-2">
             <CreditCard className="w-6 h-6 text-copper mx-auto" />
             <h4 className="font-bold text-foreground">No Upfront Card Required</h4>
@@ -248,7 +227,7 @@ export default function PricingPage() {
           </div>
           <div className="p-6 rounded-2xl border border-border/40 bg-card/40 space-y-2">
             <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mx-auto" />
-            <h4 className="font-bold text-foreground">Direct Paystack Settlement</h4>
+            <h4 className="font-bold text-foreground">Direct Bank Settlements</h4>
             <p className="text-xs text-muted-foreground">Ticket revenue goes straight to your bank account on T+1 schedule.</p>
           </div>
           <div className="p-6 rounded-2xl border border-border/40 bg-card/40 space-y-2">
@@ -258,17 +237,14 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* ── FAQ LINK / CALLOUT ── */}
-        <section className="max-w-4xl mx-auto px-6 md:px-10 mt-24 text-center">
-          <div className="rounded-3xl border border-copper/30 bg-linear-to-b from-copper/15 to-transparent p-10 md:p-14 space-y-6">
-            <div className="w-12 h-12 rounded-2xl bg-copper/20 border border-copper/40 flex items-center justify-center text-copper mx-auto">
-              <HelpCircle className="w-6 h-6" />
-            </div>
+        {/* ── CALL TO ACTION ── */}
+        <section className="max-w-4xl mx-auto text-center pb-8">
+          <div className="rounded-3xl border border-copper/30 bg-linear-to-b from-copper/15 to-transparent p-10 md:p-14 space-y-6 overflow-hidden">
             <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
-              Have questions about payouts, fees, or refunds?
+              Have questions about payouts or custom volume?
             </h2>
             <p className="text-sm md:text-base text-muted-foreground max-w-xl mx-auto">
-              We’ve answered all common organizer questions about Paystack bank setups, attendee refunds, and supported currencies.
+              We’ve answered all common host questions about bank setups, attendee refunds, and supported currencies.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
               <Link

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Currency = "NGN" | "USD";
@@ -46,26 +46,22 @@ export function PricingCalculator() {
   };
 
   return (
-    <div className="rounded-3xl border border-copper/30 bg-card/60 backdrop-blur-xl p-8 md:p-12 shadow-2xl space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-border/40">
+    <div className="w-full max-w-full rounded-3xl border border-copper/30 bg-card/60 backdrop-blur-xl p-6 sm:p-8 md:p-12 shadow-xl space-y-8 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border/40">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-copper font-mono text-xs font-bold uppercase tracking-wider">
-            <Calculator className="w-4 h-4" />
-            Interactive Calculator
-          </div>
-          <h3 className="text-2xl font-black text-foreground">Calculate Your Event Earnings</h3>
-          <p className="text-sm text-muted-foreground">
-            Estimate your net bank payout with complete fee transparency.
+          <h3 className="text-xl sm:text-2xl font-black text-foreground">Earnings Calculator</h3>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Estimate your net bank payout with complete 5% fee transparency.
           </p>
         </div>
 
         {/* Currency Toggle */}
-        <div className="flex items-center self-start md:self-auto rounded-full bg-secondary/80 p-1 border border-border/50">
+        <div className="flex items-center self-start sm:self-auto rounded-full bg-secondary/80 p-1 border border-border/50 shrink-0">
           <button
             type="button"
             onClick={() => handleCurrencyChange("NGN")}
             className={cn(
-              "px-4 py-1.5 rounded-full text-xs font-bold transition-all",
+              "px-3.5 py-1 rounded-full text-xs font-bold transition-all",
               isNgn
                 ? "bg-foreground text-background shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -77,7 +73,7 @@ export function PricingCalculator() {
             type="button"
             onClick={() => handleCurrencyChange("USD")}
             className={cn(
-              "px-4 py-1.5 rounded-full text-xs font-bold transition-all",
+              "px-3.5 py-1 rounded-full text-xs font-bold transition-all",
               !isNgn
                 ? "bg-foreground text-background shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -90,7 +86,7 @@ export function PricingCalculator() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         {/* Sliders and Controls */}
-        <div className="space-y-6">
+        <div className="space-y-6 w-full max-w-full">
           {/* Ticket Price */}
           <div className="space-y-2">
             <div className="flex justify-between items-center text-sm font-semibold">
@@ -147,13 +143,13 @@ export function PricingCalculator() {
           <div className="p-4 rounded-xl bg-copper/5 border border-copper/20 flex items-start gap-3">
             <Sparkles className="w-4 h-4 text-copper shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Payouts settle directly into your verified bank account via Paystack on their standard settlement timeline (T+1).
+              Ticket sales settle directly into your verified bank account via Paystack on a standard T+1 schedule.
             </p>
           </div>
         </div>
 
         {/* Calculation Result Breakdown Card */}
-        <div className="rounded-2xl border border-border/60 bg-background/80 p-6 md:p-8 space-y-6 shadow-inner">
+        <div className="rounded-2xl border border-border/60 bg-background/80 p-6 md:p-8 space-y-6 shadow-inner w-full max-w-full">
           <div className="space-y-1">
             <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
               Estimated Net Payout
