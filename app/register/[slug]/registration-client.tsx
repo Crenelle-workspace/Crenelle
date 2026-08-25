@@ -525,10 +525,23 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-12 lg:items-start">
           {/* Left Column (Showcase Sections) */}
           <div className="space-y-10 lg:col-span-7 xl:col-span-8">
-            <EventDescription description={event.description} />
-            <EventAgendaTimeline agenda={event.agenda} />
-            <EventSpeakers speakers={event.speakers} />
-            <EventFAQ faqs={event.faqs} />
+            {(() => {
+              // Sequential index: only count sections that will actually render
+              let n = 0
+              const idx = () => String(++n).padStart(2, '0')
+              const hasDescription = !!event.description
+              const hasAgenda = !!(event.agenda && event.agenda.length > 0)
+              const hasSpeakers = !!(event.speakers && event.speakers.length > 0)
+              const hasFAQs = !!(event.faqs && event.faqs.length > 0)
+              return (
+                <>
+                  {hasDescription && <EventDescription description={event.description} index={idx()} />}
+                  {hasAgenda && <EventAgendaTimeline agenda={event.agenda} index={idx()} />}
+                  {hasSpeakers && <EventSpeakers speakers={event.speakers} index={idx()} />}
+                  {hasFAQs && <EventFAQ faqs={event.faqs} index={idx()} />}
+                </>
+              )
+            })()}
           </div>
 
           {/* Right Column (High-Visibility Sticky RSVP Card) */}
