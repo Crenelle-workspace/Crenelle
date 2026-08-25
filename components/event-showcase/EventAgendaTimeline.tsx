@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Mic } from 'lucide-react'
 import { SectionShell, SectionHeader } from './ShowcaseSection'
 import type { AgendaItem } from '@/lib/types'
+import { formatEventTime } from '@/lib/date-time'
 
 interface EventAgendaTimelineProps {
   agenda?: AgendaItem[] | null
@@ -29,7 +30,7 @@ export function EventAgendaTimeline({ agenda }: EventAgendaTimelineProps) {
             {/* Time column */}
             <div className="pb-8 text-right">
               <span className="font-display text-lg font-semibold leading-tight text-copper-light sm:text-xl">
-                {item.time}
+                {formatEventTime(item.time)}
               </span>
             </div>
 

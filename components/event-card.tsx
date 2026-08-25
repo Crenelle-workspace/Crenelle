@@ -1,5 +1,6 @@
 import { Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatEventTime } from "@/lib/date-time"
 
 interface EventCardProps {
   name: string
@@ -27,6 +28,7 @@ export function EventCard({
   guestLabel,
 }: EventCardProps) {
   const percentage = capacity > 0 ? Math.min((guestCount / capacity) * 100, 100) : 0
+  const displayTime = formatEventTime(time)
 
   const statusConfig: Record<string, { cls: string; label: string }> = {
     LIVE:      { cls: "status-live",      label: "Live" },
@@ -66,7 +68,7 @@ export function EventCard({
                   #{manifestNum}
                 </span>
                 <span className="font-sans text-xs text-muted-foreground font-medium">
-                  {date} {time && `· ${time}`}
+                  {date} {displayTime && `· ${displayTime}`}
                 </span>
                 {eventType === 'open' && (
                   <span className="flex items-center gap-1 font-sans text-[10px] tracking-wider text-copper border border-copper/30 bg-copper/10 px-2.5 py-0.5 rounded-full font-bold">

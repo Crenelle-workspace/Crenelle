@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { getOptimizedBannerUrl } from '@/lib/images'
+import { formatEventTime } from '@/lib/date-time'
 import { AddToCalendar } from './AddToCalendar'
 import { Calendar, Clock, MapPin, ArrowUpRight, Share2, Check } from 'lucide-react'
 import { toast } from 'sonner'
@@ -30,6 +31,7 @@ export function EventHero({
 }: EventHeroProps) {
   const [copied, setCopied] = useState(false)
   const optimizedBanner = getOptimizedBannerUrl(bannerUrl, 'web')
+  const displayTime = formatEventTime(time)
 
   const handleShare = async () => {
     try {
@@ -155,7 +157,7 @@ export function EventHero({
               Time
             </p>
             <p className="mt-2 text-[15px] font-semibold leading-snug text-foreground">
-              {time || 'To be announced'}
+              {displayTime || 'To be announced'}
             </p>
           </div>
 
