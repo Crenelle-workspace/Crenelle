@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useTransition } from 'react'
+import { useState, useEffect, useCallback, useTransition, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Copy, ToggleLeft, ToggleRight, Trash2, Link2, Lock } from 'lucide-react'
+import { Plus, Copy, Check, ToggleLeft, ToggleRight, Trash2, Link2, Lock, Loader2 } from 'lucide-react'
 import { createScannerLink, toggleScannerLink, deleteScannerLink } from '@/app/actions/scanner-links'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
@@ -21,8 +21,12 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
   const [addOpen, setAddOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ScannerLink | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [togglingLinkId, setTogglingLinkId] = useState<string | null>(null)
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null)
   const [isDeleting, startDeleteTransition] = useTransition()
   const [loading, setLoading] = useState(true)
+  const isCreating = useRef(false)
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const loadLinks = useCallback(async () => {
     try {
@@ -60,22 +64,48 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
     `${window.location.origin}/scan/${token}`
 
   async function handleCreate(formData: FormData) {
+    if (isCreating.current || isPending) return
+    isCreating.current = true
+
     startTransition(async () => {
-      const result = await createScannerLink(eventId, formData)
-      if (result?.error) toast.error(result.error)
-      else { toast.success('Scanner link created'); setAddOpen(false); loadLinks() }
+      try {
+        const result = await createScannerLink(eventId, formData)
+        if (result?.error) toast.error(result.error)
+        else {
+          toast.success('Scanner link created')
+          setAddOpen(false)
+          await loadLinks()
+        }
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Failed to create scanner link')
+      } finally {
+        isCreating.current = false
+      }
     })
   }
 
   async function handleToggle(link: ScannerLink) {
-    startTransition(async () => {
-      await toggleScannerLink(link.id, eventId, !link.is_active)
-      loadLinks()
-    })
+    if (togglingLinkId) return
+    setTogglingLinkId(link.id)
+    try {
+      const result = await toggleScannerLink(link.id, eventId, !link.is_active)
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        await loadLinks()
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to toggle scanner link')
+    } finally {
+      setTogglingLinkId(null)
+    }
   }
 
-  function copyLink(token: string) {
+  function copyLink(token: string, linkId: string) {
     navigator.clipboard.writeText(scanUrl(token))
+    setCopiedLinkId(linkId)
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    copyTimeoutRef.current = setTimeout(() => setCopiedLinkId(null), 2000)
     toast.success('Link copied to clipboard')
   }
 
@@ -119,9 +149,16 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
                   type="submit"
                   variant="copper"
                   disabled={isPending}
-                  className="w-full h-11 text-xs font-bold uppercase rounded-full"
+                  className="w-full h-11 text-xs font-bold uppercase rounded-full gap-2"
                 >
-                  {isPending ? 'Creating...' : 'Create link →'}
+                  {isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create link →'
+                  )}
                 </Button>
               </form>
             </DialogContent>
@@ -204,12 +241,21 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
               <div className="flex items-center gap-2 shrink-0">
                 {/* Copy — always available */}
                 <button
-                  onClick={() => copyLink(link.token)}
+                  onClick={() => copyLink(link.token, link.id)}
                   aria-label={`Copy link for ${link.label}`}
                   className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-foreground border border-border/40 hover:border-copper/40 hover:text-copper px-4 py-2 rounded-full transition-all cursor-pointer"
                 >
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy Link
+                  {copiedLinkId === link.id ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-500" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy Link
+                    </>
+                  )}
                 </button>
 
                 {/* Toggle + Delete — only for scanner_manager / owner */}
@@ -217,13 +263,26 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
                   <>
                     <button
                       onClick={() => handleToggle(link)}
+                      disabled={togglingLinkId === link.id}
                       aria-label={`${link.is_active ? 'Deactivate' : 'Activate'} ${link.label}`}
-                      className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 hover:border-foreground/30 hover:text-foreground px-3.5 py-2 rounded-full transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 hover:border-foreground/30 hover:text-foreground px-3.5 py-2 rounded-full transition-all cursor-pointer disabled:opacity-50"
                     >
-                      {link.is_active
-                        ? <><ToggleRight className="h-4 w-4 text-emerald-500" />Deactivate</>
-                        : <><ToggleLeft className="h-4 w-4" />Activate</>
-                      }
+                      {togglingLinkId === link.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin text-copper" />
+                          Updating...
+                        </>
+                      ) : link.is_active ? (
+                        <>
+                          <ToggleRight className="h-4 w-4 text-emerald-500" />
+                          Deactivate
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft className="h-4 w-4" />
+                          Activate
+                        </>
+                      )}
                     </button>
                     <button
                       onClick={() => setDeleteTarget(link)}

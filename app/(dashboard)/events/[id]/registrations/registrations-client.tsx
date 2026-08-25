@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, MessageSquare, Download, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react'
+import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, MessageSquare, Download, FileSpreadsheet, FileText, ChevronDown, Loader2 } from 'lucide-react'
 import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails, bulkAcceptRegistrations, bulkRejectRegistrations } from '@/app/actions/registrations'
 import { toggleAutoApprove } from '@/app/actions/events'
 import { createClient } from '@/lib/supabase/client'
@@ -55,6 +55,7 @@ export default function RegistrationsPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'waitlist'>('all')
   const [search, setSearch] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [promotingId, setPromotingId] = useState<string | null>(null)
   const [reminderOpen, setReminderOpen] = useState(false)
   const [reminderMessage, setReminderMessage] = useState('')
   const [sendingReminder, setSendingReminder] = useState(false)
@@ -65,8 +66,11 @@ export default function RegistrationsPage() {
   // Selection & Auto-approve state
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isTogglingAutoApprove, setIsTogglingAutoApprove] = useState(false)
+  const isTogglingRef = useRef(false)
   const [bulkAcceptOpen, setBulkAcceptOpen] = useState(false)
   const [bulkRejectOpen, setBulkRejectOpen] = useState(false)
+  const [copiedRegLink, setCopiedRegLink] = useState(false)
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Answers sheet state
   const [answersTarget, setAnswersTarget] = useState<Registration | null>(null)
@@ -224,7 +228,8 @@ export default function RegistrationsPage() {
   }
 
   async function handleToggleAutoApprove() {
-    if (!event) return
+    if (!event || isTogglingRef.current || isTogglingAutoApprove) return
+    isTogglingRef.current = true
     const nextVal = !event.auto_approve_registrations
     setIsTogglingAutoApprove(true)
     try {
@@ -239,6 +244,24 @@ export default function RegistrationsPage() {
       toast.error(e instanceof Error ? e.message : 'Failed to toggle auto-approval')
     } finally {
       setIsTogglingAutoApprove(false)
+      isTogglingRef.current = false
+    }
+  }
+
+  async function handlePromote(reg: Registration) {
+    if (promotingId) return
+    setPromotingId(reg.id)
+    try {
+      const result = await promoteFromWaitlist(reg.id, eventId)
+      if (result?.error) toast.error(result.error)
+      else {
+        toast.success(`${reg.full_name} moved to pending`)
+        await loadData()
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'An error occurred')
+    } finally {
+      setPromotingId(null)
     }
   }
 
@@ -330,6 +353,9 @@ export default function RegistrationsPage() {
   function copyRegistrationLink() {
     if (!event?.registration_slug) return
     navigator.clipboard.writeText(`${window.location.origin}/register/${event.registration_slug}`)
+    setCopiedRegLink(true)
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    copyTimeoutRef.current = setTimeout(() => setCopiedRegLink(false), 2000)
     toast.success('Registration link copied')
   }
 
@@ -380,8 +406,12 @@ export default function RegistrationsPage() {
               }`}
               title="Automatically accept public registrations as soon as they submit"
             >
-              <Zap className={`h-4 w-4 ${event.auto_approve_registrations ? 'fill-current text-emerald-500' : ''}`} />
-              Auto-Approve: {event.auto_approve_registrations ? 'ON' : 'OFF'}
+              {isTogglingAutoApprove ? (
+                <Loader2 className="h-4 w-4 animate-spin text-copper" />
+              ) : (
+                <Zap className={`h-4 w-4 ${event.auto_approve_registrations ? 'fill-current text-emerald-500' : ''}`} />
+              )}
+              Auto-Approve: {isTogglingAutoApprove ? 'UPDATING...' : event.auto_approve_registrations ? 'ON' : 'OFF'}
             </Button>
           )}
 
@@ -445,8 +475,17 @@ export default function RegistrationsPage() {
               className="gap-2 h-10 px-5 text-xs font-bold rounded-full"
               onClick={copyRegistrationLink}
             >
-              <UserPlus className="h-4 w-4" />
-              Copy Registration Link
+              {copiedRegLink ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Link Copied!
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4" />
+                  Copy Registration Link
+                </>
+              )}
             </Button>
           )}
         </div>
@@ -680,24 +719,17 @@ export default function RegistrationsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        disabled={isSubmitting}
+                        disabled={promotingId === reg.id}
                         className="h-8 w-8 text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
-                        onClick={async () => {
-                          setIsSubmitting(true)
-                          try {
-                            const result = await promoteFromWaitlist(reg.id, eventId)
-                            if (result?.error) toast.error(result.error)
-                            else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
-                          } catch (e: unknown) {
-                            toast.error(e instanceof Error ? e.message : 'An error occurred')
-                          } finally {
-                            setIsSubmitting(false)
-                          }
-                        }}
+                        onClick={() => handlePromote(reg)}
                         aria-label={`Promote ${reg.full_name} from waitlist`}
                         title="Promote to pending"
                       >
-                        <ArrowUpCircle className="h-4 w-4" />
+                        {promotingId === reg.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-copper" />
+                        ) : (
+                          <ArrowUpCircle className="h-4 w-4" />
+                        )}
                       </Button>
                     )}
                     {reg.status === 'accepted' && (
@@ -795,22 +827,21 @@ export default function RegistrationsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={isSubmitting}
+                        disabled={promotingId === reg.id}
                         className="h-8 px-3 text-xs gap-1.5 text-copper border border-copper/30 hover:bg-copper/10 rounded-full"
-                        onClick={async () => {
-                          setIsSubmitting(true)
-                          try {
-                            const result = await promoteFromWaitlist(reg.id, eventId)
-                            if (result?.error) toast.error(result.error)
-                            else { toast.success(`${reg.full_name} moved to pending`); await loadData() }
-                          } catch (e: unknown) {
-                            toast.error(e instanceof Error ? e.message : 'An error occurred')
-                          } finally {
-                            setIsSubmitting(false)
-                          }
-                        }}
+                        onClick={() => handlePromote(reg)}
                       >
-                        <ArrowUpCircle className="h-3.5 w-3.5" /> Promote to Pending
+                        {promotingId === reg.id ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-copper" />
+                            Promoting...
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUpCircle className="h-3.5 w-3.5" />
+                            Promote to Pending
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
@@ -965,8 +996,17 @@ export default function RegistrationsPage() {
               disabled={sendingReminder || counts.accepted === 0}
               onClick={handleSendReminder}
             >
-              <Send className="h-4 w-4" />
-              {sendingReminder ? 'Sending...' : `Send to ${counts.accepted} Guest${counts.accepted !== 1 ? 's' : ''}`}
+              {sendingReminder ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  {`Send to ${counts.accepted} Guest${counts.accepted !== 1 ? 's' : ''}`}
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>

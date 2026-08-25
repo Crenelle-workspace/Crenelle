@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -86,10 +87,17 @@ export function ConfirmDialog({
               variant="danger"
               size="default"
               disabled={isPending}
-              className="flex-1"
+              className="flex-1 gap-2"
               onClick={onConfirm}
             >
-              {isPending ? 'Processing...' : confirmLabel}
+              {isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                confirmLabel
+              )}
             </Button>
           </DialogFooter>
         </div>

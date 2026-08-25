@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Pencil, X, Users, Lock, Download } from 'lucide-react'
+import { Plus, Pencil, X, Users, Lock, Download, Loader2 } from 'lucide-react'
 import { addAttendee, updateAttendee, cancelAttendeeInvitation, addMultipleAttendees, updateAttendeeTicketTier } from '@/app/actions/attendees'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
@@ -594,8 +594,21 @@ function GuestForm({
         </select>
       </div>
 
-      <Button type="submit" variant="copper" className="w-full h-11 text-xs font-bold mt-2 rounded-full" disabled={loading}>
-        {loading ? 'Saving...' : 'Save Guest'}
+      <Button
+        type="submit"
+        variant="copper"
+        className="w-full h-11 text-xs font-bold mt-2 rounded-full gap-2"
+        disabled={loading}
+        aria-busy={loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          'Save Guest'
+        )}
       </Button>
     </form>
   )
@@ -655,8 +668,21 @@ function BulkGuestForm({
         </p>
       </div>
 
-      <Button type="submit" variant="copper" className="w-full h-11 text-xs font-bold mt-2 rounded-full" disabled={loading}>
-        {loading ? 'Importing...' : 'Save Guests'}
+      <Button
+        type="submit"
+        variant="copper"
+        className="w-full h-11 text-xs font-bold mt-2 rounded-full gap-2"
+        disabled={loading}
+        aria-busy={loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Importing...
+          </>
+        ) : (
+          'Save Guests'
+        )}
       </Button>
     </form>
   )

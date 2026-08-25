@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useTransition } from 'react'
+import { useState, useEffect, useCallback, useTransition, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { UserPlus, Trash2, Users, Shield, Eye, Star } from 'lucide-react'
+import { UserPlus, Trash2, Users, Shield, Eye, Star, Loader2 } from 'lucide-react'
 import { getTeamMembers, inviteTeamMember, removeTeamMember, updateTeamMemberRole } from '@/app/actions/team'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import { Button } from '@/components/ui/button'
@@ -44,8 +44,9 @@ export default function TeamPage() {
   const [role, setRole] = useState<MemberRole>('viewer')
   const [isPending, startTransition] = useTransition()
   const [isRemoving, startRemoveTransition] = useTransition()
-  const [isUpdatingRole, startUpdateTransition] = useTransition()
+  const [updatingRoleMemberId, setUpdatingRoleMemberId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const isInviting = useRef(false)
 
   const loadMembers = useCallback(async () => {
     try {
@@ -66,26 +67,42 @@ export default function TeamPage() {
 
   function handleInvite(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim()) return
+    if (!email.trim() || isPending || isInviting.current) return
+    isInviting.current = true
+
     startTransition(async () => {
-      const result = await inviteTeamMember(eventId, email.trim(), role)
-      if (result?.error) {
-        toast.error(result.error)
-      } else {
-        toast.success(`Invitation sent to ${email}`)
-        setEmail('')
-        setRole('viewer')
-        setInviteOpen(false)
-        loadMembers()
+      try {
+        const result = await inviteTeamMember(eventId, email.trim(), role)
+        if (result?.error) {
+          toast.error(result.error)
+        } else {
+          toast.success(`Invitation sent to ${email}`)
+          setEmail('')
+          setRole('viewer')
+          setInviteOpen(false)
+          await loadMembers()
+        }
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Failed to send invite')
+      } finally {
+        isInviting.current = false
       }
     })
   }
 
   function handleRoleChange(member: EventMember, newRole: MemberRole) {
-    startUpdateTransition(async () => {
-      const result = await updateTeamMemberRole(member.id, eventId, newRole)
-      if (result?.error) toast.error(result.error)
-      else { toast.success('Role updated'); loadMembers() }
+    if (updatingRoleMemberId) return
+    setUpdatingRoleMemberId(member.id)
+    startTransition(async () => {
+      try {
+        const result = await updateTeamMemberRole(member.id, eventId, newRole)
+        if (result?.error) toast.error(result.error)
+        else { toast.success('Role updated'); await loadMembers() }
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Failed to update role')
+      } finally {
+        setUpdatingRoleMemberId(null)
+      }
     })
   }
 
@@ -162,9 +179,16 @@ export default function TeamPage() {
                 type="submit"
                 variant="copper"
                 disabled={isPending || !email.trim()}
-                className="w-full h-11 text-xs font-bold uppercase rounded-full"
+                className="w-full h-11 text-xs font-bold uppercase rounded-full gap-2"
               >
-                {isPending ? 'Sending invite...' : 'Send invite →'}
+                {isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending invite...
+                  </>
+                ) : (
+                  'Send invite →'
+                )}
               </Button>
             </form>
           </DialogContent>
@@ -260,7 +284,7 @@ export default function TeamPage() {
                   <select
                     value={member.role}
                     onChange={e => handleRoleChange(member, e.target.value as MemberRole)}
-                    disabled={isUpdatingRole}
+                    disabled={updatingRoleMemberId === member.id}
                     aria-label={`Change role for ${member.member_email}`}
                     className={`font-sans text-xs font-semibold px-3 py-1.5 border border-border/40 rounded-full appearance-none cursor-pointer bg-background disabled:opacity-50 ${rc.cls}`}
                   >
