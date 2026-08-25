@@ -10,6 +10,7 @@ import { DeleteEventDialog } from '@/components/delete-event-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
+import { formatEventTime } from '@/lib/date-time'
 import { toast } from 'sonner'
 import { AgendaEditor } from '@/components/event-editor/AgendaEditor'
 import { SpeakerEditor } from '@/components/event-editor/SpeakerEditor'
@@ -529,7 +530,7 @@ export default function EventOverviewPage() {
             }
           />
           <Row label="Date" value={new Date(event.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />
-          {event.time && <Row label="Time" value={`${event.time.slice(0, 5)} (${event.timezone || 'Africa/Lagos'})`} />}
+          {event.time && <Row label="Time" value={`${formatEventTime(event.time)} (${event.timezone || 'Africa/Lagos'})`} />}
           <Row label="Venue" value={event.venue} />
           {event.capacity && <Row label="Capacity" value={`${event.capacity} people`} />}
           <Row

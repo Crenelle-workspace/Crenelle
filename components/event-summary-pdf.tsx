@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { formatEventTime } from '@/lib/date-time'
 
 export interface EventSummaryReportProps {
   event: {
@@ -619,7 +620,7 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>TIME:</Text>
               <Text style={styles.metaValue}>
-                {event?.time || 'N/A'} {event?.timezone ? `(${event.timezone})` : ''}
+                {formatEventTime(event?.time) || 'N/A'} {event?.timezone ? `(${event.timezone})` : ''}
               </Text>
             </View>
             <View style={styles.metaItem}>
@@ -940,7 +941,7 @@ export function EventSummaryReport({ event, stats }: EventSummaryReportProps) {
               <View style={{ marginBottom: 12 }}>
                 {event?.agenda?.map((item) => (
                   <View key={item.id} style={styles.agendaItem}>
-                    <Text style={styles.agendaTimeBadge}>{item.time}</Text>
+                    <Text style={styles.agendaTimeBadge}>{formatEventTime(item.time)}</Text>
                     <View style={styles.agendaContent}>
                       <Text style={styles.agendaTitle}>{item.title}</Text>
                       {item.speaker ? (

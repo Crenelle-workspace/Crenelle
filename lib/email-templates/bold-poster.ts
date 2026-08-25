@@ -123,7 +123,7 @@ export function renderBoldPosterTheme(options: RenderOptions & {
           </tr>
           <tr>
             <td class="box-block" style="width:50%;background-color:#FFFFFF;border:3px solid #000000;border-radius:6px;padding:16px;box-shadow:3px 3px 0px #000000;">
-              <span style="font-size:9px;font-weight:900;letter-spacing:2px;color:#4F46E5;text-transform:uppercase;display:block;font-family:'Courier New',monospace;">PASSENGER</span>
+              <span style="font-size:9px;font-weight:900;letter-spacing:2px;color:#4F46E5;text-transform:uppercase;display:block;font-family:'Courier New',monospace;">GUEST</span>
               <span class="text-heading" style="font-size:14px;font-weight:900;color:#000000;display:block;margin-top:4px;">${escapeHtml(recipientName)}</span>
             </td>
             <td class="box-block" style="width:50%;background-color:#FFFFFF;border:3px solid #000000;border-radius:6px;padding:16px;box-shadow:3px 3px 0px #000000;">
@@ -136,7 +136,7 @@ export function renderBoldPosterTheme(options: RenderOptions & {
         <!-- Venue, Seat & Tier Banner Block -->
         <div class="box-block" style="background-color:#FFFFFF;border:3px solid #000000;border-radius:6px;padding:16px 20px;margin-bottom:28px;box-shadow:4px 4px 0px #000000;">
           <div style="font-size:13px;font-weight:900;" class="text-heading">
-            LOCATION: ${escapeHtml(event.venue)}
+            VENUE: ${escapeHtml(event.venue)}
           </div>
           ${seatInfo ? `
           <div style="font-size:12px;color:#059669;font-weight:900;margin-top:6px;font-family:'Courier New',monospace;">
