@@ -7,14 +7,15 @@ import type { SpeakerInfo } from '@/lib/types'
 
 interface EventSpeakersProps {
   speakers?: SpeakerInfo[] | null
+  index: string
 }
 
-export function EventSpeakers({ speakers }: EventSpeakersProps) {
+export function EventSpeakers({ speakers, index }: EventSpeakersProps) {
   if (!speakers || speakers.length === 0) return null
 
   return (
     <SectionShell className="p-6 sm:p-9">
-      <SectionHeader index="03" kicker="Line-up" title="Speakers & hosts" />
+      <SectionHeader index={index} kicker="Line-up" title="Speakers & hosts" />
 
       <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
         {speakers.map((speaker, index) => (

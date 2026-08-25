@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Pencil, Trash2, Save, X, Copy, Lock, Globe, Mail, Send, Image as ImageIcon, TrendingUp } from 'lucide-react'
+import { Pencil, Trash2, Save, X, Copy, Check, Lock, Globe, Mail, Send, Image as ImageIcon, TrendingUp, Loader2 } from 'lucide-react'
 import { updateEvent, deleteEvent } from '@/app/actions/events'
 import { sendReminderEmails } from '@/app/actions/registrations'
 import { Button } from '@/components/ui/button'
@@ -34,7 +34,9 @@ export default function EventOverviewPage() {
   const [editEventType, setEditEventType] = useState<'closed' | 'open'>('closed')
   const [editTimezone, setEditTimezone] = useState('Africa/Lagos')
   const [showTzPicker, setShowTzPicker] = useState(false)
+  const [copiedRegLink, setCopiedRegLink] = useState(false)
   const isSubmitting = useRef(false)
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Rich description detail state
   const [editAgenda, setEditAgenda] = useState<AgendaItem[]>([])
@@ -244,6 +246,9 @@ export default function EventOverviewPage() {
   function copyRegistrationLink() {
     if (!event?.registration_slug) return
     navigator.clipboard.writeText(`${window.location.origin}/register/${event.registration_slug}`)
+    setCopiedRegLink(true)
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    copyTimeoutRef.current = setTimeout(() => setCopiedRegLink(false), 2000)
     toast.success('Registration link copied')
   }
 
@@ -504,7 +509,7 @@ export default function EventOverviewPage() {
 
           <div className="flex gap-3 pt-2 border-t-2 border-foreground/10">
             <Button type="submit" variant="signal" disabled={loading} className="gap-2 h-12 px-6 text-sm">
-              <Save className="h-4 w-4" aria-hidden="true" />
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" aria-hidden="true" />}
               {loading ? 'SAVING...' : 'SAVE CHANGES'}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setEditing(false)} className="gap-2 h-12 px-6 text-sm text-foreground/70 hover:text-foreground">
@@ -602,8 +607,17 @@ export default function EventOverviewPage() {
               onClick={copyRegistrationLink}
               className="gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-8 px-3"
             >
-              <Copy className="h-3 w-3" />
-              Copy Link
+              {copiedRegLink ? (
+                <>
+                  <Check className="h-3 w-3 text-emerald-500" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3" />
+                  Copy Link
+                </>
+              )}
             </Button>
           </div>
           <p className="font-sans text-xs text-muted-foreground break-all mb-4">
@@ -677,8 +691,17 @@ export default function EventOverviewPage() {
               disabled={sendingReminder}
               onClick={handleSendReminder}
             >
-              <Send className="h-4 w-4" />
-              {sendingReminder ? 'SENDING...' : 'SEND REMINDERS →'}
+              {sendingReminder ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  SENDING...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  SEND REMINDERS →
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>

@@ -2,10 +2,6 @@
 
 import { SectionShell, SectionHeader } from './ShowcaseSection'
 
-interface EventDescriptionProps {
-  description: string | null
-}
-
 function renderFormattedContent(content: string) {
   const paragraphs = content.split(/\n\s*\n/)
   let firstParaSeen = false
@@ -95,12 +91,17 @@ function renderFormattedContent(content: string) {
   })
 }
 
-export function EventDescription({ description }: EventDescriptionProps) {
+interface EventDescriptionProps {
+  description?: string | null
+  index: string
+}
+
+export function EventDescription({ description, index }: EventDescriptionProps) {
   if (!description) return null
 
   return (
     <SectionShell className="p-6 sm:p-9">
-      <SectionHeader index="01" kicker="Overview" title="About this event" />
+      <SectionHeader index={index} kicker="Overview" title="About this event" />
       <div className="max-w-2xl">{renderFormattedContent(description)}</div>
     </SectionShell>
   )

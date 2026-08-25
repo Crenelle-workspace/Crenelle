@@ -7,9 +7,10 @@ import type { FAQItem } from '@/lib/types'
 
 interface EventFAQProps {
   faqs?: FAQItem[] | null
+  index: string
 }
 
-export function EventFAQ({ faqs }: EventFAQProps) {
+export function EventFAQ({ faqs, index }: EventFAQProps) {
   const [openId, setOpenId] = useState<string | null>(null)
 
   if (!faqs || faqs.length === 0) return null
@@ -20,7 +21,7 @@ export function EventFAQ({ faqs }: EventFAQProps) {
 
   return (
     <SectionShell className="p-6 sm:p-9">
-      <SectionHeader index="04" kicker="Answers" title="Frequently asked" />
+      <SectionHeader index={index} kicker="Answers" title="Frequently asked" />
 
       <div className="border-t border-border">
         {faqs.map((faq, index) => {

@@ -60,6 +60,7 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
 
   async function handleCreateProfile(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (isCreatingProfile) return
     setIsCreatingProfile(true)
     setProfileError(null)
 
@@ -372,8 +373,21 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
         </div>
 
         <div className="flex gap-3 pt-4 border-t border-border/30">
-          <Button type="submit" variant="copper" disabled={loading} className="flex-1 h-11 text-xs font-bold rounded-full">
-            {loading ? 'Creating...' : 'Create Event →'}
+          <Button
+            type="submit"
+            variant="copper"
+            disabled={loading}
+            aria-busy={loading}
+            className="flex-1 h-11 text-xs font-bold rounded-full gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Creating Event...
+              </>
+            ) : (
+              'Create Event →'
+            )}
           </Button>
           <Link href="/events">
             <Button type="button" variant="outline" className="h-11 px-6 font-sans text-xs font-bold rounded-full">

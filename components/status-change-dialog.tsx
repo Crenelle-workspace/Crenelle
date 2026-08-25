@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { updateEventStatus } from '@/app/actions/events'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
 interface StatusChangeDialogProps {
   open: boolean
@@ -24,17 +25,26 @@ export function StatusChangeDialog({
 }: StatusChangeDialogProps) {
   const [selected, setSelected] = useState(currentStatus)
   const [isPending, startTransition] = useTransition()
+  const isSubmitting = useRef(false)
 
   if (!open) return null
 
   function handleConfirm() {
+    if (isPending || isSubmitting.current || selected === currentStatus) return
+    isSubmitting.current = true
     startTransition(async () => {
-      const result = await updateEventStatus(eventId, selected)
-      if (result?.error) {
-        toast.error(result.error)
-      } else {
-        toast.success(`Status updated to ${selected}`)
-        onOpenChange(false)
+      try {
+        const result = await updateEventStatus(eventId, selected)
+        if (result?.error) {
+          toast.error(result.error)
+        } else {
+          toast.success(`Status updated to ${selected}`)
+          onOpenChange(false)
+        }
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Failed to update status')
+      } finally {
+        isSubmitting.current = false
       }
     })
   }
@@ -109,9 +119,16 @@ export function StatusChangeDialog({
           <button
             onClick={handleConfirm}
             disabled={isPending || selected === currentStatus}
-            className="flex-1 bg-copper hover:bg-copper-dark text-white font-sans text-xs font-bold px-5 py-3 rounded-full transition-all duration-300 shadow-md shadow-copper/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-copper hover:bg-copper-dark text-white font-sans text-xs font-bold px-5 py-3 rounded-full transition-all duration-300 shadow-md shadow-copper/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
-            {isPending ? 'Updating...' : `Set to ${statuses.find(s => s.value === selected)?.label}`}
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              `Set to ${statuses.find(s => s.value === selected)?.label}`
+            )}
           </button>
           <button
             onClick={() => onOpenChange(false)}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Pencil, X, Ticket, AlertCircle, LayoutGrid, List, CreditCard } from 'lucide-react'
+import { Plus, Pencil, X, Ticket, AlertCircle, LayoutGrid, List, CreditCard, Loader2 } from 'lucide-react'
 import { createTier, updateTier, softDeleteTier } from '@/app/actions/ticket-tiers'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
@@ -756,8 +756,21 @@ function TierForm({
         )}
       </div>
 
-      <Button type="submit" variant="copper" className="w-full h-11 text-xs font-bold mt-2 rounded-full" disabled={loading}>
-        {loading ? 'Saving...' : 'Save Ticket Tier'}
+      <Button
+        type="submit"
+        variant="copper"
+        className="w-full h-11 text-xs font-bold mt-2 rounded-full gap-2"
+        disabled={loading}
+        aria-busy={loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          'Save Ticket Tier'
+        )}
       </Button>
     </form>
   )

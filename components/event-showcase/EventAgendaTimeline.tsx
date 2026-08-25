@@ -8,14 +8,15 @@ import { formatEventTime } from '@/lib/date-time'
 
 interface EventAgendaTimelineProps {
   agenda?: AgendaItem[] | null
+  index: string
 }
 
-export function EventAgendaTimeline({ agenda }: EventAgendaTimelineProps) {
+export function EventAgendaTimeline({ agenda, index }: EventAgendaTimelineProps) {
   if (!agenda || agenda.length === 0) return null
 
   return (
     <SectionShell className="p-6 sm:p-9">
-      <SectionHeader index="02" kicker="Itinerary" title="Schedule & agenda" />
+      <SectionHeader index={index} kicker="Itinerary" title="Schedule & agenda" />
 
       <ol className="relative">
         {agenda.map((item, index) => (
