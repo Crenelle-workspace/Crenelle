@@ -27,21 +27,24 @@ function getResend() {
 // The sending address — domain must be verified in your Resend dashboard.
 // Set EMAIL_FROM_ADDRESS=noreply@yourdomain.com in .env.local.
 // Falls back to the legacy EMAIL_FROM value (address part only) if not set.
-const SENDING_ADDRESS = (
-  process.env.EMAIL_FROM_ADDRESS ||
-  process.env.EMAIL_FROM?.match(/<(.+)>/)?.[1] ||
-  'onboarding@resend.dev'
-)
+// Lazy getter: reads env vars at call time (not at module import time) to avoid
+// edge-runtime / Next.js static-init issues where process.env may not be ready.
+function getSendingAddress(): string {
+  // Strip whitespace so a value like "  " (all spaces) is treated as unset
+  const fromAddr = (process.env.EMAIL_FROM_ADDRESS ?? '').trim()
+  if (fromAddr) return fromAddr
 
-// Warn loudly at startup if using the Resend onboarding sandbox address.
-// With this address, Resend only delivers to the account owner's email —
-// all other recipients are silently dropped or rewritten.
-if (SENDING_ADDRESS === 'onboarding@resend.dev') {
+  // Legacy: extract address from "Display Name <email@domain.com>" format
+  const legacyMatch = (process.env.EMAIL_FROM ?? '').match(/<(.+)>/)
+  if (legacyMatch?.[1]?.trim()) return legacyMatch[1].trim()
+
+  // Final fallback — Resend sandbox (only delivers to account owner)
   console.warn(
     '[email] WARNING: EMAIL_FROM_ADDRESS is not set. Using Resend onboarding sandbox address ' +
     '(onboarding@resend.dev). Emails will ONLY deliver to the Resend account owner email. ' +
     'Set EMAIL_FROM_ADDRESS=noreply@yourdomain.com in .env.local with a verified Resend domain.'
   )
+  return 'onboarding@resend.dev'
 }
 
 /**
@@ -87,7 +90,7 @@ export function safeImageUrl(value: unknown): string {
 /** Formats display name into a valid RFC 5322 From header: "Display Name" <address@domain.com> */
 export function formatFromHeader(displayName: string): string {
   const cleanName = displayName.replace(/["\r\n]/g, '').replace(/\s+/g, ' ').trim() || 'Crenelle'
-  return `"${cleanName}" <${SENDING_ADDRESS}>`
+  return `"${cleanName}" <${getSendingAddress()}>`
 }
 
 /** Organisation/organiser identity used to personalise the From header and Reply-To. */
@@ -154,6 +157,8 @@ export async function fetchOrganizerForEvent(eventId: string): Promise<Organizer
   }
 
   // ── Tier 4: auth user metadata (original fallback) ─────────────
+  // Must be OUTSIDE the organizer_id block — it is only reachable when
+  // the organizer has no sender profiles and no org_name setting.
   if (!event?.organizer_id) return { name: 'Crenelle', email: '' }
 
   try {
