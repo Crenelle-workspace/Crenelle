@@ -256,7 +256,11 @@ export default function LiveDashboardPage() {
       ] = await Promise.all([
         supabase.from('events').select('*').eq('id', eventId).single(),
         supabase.from('invitations').select('id, party_size, seat_info, status, ticket_tier_id, attendee:attendees(name)').eq('event_id', eventId),
-        supabase.from('entry_logs').select('id, scanned_at, scanner_link_id, invitation:invitations(id, party_size, seat_info, ticket_tier_id, attendee:attendees(name))').order('scanned_at', { ascending: false }),
+        supabase
+          .from('entry_logs')
+          .select('id, scanned_at, scanner_link_id, invitation:invitations!inner(id, event_id, party_size, seat_info, ticket_tier_id, attendee:attendees(name))')
+          .eq('invitation.event_id', eventId)
+          .order('scanned_at', { ascending: false }),
         supabase.from('scanner_links').select('id, label, is_active').eq('event_id', eventId),
         supabase.from('ticket_tiers').select('*').eq('event_id', eventId).is('deleted_at', null).order('created_at', { ascending: true }),
         supabase.from('payments').select('*').eq('event_id', eventId).eq('status', 'paid'),
