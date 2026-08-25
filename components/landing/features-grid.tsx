@@ -214,7 +214,7 @@ export function FeaturesGrid() {
                 {emailState === 'idle' && (
                   <>
                     <Send className="w-3 h-3" />
-                    Send Demo Invite
+                    Test Outbox Dispatch
                   </>
                 )}
                 {emailState === 'sending' && (
@@ -297,7 +297,7 @@ export function FeaturesGrid() {
                   className="inline-flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-full bg-copper text-white hover:bg-copper-dark cursor-pointer transition-all duration-300 shadow-sm"
                 >
                   <Plus className="w-3 h-3" />
-                  Simulate Buy
+                  Test Capacity Lock
                 </button>
                 {(attendees > 118 || waitlist > 14) && (
                   <button

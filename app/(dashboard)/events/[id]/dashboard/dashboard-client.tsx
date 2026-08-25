@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Users, UserCheck, Clock, TrendingUp, DoorOpen, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -129,7 +129,84 @@ export default function LiveDashboardPage() {
     type: string
     responsesCount: number
     topAnswers?: Array<{ text: string; count: number }>
+    aiSummary?: string
   }>>([])
+
+  // AI summary state — keyed by questionId
+  const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({})
+  // Fingerprint of the last answers sent to Gemini — read synchronously inside async callbacks
+  const aiSummaryHashesRef = useRef<Record<string, string>>({})
+  // Concurrency guard — only one Gemini batch per loadData cycle
+  const aiInFlight = useRef(false)
+
+  // ── Stable fingerprint of topAnswers ─────────────────────────────────────
+  const fingerprintAnswers = useCallback(
+    (answers: Array<{ text: string; count: number }>): string =>
+      answers.map((a) => `${a.text}:${a.count}`).join('|'),
+    []
+  )
+
+  // ── Eager Gemini fetch — called after customQuestions are computed ─────────
+  const fetchAiSummaries = useCallback(
+    async (
+      eventStatus: string,
+      questions: Array<{
+        id: string
+        label: string
+        type: string
+        topAnswers?: Array<{ text: string; count: number }>
+      }>,
+      eventId: string
+    ) => {
+      // Layer 1: Only run for live or ended events
+      if (eventStatus !== 'live' && eventStatus !== 'ended') return
+
+      // Layer 3: Concurrency guard — skip if a batch is already in-flight
+      if (aiInFlight.current) return
+
+      const textQuestions = questions.filter(
+        (q) => q.type === 'text' && (q.topAnswers?.length ?? 0) > 0
+      )
+      if (textQuestions.length === 0) return
+
+      aiInFlight.current = true
+      try {
+        await Promise.all(
+          textQuestions.map(async (q) => {
+            const fingerprint = fingerprintAnswers(q.topAnswers ?? [])
+
+            // Layer 2: Skip if answers haven't changed since last fetch
+            if (aiSummaryHashesRef.current[q.id] === fingerprint) return
+
+            try {
+              const res = await fetch(`/api/events/${eventId}/ai-summary`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  questionId: q.id,
+                  questionLabel: q.label,
+                  answers: q.topAnswers ?? [],
+                }),
+              })
+
+              if (!res.ok) return
+
+              const data = await res.json() as { summary?: string }
+              if (data.summary) {
+                setAiSummaries((prev) => ({ ...prev, [q.id]: data.summary! }))
+                aiSummaryHashesRef.current = { ...aiSummaryHashesRef.current, [q.id]: fingerprint }
+              }
+            } catch {
+              // Non-fatal — PDF simply omits the AI summary for this question
+            }
+          })
+        )
+      } finally {
+        aiInFlight.current = false
+      }
+    },
+    [fingerprintAnswers]
+  )
 
   const getPeakCheckInTime = (entriesList: EntryWithGuest[]) => {
     if (entriesList.length === 0) return 'N/A'
@@ -399,6 +476,9 @@ export default function LiveDashboardPage() {
           }
         })
         setCustomQuestions(summary)
+
+        // Eagerly fetch AI summaries for text questions (live/ended events only)
+        void fetchAiSummaries(eventData?.status ?? '', summary, eventId)
       }
     } finally {
       setLoading(false)
@@ -545,7 +625,11 @@ export default function LiveDashboardPage() {
                   financials,
                   tierBreakdown,
                   registrationFunnel,
-                  customQuestions,
+                  customQuestions: customQuestions.map((q) =>
+                    q.type === 'text' && aiSummaries[q.id]
+                      ? { ...q, aiSummary: aiSummaries[q.id] }
+                      : q
+                  ),
                 }}
               />
             }

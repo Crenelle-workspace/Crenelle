@@ -2,13 +2,19 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, MessageSquare } from 'lucide-react'
+import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, MessageSquare, Download, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react'
 import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails, bulkAcceptRegistrations, bulkRejectRegistrations } from '@/app/actions/registrations'
 import { toggleAutoApprove } from '@/app/actions/events'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SectionHeader } from '@/components/section-header'
 import { EmptyState } from '@/components/empty-state'
@@ -378,6 +384,49 @@ export default function RegistrationsPage() {
               Auto-Approve: {event.auto_approve_registrations ? 'ON' : 'OFF'}
             </Button>
           )}
+
+          {/* Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="gap-2 h-10 px-4 text-xs font-semibold text-foreground/80 hover:text-foreground border border-border/40 rounded-full"
+                aria-label="Export registrations and question answers"
+              >
+                <Download className="h-4 w-4 text-copper" />
+                Export Answers
+                <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-background border border-border/60 rounded-xl shadow-xl p-1.5 z-50">
+              <DropdownMenuItem asChild>
+                <a
+                  href={`/api/events/${eventId}/registrations/export?format=csv${filter !== 'all' ? `&status=${filter}` : ''}`}
+                  download
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium cursor-pointer rounded-lg hover:bg-copper/10 hover:text-copper transition-colors border-0"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-copper shrink-0" />
+                  <div className="flex flex-col text-left">
+                    <span className="font-semibold text-foreground">Export as CSV</span>
+                    <span className="text-[10px] text-muted-foreground">Universal spreadsheet (.csv)</span>
+                  </div>
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a
+                  href={`/api/events/${eventId}/registrations/export?format=xlsx${filter !== 'all' ? `&status=${filter}` : ''}`}
+                  download
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium cursor-pointer rounded-lg hover:bg-copper/10 hover:text-copper transition-colors border-0"
+                >
+                  <FileText className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <div className="flex flex-col text-left">
+                    <span className="font-semibold text-foreground">Export as Excel</span>
+                    <span className="text-[10px] text-muted-foreground">Formatted workbook (.xls / .xlsx)</span>
+                  </div>
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Send Reminder */}
           <Button
@@ -1007,10 +1056,18 @@ export default function RegistrationsPage() {
             </div>
 
             {/* Sheet footer */}
-            <div className="px-5 py-4 border-t border-border/40">
+            <div className="px-5 py-4 border-t border-border/40 flex items-center justify-between gap-3">
               <p className="font-sans text-[11px] text-muted-foreground">
                 Registered on {new Date(answersTarget.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
+              <a
+                href={`/api/events/${eventId}/registrations/export?format=csv`}
+                download
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-copper hover:text-copper/85 transition-colors shrink-0"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export All
+              </a>
             </div>
           </>
         )}

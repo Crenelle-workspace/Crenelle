@@ -41,6 +41,19 @@ describe('EventSummaryReport Component', () => {
           options: ['Standard', 'Vegetarian', 'Halal'],
           required: true,
         },
+        {
+          id: 'q-2',
+          label: 'Which sessions interest you?',
+          type: 'checkbox',
+          options: ['AI Track', 'Product Track', 'Leadership Track'],
+          required: false,
+        },
+        {
+          id: 'q-3',
+          label: 'What do you hope to gain from this summit?',
+          type: 'text',
+          required: false,
+        },
       ],
     }
 
@@ -117,6 +130,7 @@ describe('EventSummaryReport Component', () => {
         },
       },
       customQuestions: [
+        // radio — rendered as horizontal bar chart (single choice)
         {
           id: 'q-1',
           label: 'Dietary Preference',
@@ -128,12 +142,72 @@ describe('EventSummaryReport Component', () => {
             { text: 'Vegetarian', count: 40 },
           ],
         },
+        // checkbox — rendered as horizontal bar chart (multi-select)
+        {
+          id: 'q-2',
+          label: 'Which sessions interest you?',
+          type: 'checkbox',
+          responsesCount: 295,
+          topAnswers: [
+            { text: 'AI Track', count: 230 },
+            { text: 'Leadership Track', count: 180 },
+            { text: 'Product Track', count: 120 },
+          ],
+        },
+        // text — rendered with Gemini AI prose summary
+        {
+          id: 'q-3',
+          label: 'What do you hope to gain from this summit?',
+          type: 'text',
+          responsesCount: 280,
+          topAnswers: [],
+          aiSummary:
+            'Respondents overwhelmingly seek peer networking opportunities and exposure to cutting-edge AI tooling. A strong secondary theme around leadership development and building Africa-focused venture connections emerged across responses.',
+        },
       ],
     }
 
     const reportElement = <EventSummaryReport event={mockEvent} stats={mockStats} />
     expect(reportElement).toBeDefined()
     expect(reportElement.props.document).toBeUndefined() // React PDF Document root element
+    expect(reportElement.type).toBe(EventSummaryReport)
+  })
+
+  it('renders text question gracefully with fallback list when no aiSummary is available', () => {
+    const minimalEvent = {
+      name: 'Private Board Dinner',
+      date: '2026-10-01',
+      time: '19:30',
+      venue: 'Private Dining Room 3',
+    }
+
+    const statsWithTextNoSummary = {
+      totalSeats: 20,
+      totalInvited: 20,
+      arrived: 18,
+      arrivedSeats: 18,
+      pendingSeats: 2,
+      arrivalRate: 90,
+      peakCheckInTime: '19:30 - 20:00 (15 scans)',
+      entranceStats: [],
+      recentEntries: [],
+      customQuestions: [
+        {
+          id: 'q-fallback',
+          label: 'Any special requests?',
+          type: 'text',
+          responsesCount: 5,
+          topAnswers: [
+            { text: 'Vegetarian menu please', count: 2 },
+            { text: 'Gluten free', count: 1 },
+          ],
+          // aiSummary intentionally omitted — exercises the fallback plain list path
+        },
+      ],
+    }
+
+    const reportElement = <EventSummaryReport event={minimalEvent} stats={statsWithTextNoSummary} />
+    expect(reportElement).toBeDefined()
     expect(reportElement.type).toBe(EventSummaryReport)
   })
 
