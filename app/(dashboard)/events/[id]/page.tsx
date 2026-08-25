@@ -16,7 +16,7 @@ import { AgendaEditor } from '@/components/event-editor/AgendaEditor'
 import { SpeakerEditor } from '@/components/event-editor/SpeakerEditor'
 import { FAQEditor } from '@/components/event-editor/FAQEditor'
 import { RegistrationQuestionsEditor } from '@/components/event-editor/RegistrationQuestionsEditor'
-import type { Event, AgendaItem, SpeakerInfo, FAQItem, RegistrationQuestion } from '@/lib/types'
+import type { Event, AgendaItem, SpeakerInfo, FAQItem, RegistrationQuestion, SenderProfile } from '@/lib/types'
 import { EventBannerInput } from '@/components/event-banner-input'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { EventStatusBadge } from './event-status-badge'
@@ -58,6 +58,10 @@ export default function EventOverviewPage() {
     pendingCount: number
   } | null>(null)
 
+  // Sender Profiles state
+  const [profilesList, setProfilesList] = useState<SenderProfile[]>([])
+  const [editSenderProfileId, setEditSenderProfileId] = useState<string>('')
+
   const editingRef = useRef(editing)
   useEffect(() => {
     editingRef.current = editing
@@ -81,12 +85,22 @@ export default function EventOverviewPage() {
         if (!editingRef.current) {
           setEditEventType(data.event_type || 'closed')
           setEditTimezone(data.timezone || 'Africa/Lagos')
+          setEditSenderProfileId(data.sender_profile_id || '')
           setEditAgenda(data.agenda || [])
           setEditSpeakers(data.speakers || [])
           setEditFaqs(data.faqs || [])
           setEditRegistrationQuestions((data.registration_questions as RegistrationQuestion[]) || [])
         }
       }
+    }
+
+    async function loadProfiles() {
+      const { data } = await supabase
+        .from('sender_profiles')
+        .select('*')
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: true })
+      if (data) setProfilesList(data)
     }
 
     async function loadRegCounts() {
@@ -105,6 +119,7 @@ export default function EventOverviewPage() {
     }
 
     loadEvent()
+    loadProfiles()
     loadRegCounts()
 
     // Load revenue summary for paid events
@@ -213,6 +228,7 @@ export default function EventOverviewPage() {
     if (event) {
       setEditEventType(event.event_type || 'closed')
       setEditTimezone(event.timezone || 'Africa/Lagos')
+      setEditSenderProfileId(event.sender_profile_id || '')
       setEditAgenda(event.agenda || [])
       setEditSpeakers(event.speakers || [])
       setEditFaqs(event.faqs || [])
@@ -420,6 +436,32 @@ export default function EventOverviewPage() {
           </div>
 
           <EventBannerInput defaultValue={event.banner_url} />
+
+          {/* Sending Identity (Sender Profile) */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="ev-sender-profile" className={labelCls}>Sending Identity</label>
+            <select
+              id="ev-sender-profile"
+              name="sender_profile_id"
+              value={editSenderProfileId}
+              onChange={(e) => setEditSenderProfileId(e.target.value)}
+              className={`${fieldCls} appearance-none cursor-pointer`}
+            >
+              <option value="">
+                {profilesList.find((p) => p.is_default)
+                  ? `Default — ${profilesList.find((p) => p.is_default)?.display_name}`
+                  : 'Use account default'}
+              </option>
+              {profilesList.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.display_name} ({p.reply_to}){p.is_default ? ' — default' : ''}
+                </option>
+              ))}
+            </select>
+            <p className="font-sans text-[11px] text-muted-foreground">
+              Which brand or organisation sends emails for this event
+            </p>
+          </div>
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">

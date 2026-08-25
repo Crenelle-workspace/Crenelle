@@ -148,8 +148,11 @@ export async function updateEvent(id: string, formData: FormData) {
     max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
     auto_approve_registrations: formData.get('auto_approve_registrations') === 'true' || formData.get('auto_approve_registrations') === 'on',
     banner_url: newBannerUrl,
-    sender_profile_id: (formData.get('sender_profile_id') as string) || null,
     location_url: (formData.get('location_url') as string) || null,
+  }
+
+  if (formData.has('sender_profile_id')) {
+    updateData.sender_profile_id = (formData.get('sender_profile_id') as string) || null
   }
 
   if (formData.has('email_theme')) {
