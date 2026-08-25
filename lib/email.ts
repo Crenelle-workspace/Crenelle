@@ -84,6 +84,12 @@ export function safeImageUrl(value: unknown): string {
   return escapeHtml(raw)
 }
 
+/** Formats display name into a valid RFC 5322 From header: "Display Name" <address@domain.com> */
+export function formatFromHeader(displayName: string): string {
+  const cleanName = displayName.replace(/["\r\n]/g, '').replace(/\s+/g, ' ').trim() || 'Crenelle'
+  return `"${cleanName}" <${SENDING_ADDRESS}>`
+}
+
 /** Organisation/organiser identity used to personalise the From header and Reply-To. */
 export interface OrganizerDetails {
   /** Display name shown in the From field, e.g. "Acme Events" */
@@ -94,10 +100,10 @@ export interface OrganizerDetails {
 
 /**
  * Looks up the organiser of an event via the Supabase auth admin client.
- * Tries user_metadata.full_name → user_metadata.name → email prefix as display name.
+ * Tries linked sender profile → organizer's default sender profile → organizer_settings.org_name → user_metadata.full_name → user_metadata.name → email prefix.
  * Returns a safe fallback if the user record cannot be retrieved.
  */
-async function fetchOrganizerForEvent(eventId: string): Promise<OrganizerDetails> {
+export async function fetchOrganizerForEvent(eventId: string): Promise<OrganizerDetails> {
   const admin = createAdminClient()
 
   // Fetch the event together with its linked sender profile in one round-trip
@@ -108,7 +114,8 @@ async function fetchOrganizerForEvent(eventId: string): Promise<OrganizerDetails
     .single()
 
   // ── Tier 1: event has an explicit sender profile linked ────────
-  const profile = event?.sender_profiles as
+  const rawProfile = event?.sender_profiles
+  const profile = (Array.isArray(rawProfile) ? rawProfile[0] : rawProfile) as
     | { display_name: string; reply_to: string }
     | null
     | undefined
@@ -123,14 +130,30 @@ async function fetchOrganizerForEvent(eventId: string): Promise<OrganizerDetails
       .select('display_name, reply_to')
       .eq('organizer_id', event.organizer_id)
       .eq('is_default', true)
-      .single()
+      .maybeSingle()
 
     if (defaultProfile?.display_name && defaultProfile?.reply_to) {
       return { name: defaultProfile.display_name, email: defaultProfile.reply_to }
     }
+
+    // ── Tier 3: organizer's general settings org_name ──────────────
+    const { data: settings } = await admin
+      .from('organizer_settings')
+      .select('org_name')
+      .eq('organizer_id', event.organizer_id)
+      .maybeSingle()
+
+    if (settings?.org_name) {
+      try {
+        const { data: { user } } = await admin.auth.admin.getUserById(event.organizer_id)
+        return { name: settings.org_name, email: user?.email ?? '' }
+      } catch {
+        return { name: settings.org_name, email: '' }
+      }
+    }
   }
 
-  // ── Tier 3: auth user metadata (original fallback) ─────────────
+  // ── Tier 4: auth user metadata (original fallback) ─────────────
   if (!event?.organizer_id) return { name: 'Crenelle', email: '' }
 
   try {
@@ -349,7 +372,7 @@ export async function sendInvitationEmail({
 
   try {
     const { data: sendData, error: sendError } = await getResend().emails.send({
-      from: `${organizer.name} <${SENDING_ADDRESS}>`,
+      from: formatFromHeader(organizer.name),
       ...(organizer.email ? { replyTo: organizer.email } : {}),
       to: actualRecipientEmail,
       subject: `You're confirmed — ${event.name}`,
@@ -503,7 +526,7 @@ export async function sendReminderEmailsDirect({
 
     try {
       const { data: sendData, error: sendError } = await getResend().emails.send({
-        from: `${organizer.name} <${SENDING_ADDRESS}>`,
+        from: formatFromHeader(organizer.name),
         ...(organizer.email ? { replyTo: organizer.email } : {}),
         to: recipient.email,
         subject: `Reminder — ${event.name}`,
@@ -679,7 +702,7 @@ export async function sendCoHostInviteEmail({
 
   try {
     const { error } = await getResend().emails.send({
-      from: `Crenelle <${SENDING_ADDRESS}>`,
+      from: formatFromHeader(inviterName ? `${inviterName} via Crenelle` : 'Crenelle'),
       replyTo: inviterEmail,
       to: inviteeEmail,
       subject: `You've been invited to co-host "${eventName}"`,
