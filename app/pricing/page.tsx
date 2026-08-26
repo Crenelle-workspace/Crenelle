@@ -14,7 +14,7 @@ import { PricingCalculator } from "@/components/pricing/pricing-calculator";
 export const metadata: Metadata = {
   title: "Pricing — Transparent & Simple Event Ticketing | Crenelle",
   description:
-    "100% free for free events. 5% flat fee for paid tickets with instant Paystack direct bank settlement. No monthly subscriptions, no hidden charges.",
+    "100% free for free events. 3% flat fee for paid tickets with instant Paystack direct bank settlement. No monthly subscriptions, no hidden charges.",
 };
 
 const TIERS = [
@@ -38,7 +38,7 @@ const TIERS = [
   },
   {
     name: "Paid Events",
-    price: "5%",
+    price: "3%",
     period: "per paid ticket + processing",
     description:
       "For conferences, concerts, exhibitions, workshops, and gatherings selling paid entry tickets.",
@@ -77,7 +77,7 @@ const TIERS = [
 
 const COMPARISON_ROWS = [
   { feature: "Free event registrations", free: "Unlimited", paid: "Unlimited", enterprise: "Unlimited" },
-  { feature: "Platform commission per ticket", free: "0%", paid: "5%", enterprise: "Volume Discount" },
+  { feature: "Platform commission per ticket", free: "0%", paid: "3%", enterprise: "Volume Discount" },
   { feature: "QR access passes", free: "Included", paid: "Included", enterprise: "Included" },
   { feature: "Browser scanner links (no app required)", free: "Unlimited", paid: "Unlimited", enterprise: "Unlimited" },
   { feature: "Email invites & reminders", free: "Included", paid: "Included", enterprise: "Included + Custom Sender" },
@@ -112,7 +112,7 @@ export default function PricingPage() {
           </h1>
 
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Free for free events. When you sell paid tickets, we take a simple 5% platform commission
+            Free for free events. When you sell paid tickets, we take a simple 3% platform commission
             and settle revenue directly to your bank account via Paystack.
           </p>
         </section>
@@ -233,7 +233,7 @@ export default function PricingPage() {
           <div className="p-6 rounded-2xl border border-border/40 bg-card/40 space-y-2">
             <Building2 className="w-6 h-6 text-copper mx-auto" />
             <h4 className="font-bold text-foreground">Transparent Commission</h4>
-            <p className="text-xs text-muted-foreground">5% platform fee with zero subscription or monthly hosting lock-in.</p>
+            <p className="text-xs text-muted-foreground">3% platform fee with zero subscription or monthly hosting lock-in.</p>
           </div>
         </section>
 

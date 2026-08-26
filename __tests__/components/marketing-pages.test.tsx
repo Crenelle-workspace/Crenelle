@@ -45,7 +45,7 @@ describe("Marketing & Trust Pages", () => {
   describe("Pricing Page (/pricing)", () => {
     it("exports proper metadata and title", () => {
       expect(pricingMetadata.title).toContain("Pricing");
-      expect(pricingMetadata.description).toContain("5% flat fee");
+      expect(pricingMetadata.description).toContain("3% flat fee");
     });
 
     it("renders all three pricing tiers and feature table", () => {
@@ -58,11 +58,11 @@ describe("Marketing & Trust Pages", () => {
   });
 
   describe("PricingCalculator Component", () => {
-    it("calculates NGN earnings with 5% platform fee", () => {
+    it("calculates NGN earnings with 3% platform fee", () => {
       render(<PricingCalculator />);
       expect(screen.getByText("Earnings Calculator")).toBeDefined();
       expect(screen.getByText("Estimated Net Payout")).toBeDefined();
-      expect(screen.getByText("Crenelle Platform Fee (5%)")).toBeDefined();
+      expect(screen.getByText("Crenelle Platform Fee (3%)")).toBeDefined();
     });
 
     it("switches currency between NGN and USD", () => {

@@ -24,7 +24,7 @@ const FAQ_DATA: FaqItem[] = [
     category: "Tickets & Pricing",
     question: "How much does Crenelle cost to use?",
     answer:
-      "Crenelle is 100% free for free and RSVP events — including unlimited guests, QR passes, email invitations, reminders, and browser scanner links. For paid ticket sales, we charge a simple 5% platform commission per ticket plus standard Paystack processing. There are no monthly subscription fees, setup costs, or contracts.",
+      "Crenelle is 100% free for free and RSVP events — including unlimited guests, QR passes, email invitations, reminders, and browser scanner links. For paid ticket sales, we charge a simple 3% platform commission per ticket plus standard Paystack processing. There are no monthly subscription fees, setup costs, or contracts.",
   },
   {
     id: "pricing-processing-fee",

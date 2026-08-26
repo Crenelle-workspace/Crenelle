@@ -26,7 +26,7 @@ export function PricingCalculator() {
 
   // Calculations
   const grossSales = ticketPrice * attendees;
-  const crenelleFee = grossSales * 0.05; // 5% flat fee
+  const crenelleFee = grossSales * 0.03; // 3% flat fee
 
   // Estimated Paystack processing:
   // NGN: 1.5% + NGN 100 per transaction, capped at NGN 2000 per transaction
@@ -51,7 +51,7 @@ export function PricingCalculator() {
         <div className="space-y-1">
           <h3 className="text-xl sm:text-2xl font-black text-foreground">Earnings Calculator</h3>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Estimate your net bank payout with complete 5% fee transparency.
+            Estimate your net bank payout with complete 3% fee transparency.
           </p>
         </div>
 
@@ -170,7 +170,7 @@ export function PricingCalculator() {
             </div>
 
             <div className="flex justify-between text-muted-foreground">
-              <span>Crenelle Platform Fee (5%)</span>
+              <span>Crenelle Platform Fee (3%)</span>
               <span className="font-mono font-semibold text-red-600 dark:text-red-400">
                 - {currencySymbol}
                 {formatAmount(crenelleFee)}
