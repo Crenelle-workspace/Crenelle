@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
+import * as Sentry from '@sentry/nextjs'
 
 /**
  * Records evidence of user terms & privacy policy acceptance.
@@ -42,6 +43,9 @@ export async function recordTermsAcceptance(
         return { success: true }
       }
       console.error('[consent] Failed to record terms acceptance:', error)
+      Sentry.captureException(error, {
+        extra: { userId, document, version, context: 'recordTermsAcceptance' },
+      })
       return { success: false, error: error.message }
     }
 
@@ -49,6 +53,9 @@ export async function recordTermsAcceptance(
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     console.error('[consent] Exception recording terms acceptance:', err)
+    Sentry.captureException(err, {
+      extra: { userId, document, version, context: 'recordTermsAcceptance_exception' },
+    })
     return { success: false, error: msg }
   }
 }

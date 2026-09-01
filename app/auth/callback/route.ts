@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { recordTermsAcceptance } from '@/lib/consent'
+import * as Sentry from '@sentry/nextjs'
 
 /**
  * Validates a redirect path to prevent open-redirect attacks.
@@ -18,6 +19,9 @@ function safeRedirectPath(raw: string | null, fallback: string): string {
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  // `terms_accepted=true` is appended by the Google OAuth path in signup page.
+  // For email+password signups the confirmation link does NOT carry this param —
+  // terms consent was captured at form submission and is recorded here instead.
   const termsAccepted = searchParams.get('terms_accepted') === 'true'
   const next = safeRedirectPath(searchParams.get('next'), '/events')
 
@@ -25,11 +29,22 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      if (termsAccepted) {
-        const { data: { user } } = await supabase.auth.getUser()
-        const userId = sessionData?.user?.id || user?.id
-        if (userId) {
-          await recordTermsAcceptance(userId)
+      // Record terms acceptance for:
+      //   - Email+password signups: the confirmation link brings them here after
+      //     clicking. At this point auth.users row is confirmed and stable.
+      //   - Google OAuth signups: terms_accepted=true is appended by the signup page.
+      // For password-reset and settings flows (next=/settings/*) the user already
+      // accepted terms at signup, so we skip to avoid creating a duplicate record
+      // (the unique constraint handles it, but skipping is cleaner).
+      const userId = sessionData?.user?.id
+      const isPasswordReset = next.startsWith('/settings')
+      if (userId && (termsAccepted || !isPasswordReset)) {
+        const consentResult = await recordTermsAcceptance(userId)
+        if (!consentResult.success) {
+          Sentry.captureMessage('[auth/callback] Failed to record terms acceptance', {
+            level: 'error',
+            extra: { userId, termsAccepted, next, error: consentResult.error },
+          })
         }
       }
       return NextResponse.redirect(`${origin}${next}`)
