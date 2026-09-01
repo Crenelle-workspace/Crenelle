@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signupSchema, loginSchema } from "@/lib/validations/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recordTermsAcceptance } from "@/lib/consent";
+import * as Sentry from "@sentry/nextjs";
 
 // The trusted app origin used as the base for auth redirect URLs.
 // Never derived from request headers (open-redirect / host-header poisoning).
@@ -88,15 +89,32 @@ export async function signup(formData: FormData) {
 
   // When Supabase email confirmation is enabled, signUp() returns session: null
   // because the user must verify their address before a session is issued.
-  // Redirect to the check-email page so they know what to do next.
-  // Pass the (non-sensitive) email as a query param so the page can personalise
-  // its message without storing anything server-side.
+  // IMPORTANT: do NOT call recordTermsAcceptance() here.
+  // The user row in auth.users may not yet be fully committed when email
+  // confirmation is required, which causes a FK constraint violation on
+  // terms_acceptances.user_id. Instead, recordTermsAcceptance() is deferred
+  // to /auth/callback (below) — at that point the user has confirmed, the row
+  // definitely exists, and we have a valid session to work with.
+  // The email param lets the check-email page personalise its message without
+  // storing anything server-side.
   if (!signUpData?.session) {
     const email = encodeURIComponent(result.data.email);
     redirect(`/signup/check-email?email=${email}`);
   }
 
-  // Email confirmation is off — user is already logged in.
+  // Email confirmation is OFF — user is already logged in and auth.users row
+  // is guaranteed to exist. Record consent now.
+  if (signUpData?.user?.id) {
+    const consentResult = await recordTermsAcceptance(signUpData.user.id);
+    if (!consentResult.success) {
+      Sentry.captureMessage('[signup] Failed to record terms acceptance (confirmation-off path)', {
+        level: 'error',
+        extra: { userId: signUpData.user.id, error: consentResult.error },
+      });
+    }
+  }
+
+  revalidatePath("/", "layout");
   redirect("/events");
 }
 
