@@ -566,7 +566,7 @@ export default function RegistrationsPage() {
       {/* Registrations list */}
       {loading ? (
         <div className="border border-border/40 rounded-2xl overflow-hidden animate-pulse">
-          <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] bg-card border-b border-border/40 px-4 py-3 gap-4 items-center">
+          <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_100px_100px_70px_112px] bg-card border-b border-border/40 px-4 py-3 gap-4 items-center">
             <Skeleton className="h-4 w-4 rounded" />
             {['Name', 'Email / Phone', 'Payment', 'Status', 'Date', ''].map((h, idx) => (
               <span
@@ -581,7 +581,7 @@ export default function RegistrationsPage() {
           </div>
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="p-4 border-b border-foreground/5">
-              <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] items-center gap-4">
+              <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_100px_100px_70px_112px] items-center gap-4">
                 <Skeleton className="h-4 w-4 rounded" />
                 <div className="flex flex-col gap-1.5">
                   <Skeleton className="h-4 w-32" />
@@ -615,7 +615,7 @@ export default function RegistrationsPage() {
       ) : (
         <div className="border border-border/40 rounded-2xl overflow-hidden">
           {/* Table header (Desktop) */}
-          <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] bg-card border-b border-border/40 px-4 py-3 gap-4 items-center">
+          <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_100px_100px_70px_112px] bg-card border-b border-border/40 px-4 py-3 gap-4 items-center">
             <div className="flex items-center justify-center">
               <input
                 type="checkbox"
@@ -650,7 +650,7 @@ export default function RegistrationsPage() {
                 }`}
               >
                 {/* Desktop Row View (sm:grid) */}
-                <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_105px_105px_75px_64px] items-center px-4 py-4 gap-4">
+                <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_100px_100px_70px_112px] items-center px-4 py-4 gap-4">
                   <div className="flex items-center justify-center">
                     <input
                       type="checkbox"
@@ -692,7 +692,7 @@ export default function RegistrationsPage() {
                   <span className="font-sans text-xs text-muted-foreground whitespace-nowrap text-right pr-2">
                     {new Date(reg.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                   </span>
-                  <div className="flex gap-1 justify-end">
+                  <div className="flex items-center gap-1 justify-end">
                     {reg.status === 'pending' && (
                       <>
                         <Button
