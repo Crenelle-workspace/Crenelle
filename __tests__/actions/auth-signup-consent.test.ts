@@ -33,9 +33,12 @@ function makeFormData(fields: Record<string, string>): FormData {
   return fd
 }
 
-function mockAuth(error: { message: string } | null = null) {
+function mockAuth(
+  error: { message: string } | null = null,
+  session: Record<string, unknown> | null = null,
+) {
   const signUp = vi.fn().mockResolvedValue({
-    data: { user: { id: 'user-1' } },
+    data: { user: { id: 'user-1' }, session },
     error,
   })
   mockCreateClient.mockResolvedValue({ auth: { signUp } })
@@ -74,8 +77,9 @@ describe('signup — consent enforcement', () => {
     expect(signUp).not.toHaveBeenCalled()
   })
 
-  it('proceeds when terms are accepted', async () => {
-    const signUp = mockAuth()
+  it('proceeds when terms are accepted and email confirmation is off (session present)', async () => {
+    // Simulate Supabase returning a session immediately (email confirmation disabled)
+    const signUp = mockAuth(null, { access_token: 'tok' })
 
     // redirect() throws NEXT_REDIRECT on success (stubbed in vitest.setup.ts)
     await expect(signup(makeFormData({ ...VALID, terms: 'on' }))).rejects.toThrow(
@@ -85,7 +89,19 @@ describe('signup — consent enforcement', () => {
     expect(signUp).toHaveBeenCalledWith({
       email: VALID.email,
       password: VALID.password,
+      options: expect.objectContaining({ emailRedirectTo: expect.stringContaining('/auth/callback') }),
     })
+  })
+
+  it('redirects to check-email when email confirmation is required (session null)', async () => {
+    // Default Supabase behaviour with email confirmation ON: session is null
+    const signUp = mockAuth(null, null)
+
+    await expect(signup(makeFormData({ ...VALID, terms: 'on' }))).rejects.toThrow(
+      'NEXT_REDIRECT:/signup/check-email'
+    )
+
+    expect(signUp).toHaveBeenCalled()
   })
 
   it('surfaces a neutral error when signup itself fails', async () => {

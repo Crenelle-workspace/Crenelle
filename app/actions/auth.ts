@@ -7,6 +7,10 @@ import { signupSchema, loginSchema } from "@/lib/validations/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recordTermsAcceptance } from "@/lib/consent";
 
+// The trusted app origin used as the base for auth redirect URLs.
+// Never derived from request headers (open-redirect / host-header poisoning).
+const APP_ORIGIN = process.env.NEXT_PUBLIC_APP_URL ?? "https://crenelle.org";
+
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
@@ -57,6 +61,12 @@ export async function signup(formData: FormData) {
   const { data: signUpData, error } = await supabase.auth.signUp({
     email: result.data.email,
     password: result.data.password,
+    options: {
+      // Ensure the magic-link in the confirmation email points to our
+      // /auth/callback route (which exchanges the code for a session) rather
+      // than the Supabase-hosted default callback.
+      emailRedirectTo: `${APP_ORIGIN}/auth/callback`,
+    },
   });
 
   // Generic message on failure: Supabase returns a distinct "User already
@@ -75,6 +85,18 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
+
+  // When Supabase email confirmation is enabled, signUp() returns session: null
+  // because the user must verify their address before a session is issued.
+  // Redirect to the check-email page so they know what to do next.
+  // Pass the (non-sensitive) email as a query param so the page can personalise
+  // its message without storing anything server-side.
+  if (!signUpData?.session) {
+    const email = encodeURIComponent(result.data.email);
+    redirect(`/signup/check-email?email=${email}`);
+  }
+
+  // Email confirmation is off — user is already logged in.
   redirect("/events");
 }
 
@@ -121,6 +143,31 @@ export async function sendPasswordResetEmailAction() {
 
   const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
     redirectTo: `${origin}/auth/callback?next=/settings/account`,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Resends the email-confirmation link for an address that hasn't been verified.
+ * This is the server action backing the "Resend" button on the check-email page.
+ *
+ * Supabase rate-limits its own resend endpoint, so we don't need to add an
+ * extra layer here — any 429 from Supabase is surfaced as an error object.
+ */
+export async function resendConfirmationEmail(email: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: `${APP_ORIGIN}/auth/callback`,
+    },
   });
 
   if (error) {
