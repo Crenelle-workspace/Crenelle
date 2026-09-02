@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Plus, Trash2, User, Building, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { fieldCls, labelCls } from '@/lib/form-styles'
+import { resolveAvatarUrl } from '@/lib/images'
 import type { SpeakerInfo } from '@/lib/types'
 
 interface SpeakerEditorProps {
@@ -41,8 +42,9 @@ export function SpeakerEditor({ speakers, onChange }: SpeakerEditorProps) {
   }
 
   const handleChange = (id: string, field: keyof SpeakerInfo, value: string) => {
+    const resolved = field === 'avatar_url' ? resolveAvatarUrl(value) : value
     const updated = items.map((item) =>
-      item.id === id ? { ...item, [field]: value } : item
+      item.id === id ? { ...item, [field]: resolved } : item
     )
     setItems(updated)
     onChange(updated)
@@ -132,15 +134,15 @@ export function SpeakerEditor({ speakers, onChange }: SpeakerEditorProps) {
                     type="text"
                     value={item.avatar_url || ''}
                     onChange={(e) => handleChange(item.id, 'avatar_url', e.target.value)}
-                    placeholder="https://..."
+                    placeholder="https://... or Google Drive share link"
                     className={fieldCls}
                   />
                 </div>
 
                 <div>
                   <label className={labelCls}>Brief Bio</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     value={item.bio || ''}
                     onChange={(e) => handleChange(item.id, 'bio', e.target.value)}
                     placeholder="Short bio or background"
