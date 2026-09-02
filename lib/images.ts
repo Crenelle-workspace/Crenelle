@@ -1,4 +1,42 @@
 /**
+ * Resolves a speaker avatar URL to a directly embeddable image URL.
+ *
+ * Google Drive "sharing" links (file/d/…/view, open?id=, uc?id=, thumbnail?id=)
+ * cannot be used as <img src> because they return an HTML page. This function
+ * rewrites them to https://lh3.googleusercontent.com/d/FILE_ID, which serves
+ * the file bytes directly. All other URLs pass through unchanged.
+ */
+export function resolveAvatarUrl(url: string | null | undefined): string {
+  if (!url) return ''
+
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return url
+  }
+
+  if (parsed.hostname === 'drive.google.com') {
+    let fileId: string | null = null
+
+    // Pattern 1: /file/d/FILE_ID/view  (and variants like /preview, /edit)
+    const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/)
+    if (fileMatch) fileId = fileMatch[1]
+
+    // Pattern 2: /open?id=FILE_ID  or  /uc?id=FILE_ID  or  /thumbnail?id=FILE_ID
+    if (!fileId) fileId = parsed.searchParams.get('id')
+
+    if (fileId) {
+      // lh3.googleusercontent.com/d/FILE_ID serves the image bytes directly
+      // and works without auth for publicly shared files.
+      return `https://lh3.googleusercontent.com/d/${fileId}`
+    }
+  }
+
+  return url
+}
+
+/**
  * Scales and optimizes event banner image URLs dynamically.
  * Resolves project Supabase Storage URLs to edge-based transform URLs
  * and appends size/compression params to Unsplash and other recognized CDN links.
