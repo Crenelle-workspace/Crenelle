@@ -22,7 +22,7 @@ function SpeakerCard({ speaker, index }: { speaker: SpeakerInfo; index: number }
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.45, delay: index * 0.06 }}
-      className="group relative flex flex-col bg-card p-6 transition-colors hover:bg-secondary/40"
+      className="group relative flex min-w-0 flex-col bg-card p-5 sm:p-6 transition-colors hover:bg-secondary/40"
     >
       {/* Copper top reveal */}
       <span className="absolute inset-x-0 top-0 h-px scale-x-0 bg-copper transition-transform duration-300 group-hover:scale-x-100" />
@@ -60,9 +60,9 @@ function SpeakerCard({ speaker, index }: { speaker: SpeakerInfo; index: number }
       </div>
 
       {speaker.bio && (
-        <div className="mt-4 border-t border-border pt-4">
+        <div className="mt-4 min-w-0 border-t border-border pt-4">
           <p
-            className={`text-sm leading-relaxed text-muted-foreground ${
+            className={`text-sm leading-relaxed text-muted-foreground whitespace-pre-line wrap-anywhere ${
               !isExpanded && isLongBio ? 'line-clamp-4' : ''
             }`}
           >
@@ -100,7 +100,7 @@ export function EventSpeakers({ speakers, index }: EventSpeakersProps) {
     <SectionShell className="p-6 sm:p-9">
       <SectionHeader index={index} kicker="Line-up" title="Speakers & hosts" />
 
-      <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
+      <div className="grid w-full min-w-0 grid-cols-1 gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
         {speakers.map((speaker, idx) => (
           <SpeakerCard key={speaker.id || idx} speaker={speaker} index={idx} />
         ))}
