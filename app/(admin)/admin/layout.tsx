@@ -4,6 +4,7 @@ import { ShieldCheck, LogOut } from 'lucide-react'
 import { logout } from '@/app/actions/auth'
 import { ModeToggle } from '@/components/mode-toggle'
 import { requireAdmin } from '@/lib/admin'
+import { AdminNavTabs } from '@/components/admin-nav-tabs'
 
 /**
  * Admin layout — completely separate from the organizer (dashboard) group.
@@ -80,6 +81,9 @@ export default async function AdminLayout({
           </div>
         </div>
       </header>
+
+      {/* ── Navigation Tabs ── */}
+      <AdminNavTabs />
 
       {/* ── Content ── */}
       <main className="flex-1 px-4 py-10 max-w-7xl mx-auto w-full">
