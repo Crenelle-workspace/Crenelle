@@ -23,10 +23,20 @@
  * If calling programmatically (Option B), pass the real URL as `confirmationUrl`.
  */
 export function renderConfirmSignupEmail({
-  confirmationUrl = '{{ .ConfirmationURL }}',
+  confirmationUrl,
 }: {
+  /**
+   * Pass the real confirmation URL when sending programmatically via Resend
+   * (Option B). When pasting into the Supabase dashboard (Option A), leave
+   * this undefined — the template will embed the {{ .ConfirmationURL }}
+   * placeholder directly so Supabase substitutes it at send time.
+   */
   confirmationUrl?: string
 } = {}): string {
+  // For Supabase dashboard usage the placeholder must appear verbatim in the
+  // rendered HTML so Supabase's Go-template engine can substitute it.
+  // For programmatic sends (Resend) the caller provides the real URL.
+  const url = confirmationUrl ?? '{{ .ConfirmationURL }}'
   return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -51,7 +61,7 @@ export function renderConfirmSignupEmail({
     body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#F4F1EC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background-color:#F4F1EC;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
   <!-- Outer wrapper -->
   <table width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -59,135 +69,98 @@ export function renderConfirmSignupEmail({
     <tr>
       <td align="center" valign="top">
 
-        <!-- Email card: max 600px -->
-        <table width="600" cellpadding="0" cellspacing="0" border="0"
-               style="background:#FFFFFF;max-width:600px;width:100%;border:1px solid rgba(12,11,9,0.10);border-radius:4px;overflow:hidden;">
+        <!-- Email card container -->
+        <table width="560" cellpadding="0" cellspacing="0" border="0"
+               style="background:#FFFFFF;max-width:560px;width:100%;border:1px solid rgba(12,11,9,0.08);border-radius:12px;box-shadow:0 8px 30px rgba(12,11,9,0.04);overflow:hidden;">
 
-          <!-- ── Top copper accent bar ── -->
+          <!-- Top copper accent line -->
           <tr>
             <td style="background:#BF8430;height:3px;font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
-          <!-- ── Header ── -->
+          <!-- Header / Wordmark -->
           <tr>
-            <td style="padding:32px 40px 24px;border-bottom:1px solid rgba(12,11,9,0.08);">
-              <!-- Wordmark -->
-              <p style="margin:0 0 6px;font-size:10px;letter-spacing:4px;text-transform:uppercase;
-                         color:#BF8430;font-family:'Courier New',Courier,monospace;font-weight:700;">
+            <td style="padding:36px 40px 20px;border-bottom:1px solid rgba(12,11,9,0.06);">
+              <span style="font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#BF8430;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;">
                 CRENELLE
-              </p>
-              <p style="margin:0;font-size:9px;letter-spacing:3px;text-transform:uppercase;
-                         color:#9E9890;font-family:'Courier New',Courier,monospace;">
-                SECURITY &amp; TICKETING
-              </p>
+              </span>
             </td>
           </tr>
 
-          <!-- ── Body ── -->
+          <!-- Body Content -->
           <tr>
-            <td style="padding:40px 40px 32px;">
+            <td style="padding:36px 40px 40px;">
 
-              <!-- Icon block -->
-              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;">
-                <tr>
-                  <td style="background:#FBF8F3;border:1px solid rgba(191,132,48,0.25);
-                              border-radius:12px;padding:16px 20px;width:52px;text-align:center;">
-                    <!-- Envelope SVG inline (no external image fetch) -->
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                         xmlns="http://www.w3.org/2000/svg">
-                      <rect x="2" y="4" width="20" height="16" rx="2" stroke="#BF8430"
-                            stroke-width="1.5"/>
-                      <path d="M2 7l10 7 10-7" stroke="#BF8430" stroke-width="1.5"
-                            stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Headline -->
-              <h1 style="margin:0 0 8px;font-family:Georgia,'Times New Roman',Times,serif;
-                          font-size:28px;font-weight:600;color:#0C0B09;line-height:1.1;
-                          letter-spacing:-0.5px;">
-                Confirm your email
+              <!-- Editorial Headline -->
+              <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',Times,serif;font-size:26px;font-weight:600;color:#0C0B09;line-height:1.25;letter-spacing:-0.3px;">
+                Confirm your account
               </h1>
-              <h2 style="margin:0 0 24px;font-family:Georgia,'Times New Roman',Times,serif;
-                          font-size:16px;font-weight:400;color:#BF8430;line-height:1.4;">
-                You're one step away from launching events on Crenelle.
-              </h2>
 
-              <!-- Body copy -->
-              <p style="margin:0 0 32px;font-size:14px;color:#5C5850;line-height:1.75;">
-                Click the button below to verify your email address and activate your account.
-                This link expires in <strong style="color:#0C0B09;">24 hours</strong>.
+              <!-- Subtitle -->
+              <p style="margin:0 0 28px;font-size:14px;color:#5C5850;line-height:1.65;">
+                Welcome to Crenelle. Please verify your email address to complete registration and activate your organizer account.
               </p>
 
-              <!-- CTA button -->
-              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 32px;">
+              <!-- CTA Button -->
+              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 36px;">
                 <tr>
                   <td style="background:#0C0B09;border-radius:100px;">
-                    <a href="${confirmationUrl}"
+                    <a href="${url}"
                        style="display:inline-block;padding:15px 36px;font-size:11px;
-                              font-family:'Courier New',Courier,monospace;font-weight:700;
-                              letter-spacing:3px;text-transform:uppercase;color:#F4F1EC;
-                              text-decoration:none;border-radius:100px;">
-                      CONFIRM YOUR EMAIL &rarr;
+                              font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;font-weight:700;
+                              letter-spacing:2.5px;text-transform:uppercase;color:#F4F1EC;text-decoration:none;border-radius:100px;">
+                      Confirm Email Address &rarr;
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <!-- Fallback plain URL -->
+              <!-- Fallback Direct Link Box -->
               <table cellpadding="0" cellspacing="0" border="0" width="100%"
-                     style="background:#F4F1EC;border-left:3px solid #BF8430;margin:0 0 24px;">
+                     style="background:#F9F8F5;border:1px solid rgba(191,132,48,0.18);border-radius:8px;margin:0 0 28px;">
                 <tr>
-                  <td style="padding:14px 18px;">
-                    <p style="margin:0 0 4px;font-size:10px;letter-spacing:2px;
-                               text-transform:uppercase;color:#BF8430;
-                               font-family:'Courier New',Courier,monospace;font-weight:700;">
-                      BUTTON NOT WORKING?
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#BF8430;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;">
+                      ALTERNATIVE LINK
                     </p>
-                    <p style="margin:0;font-size:11px;color:#5C5850;line-height:1.6;
-                               word-break:break-all;">
-                      Copy and paste this link into your browser:<br>
-                      <a href="${confirmationUrl}"
-                         style="color:#BF8430;text-decoration:none;font-family:'Courier New',Courier,monospace;">
-                        ${confirmationUrl}
+                    <p style="margin:0;font-size:12px;color:#5C5850;line-height:1.6;word-break:break-all;">
+                      If the button above doesn't work, copy and paste this link into your web browser:<br>
+                      <a href="${url}"
+                         style="color:#BF8430;text-decoration:underline;line-height:1.8;word-break:break-all;">
+                        ${url}
                       </a>
                     </p>
                   </td>
                 </tr>
               </table>
 
-              <!-- Security note -->
+              <!-- Expiration & Security Notice -->
               <p style="margin:0;font-size:12px;color:#9E9890;line-height:1.6;">
-                If you didn't create a Crenelle account, you can safely ignore this email.
-                No account will be created without confirmation.
+                This security link expires in 24 hours. If you didn't create a Crenelle account, you can safely ignore this message.
               </p>
 
             </td>
           </tr>
 
-          <!-- ── Divider ── -->
+          <!-- Footer Divider -->
           <tr>
             <td style="height:1px;background:rgba(12,11,9,0.06);font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
-          <!-- ── Footer ── -->
+          <!-- Footer -->
           <tr>
-            <td style="padding:20px 40px;">
-              <p style="margin:0;font-size:9px;letter-spacing:3px;text-transform:uppercase;
-                         color:#BF8430;text-align:center;font-family:'Courier New',Courier,monospace;">
-                CRENELLE // EVENT MANAGEMENT
+            <td style="padding:20px 40px;background:#FAF8F5;">
+              <p style="margin:0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#BF8430;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;font-weight:600;">
+                CRENELLE &bull; EVENT &amp; TICKETING SERVICES
               </p>
-              <p style="margin:6px 0 0;font-size:9px;color:#C4BFB8;text-align:center;
-                         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-                &copy; 2026 Crenelle Security &amp; Ticketing Services
+              <p style="margin:6px 0 0;font-size:10px;color:#9E9890;text-align:center;">
+                &copy; 2026 Crenelle. All rights reserved.
               </p>
             </td>
           </tr>
 
         </table>
-        <!-- / Email card -->
+        <!-- / Email card container -->
 
       </td>
     </tr>
