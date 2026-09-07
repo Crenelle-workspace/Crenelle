@@ -8,7 +8,7 @@
 CREATE TABLE IF NOT EXISTS public.platform_tax_settings (
   id          uuid          DEFAULT gen_random_uuid() PRIMARY KEY,
   key         text          NOT NULL UNIQUE,
-  value       numeric(10,4) NOT NULL,
+  value       numeric(16,4) NOT NULL,
   description text,
   updated_at  timestamptz   NOT NULL DEFAULT now()
 );
@@ -30,12 +30,14 @@ ON CONFLICT (key) DO UPDATE SET
 ALTER TABLE public.platform_tax_settings ENABLE ROW LEVEL SECURITY;
 
 -- Service role / Admin access only
+DROP POLICY IF EXISTS "Admin read platform_tax_settings" ON public.platform_tax_settings;
 CREATE POLICY "Admin read platform_tax_settings"
   ON public.platform_tax_settings FOR SELECT
   TO service_role
   USING (true);
 
 -- Auto-update updated_at on row changes (mirrors pattern in migrations 032, 035)
+DROP TRIGGER IF EXISTS platform_tax_settings_updated_at ON public.platform_tax_settings;
 CREATE TRIGGER platform_tax_settings_updated_at
   BEFORE UPDATE ON public.platform_tax_settings
   FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
@@ -62,7 +64,7 @@ COMMENT ON VIEW public.v_monthly_revenue IS
 CREATE OR REPLACE VIEW public.v_event_revenue AS
 SELECT
   e.id AS event_id,
-  e.title AS event_title,
+  e.name AS event_title,
   e.organizer_id,
   COALESCE(p.currency, 'NGN') AS currency,
   COUNT(p.id)::bigint AS tickets_sold,
@@ -73,7 +75,7 @@ SELECT
 FROM public.payments p
 JOIN public.events e ON e.id = p.event_id
 WHERE p.status = 'paid'
-GROUP BY e.id, e.title, e.organizer_id, COALESCE(p.currency, 'NGN');
+GROUP BY e.id, e.name, e.organizer_id, COALESCE(p.currency, 'NGN');
 
 COMMENT ON VIEW public.v_event_revenue IS
   'Per-event aggregated revenue breakdown for admin leaderboard and analytics.';
@@ -84,4 +86,4 @@ CREATE INDEX IF NOT EXISTS payments_status_paid_at_currency_idx
   ON public.payments (status, paid_at DESC, currency);
 
 CREATE INDEX IF NOT EXISTS payments_event_id_status_idx
-  ON public.payments (event_id, status);
+  ON public.payments (event_id, status);  
