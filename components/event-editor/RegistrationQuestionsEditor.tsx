@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Trash2, GripVertical, ToggleLeft, ToggleRight, X } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Plus, Trash2, GripVertical, ToggleLeft, ToggleRight, X, Link, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import type { RegistrationQuestion, RegistrationQuestionType } from '@/lib/types'
@@ -189,24 +189,18 @@ export function RegistrationQuestionsEditor({ questions, onChange }: Registratio
               </div>
 
               {/* Question label */}
-              <div>
-                <label className={labelCls}>
-                  Question label{q.required && <span className="ml-1 text-copper">*</span>}
-                </label>
-                <input
-                  type="text"
-                  value={q.label}
-                  onChange={(e) => handleChange(q.id, 'label', e.target.value)}
-                  placeholder={
-                    q.type === 'text'
-                      ? 'e.g. What are your dietary restrictions?'
-                      : q.type === 'radio'
-                      ? 'e.g. Which session will you attend?'
-                      : 'e.g. Which topics interest you?'
-                  }
-                  className={fieldCls}
-                />
-              </div>
+              <QuestionLabelInput
+                value={q.label}
+                onChange={(val) => handleChange(q.id, 'label', val)}
+                placeholder={
+                  q.type === 'text'
+                    ? 'e.g. What are your dietary restrictions?'
+                    : q.type === 'radio'
+                    ? 'e.g. Which session will you attend?'
+                    : 'e.g. Which topics interest you?'
+                }
+                required={q.required}
+              />
 
               {/* Options (radio / checkbox only) */}
               {(q.type === 'radio' || q.type === 'checkbox') && (
@@ -253,6 +247,175 @@ export function RegistrationQuestionsEditor({ questions, onChange }: Registratio
             </div>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── QuestionLabelInput ─────────────────────────────────────────────────────
+// A label text input with an inline link-insert popover, so organizers can
+// embed clickable links (e.g. "Join the group [here](https://...)") directly
+// in the question text shown to registrants.
+
+interface QuestionLabelInputProps {
+  value: string
+  onChange: (val: string) => void
+  placeholder?: string
+  required?: boolean
+}
+
+function QuestionLabelInput({ value, onChange, placeholder, required }: QuestionLabelInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  const savedCursorRef = useRef<{ start: number; end: number } | null>(null)
+
+  const [open, setOpen] = useState(false)
+  const [linkLabel, setLinkLabel] = useState('')
+  const [linkUrl, setLinkUrl] = useState('https://')
+  const [urlError, setUrlError] = useState('')
+  const urlInputRef = useRef<HTMLInputElement>(null)
+
+  const close = useCallback(() => {
+    setOpen(false)
+    setUrlError('')
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }, [])
+
+  // Escape / outside-click to close
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') close() }
+    function onPointer(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) close()
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    }
+  }, [open, close])
+
+  // Focus URL input on open
+  useEffect(() => {
+    if (open) setTimeout(() => urlInputRef.current?.focus(), 50)
+  }, [open])
+
+  function openPopover() {
+    const el = inputRef.current
+    if (!el) return
+    savedCursorRef.current = { start: el.selectionStart ?? value.length, end: el.selectionEnd ?? value.length }
+    setLinkLabel(value.slice(el.selectionStart ?? 0, el.selectionEnd ?? 0))
+    setLinkUrl('https://')
+    setUrlError('')
+    setOpen(true)
+  }
+
+  function commit() {
+    const saved = savedCursorRef.current ?? { start: value.length, end: value.length }
+    let url = linkUrl.trim()
+    if (!url || url === 'https://') { setUrlError('Please enter a URL.'); urlInputRef.current?.focus(); return }
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+    const label = linkLabel.trim() || url
+    const md = `[${label}](${url})`
+    const newVal = value.slice(0, saved.start) + md + value.slice(saved.end)
+    onChange(newVal)
+    close()
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className={labelCls}>
+        Question label{required && <span className="ml-1 text-copper">*</span>}
+      </label>
+      <div className="relative flex items-center gap-1.5">
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`${fieldCls} flex-1`}
+        />
+        {/* Link button */}
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            title="Insert link"
+            onClick={openPopover}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+              open
+                ? 'border-copper bg-copper/10 text-copper'
+                : 'border-border text-muted-foreground hover:border-copper/50 hover:text-copper'
+            }`}
+          >
+            <Link className="h-3.5 w-3.5" />
+          </button>
+
+          {/* Inline popover */}
+          {open && (
+            <div
+              ref={popoverRef}
+              role="dialog"
+              aria-label="Insert link"
+              className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-card p-4 shadow-xl shadow-black/10 flex flex-col gap-3"
+            >
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-copper">Insert link</p>
+
+              <div className="flex flex-col gap-1">
+                <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Label</label>
+                <input
+                  type="text"
+                  value={linkLabel}
+                  onChange={(e) => setLinkLabel(e.target.value)}
+                  placeholder="e.g. Join the WhatsApp group"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-copper focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">URL</label>
+                <input
+                  ref={urlInputRef}
+                  type="url"
+                  value={linkUrl}
+                  onChange={(e) => { setLinkUrl(e.target.value); setUrlError('') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } }}
+                  placeholder="https://example.com"
+                  className={`w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none transition-colors ${
+                    urlError ? 'border-red-500' : 'border-border focus:border-copper'
+                  }`}
+                />
+                {urlError && <p className="text-[11px] text-red-500">{urlError}</p>}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={commit}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-copper py-2 font-mono text-[11px] font-semibold uppercase tracking-widest text-white transition-opacity hover:opacity-85"
+                >
+                  <Check className="h-3.5 w-3.5" /> Insert
+                </button>
+                <button
+                  type="button"
+                  onClick={close}
+                  className="flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 font-mono text-[11px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Live preview — shows what registrants will see */}
+      {value.includes('](') && (
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Preview: <span className="text-foreground">{value.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')}</span>{' '}
+          <span className="text-copper underline underline-offset-1 text-[10px]">(link)</span>
+        </p>
       )}
     </div>
   )

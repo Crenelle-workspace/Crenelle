@@ -1,6 +1,10 @@
 'use client'
 
+import React from 'react'
+
 import { SectionShell, SectionHeader } from './ShowcaseSection'
+import { renderInlineContent } from '@/lib/render-inline'
+
 
 function renderFormattedContent(content: string) {
   const paragraphs = content.split(/\n\s*\n/)
@@ -16,7 +20,7 @@ function renderFormattedContent(content: string) {
           key={i}
           className="mb-3 mt-8 font-display text-2xl font-medium tracking-tight text-foreground first:mt-0"
         >
-          {trimmed.replace('# ', '')}
+          {renderInlineContent(trimmed.replace(/^# /, ''))}
         </h2>
       )
     }
@@ -27,7 +31,7 @@ function renderFormattedContent(content: string) {
           key={i}
           className="mb-2 mt-7 font-display text-xl font-medium tracking-tight text-foreground first:mt-0"
         >
-          {trimmed.replace('## ', '')}
+          {renderInlineContent(trimmed.replace(/^## /, ''))}
         </h3>
       )
     }
@@ -38,7 +42,7 @@ function renderFormattedContent(content: string) {
           key={i}
           className="mb-2 mt-6 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-copper first:mt-0"
         >
-          {trimmed.replace('### ', '')}
+          {renderInlineContent(trimmed.replace(/^### /, ''))}
         </h4>
       )
     }
@@ -49,7 +53,7 @@ function renderFormattedContent(content: string) {
           key={i}
           className="my-6 border-l-2 border-copper pl-5 font-display text-xl font-medium italic leading-relaxed text-foreground/90"
         >
-          {trimmed.replace('> ', '')}
+          {renderInlineContent(trimmed.replace(/^> /, ''))}
         </blockquote>
       )
     }
@@ -66,7 +70,7 @@ function renderFormattedContent(content: string) {
               className="flex gap-3 text-[15px] leading-relaxed text-muted-foreground"
             >
               <span className="mt-2.5 h-1 w-1 shrink-0 bg-copper" />
-              <span>{item}</span>
+              <span>{renderInlineContent(item)}</span>
             </li>
           ))}
         </ul>
@@ -85,7 +89,7 @@ function renderFormattedContent(content: string) {
             : 'mb-5 text-[15px] leading-relaxed text-muted-foreground'
         }
       >
-        {trimmed}
+        {renderInlineContent(trimmed)}
       </p>
     )
   })
