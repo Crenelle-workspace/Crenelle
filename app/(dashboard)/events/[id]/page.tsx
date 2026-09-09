@@ -16,6 +16,7 @@ import { AgendaEditor } from '@/components/event-editor/AgendaEditor'
 import { SpeakerEditor } from '@/components/event-editor/SpeakerEditor'
 import { FAQEditor } from '@/components/event-editor/FAQEditor'
 import { RegistrationQuestionsEditor } from '@/components/event-editor/RegistrationQuestionsEditor'
+import { DescriptionEditor } from '@/components/event-editor/DescriptionEditor'
 import type { Event, AgendaItem, SpeakerInfo, FAQItem, RegistrationQuestion, SenderProfile } from '@/lib/types'
 import { EventBannerInput } from '@/components/event-banner-input'
 import { getOptimizedBannerUrl } from '@/lib/images'
@@ -469,17 +470,10 @@ export default function EventOverviewPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="ev-desc" className={labelCls}>Event Overview & Description</label>
-              <span className="font-mono text-[9px] uppercase text-signal">Supports Markdown (# Heading, - Bullet)</span>
-            </div>
-            <textarea
-              id="ev-desc"
+            <label htmlFor="ev-desc" className={labelCls}>Event Overview & Description</label>
+            <DescriptionEditor
               name="description"
               defaultValue={event.description ?? ''}
-              rows={5}
-              placeholder="Tell attendees what to expect..."
-              className={`${fieldCls} font-mono text-xs`}
             />
           </div>
 

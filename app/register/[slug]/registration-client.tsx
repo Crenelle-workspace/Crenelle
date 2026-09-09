@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import type { RegisterEventInfo } from '@/lib/register-event'
 import { calculatePaymentBreakdown, formatKoboAsNGN } from '@/lib/paystack'
+import { renderInlineContent } from '@/lib/render-inline'
 
 export default function RegistrationClient({ event }: { event: RegisterEventInfo }) {
   const searchParams = useSearchParams()
@@ -371,7 +372,7 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
           .map((q) => (
             <div key={q.id}>
               <label className={labelClass}>
-                {q.label}
+                {renderInlineContent(q.label)}
                 {q.required && <span className="ml-1 text-copper">*</span>}
               </label>
 

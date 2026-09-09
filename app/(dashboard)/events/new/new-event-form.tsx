@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
 import { toast } from 'sonner'
 import type { SenderProfile } from '@/lib/types'
+import { DescriptionEditor } from '@/components/event-editor/DescriptionEditor'
 
 interface NewEventFormProps {
   profiles: Pick<SenderProfile, 'id' | 'display_name' | 'reply_to' | 'is_default'>[]
@@ -362,13 +363,10 @@ export function NewEventForm({ profiles: initialProfiles }: NewEventFormProps) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <label htmlFor="new-ev-desc" className={labelCls}>Description</label>
-          <textarea
-            id="new-ev-desc"
+          <label htmlFor="ev-desc" className={labelCls}>Description</label>
+          <DescriptionEditor
             name="description"
-            placeholder="Optional notes about the event..."
-            rows={3}
-            className={`${fieldCls} resize-none`}
+            placeholder="Tell attendees what to expect…"
           />
         </div>
 
