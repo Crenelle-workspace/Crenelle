@@ -972,7 +972,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
       {/* ── Dialogs & Modals ────────────────────────────────────────── */}
       {/* Add Ticket Tier Modal */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
+        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-3xl uppercase text-foreground">Add Ticket Tier</DialogTitle>
           </DialogHeader>
@@ -982,7 +982,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
 
       {/* Edit Ticket Tier Modal */}
       <Dialog open={!!editTier} onOpenChange={(o) => !o && setEditTier(null)}>
-        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
+        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-3xl uppercase text-foreground">Edit Ticket Tier</DialogTitle>
           </DialogHeader>
@@ -1020,7 +1020,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
 
       {/* Add Coupon Modal */}
       <Dialog open={addCouponOpen} onOpenChange={setAddCouponOpen}>
-        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
+        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-3xl uppercase text-foreground">Create Coupon</DialogTitle>
           </DialogHeader>
@@ -1035,7 +1035,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
 
       {/* Edit Coupon Modal */}
       <Dialog open={!!editCoupon} onOpenChange={(o) => !o && setEditCoupon(null)}>
-        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
+        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6 max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-4rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-3xl uppercase text-foreground">Edit Coupon</DialogTitle>
           </DialogHeader>
@@ -1191,7 +1191,7 @@ function TierForm({
       <Button
         type="submit"
         variant="copper"
-        className="w-full h-11 text-xs font-bold mt-2 rounded-full gap-2"
+        className="w-full h-11 text-xs font-bold mt-2 rounded-full gap-2 cursor-pointer shrink-0"
         disabled={loading}
         aria-busy={loading}
       >
@@ -1545,7 +1545,7 @@ function CouponForm({
       <Button
         type="submit"
         variant="copper"
-        className="w-full h-11 text-xs font-bold mt-2 rounded-full gap-2 cursor-pointer"
+        className="w-full h-11 text-xs font-bold mt-2 rounded-full gap-2 cursor-pointer shrink-0"
         disabled={loading}
         aria-busy={loading}
       >
