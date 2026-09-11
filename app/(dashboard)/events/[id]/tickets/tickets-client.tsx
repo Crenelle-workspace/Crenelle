@@ -56,6 +56,22 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
   const [isDeletingCoupon, setIsDeletingCoupon] = useState(false)
   const [togglingCouponId, setTogglingCouponId] = useState<string | null>(null)
 
+  // Sub-page tab state: 'tiers' | 'coupons'
+  const [activeTab, setActiveTab] = useState<'tiers' | 'coupons'>('tiers')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#coupons') {
+      setActiveTab('coupons')
+    }
+  }, [])
+
+  const handleTabChange = (tab: 'tiers' | 'coupons') => {
+    setActiveTab(tab)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', tab === 'coupons' ? '#coupons' : '#tiers')
+    }
+  }
+
   // Display options & filtering state
   const [viewMode, setViewMode] = useState<'grid' | 'cards' | 'list'>('grid')
   const [filter, setFilter] = useState<'all' | 'public' | 'private' | 'paid' | 'free'>('all')
@@ -345,25 +361,76 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b border-border/40 pb-6">
-        <SectionHeader
-          eyebrow="Ticket Tiers"
-          title="Ticket Tiers"
-          subtitle={loading ? "Loading admission tiers..." : `${tiers.length} active admission tier${tiers.length !== 1 ? 's' : ''}`}
-        />
-
-        {canEdit && (
-          <Button
-            variant="copper"
-            className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full"
-            onClick={() => setAddOpen(true)}
+      {/* Sub-page Navigation Tabs */}
+      <div className="flex items-center justify-between gap-4 mb-8">
+        <div className="inline-flex p-1.5 gap-1.5 rounded-full border border-border/40 bg-card/40 backdrop-blur-xl shadow-xs">
+          <button
+            type="button"
+            onClick={() => handleTabChange('tiers')}
+            className={`flex items-center gap-2 font-sans text-xs font-bold px-4 py-2 rounded-full transition-all duration-200 cursor-pointer ${
+              activeTab === 'tiers'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
+            }`}
           >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add Tier
-          </Button>
-        )}
+            <Ticket className="h-3.5 w-3.5" />
+            <span>Ticket Tiers</span>
+            <span
+              className={`font-mono text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
+                activeTab === 'tiers'
+                  ? 'bg-background/20 text-background'
+                  : 'bg-stone-500/15 text-muted-foreground'
+              }`}
+            >
+              {loading ? '...' : tiers.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange('coupons')}
+            className={`flex items-center gap-2 font-sans text-xs font-bold px-4 py-2 rounded-full transition-all duration-200 cursor-pointer ${
+              activeTab === 'coupons'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
+            }`}
+          >
+            <Tag className="h-3.5 w-3.5" />
+            <span>Coupon Codes</span>
+            <span
+              className={`font-mono text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
+                activeTab === 'coupons'
+                  ? 'bg-background/20 text-background'
+                  : 'bg-stone-500/15 text-muted-foreground'
+              }`}
+            >
+              {couponsLoading ? '...' : coupons.length}
+            </span>
+          </button>
+        </div>
       </div>
+
+      {activeTab === 'tiers' && (
+        <>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b border-border/40 pb-6">
+            <SectionHeader
+              eyebrow="Ticket Tiers"
+              title="Ticket Tiers"
+              subtitle={loading ? "Loading admission tiers..." : `${tiers.length} active admission tier${tiers.length !== 1 ? 's' : ''}`}
+            />
+
+            {canEdit && (
+              <Button
+                variant="copper"
+                className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full cursor-pointer"
+                onClick={() => setAddOpen(true)}
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add Tier
+              </Button>
+            )}
+          </div>
 
       {/* Controls & Display Options Bar */}
       {!loading && tiers.length > 0 && (
@@ -723,75 +790,30 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
           </div>
         )
       })()}
+        </>
+      )}
 
-      {/* Add Modal */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
-          <DialogHeader>
-            <DialogTitle className="font-display text-3xl uppercase text-foreground">Add Ticket Tier</DialogTitle>
-          </DialogHeader>
-          <TierForm onSubmit={handleAdd} loading={isSaving} prefix="add" hasSubaccount={hasSubaccount} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Modal */}
-      <Dialog open={!!editTier} onOpenChange={(o) => !o && setEditTier(null)}>
-        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
-          <DialogHeader>
-            <DialogTitle className="font-display text-3xl uppercase text-foreground">Edit Ticket Tier</DialogTitle>
-          </DialogHeader>
-          {editTier && (
-            <TierForm
-              onSubmit={handleUpdate}
-              loading={isSaving}
-              prefix="edit"
-              hasSubaccount={hasSubaccount}
-              defaultValues={{
-                name: editTier.name,
-                price: editTier.price / 100, // Show in NGN
-                capacity: editTier.capacity ?? 0,
-                has_capacity: editTier.capacity !== null,
-                is_public: editTier.is_public,
-              }}
+      {activeTab === 'coupons' && (
+        <>
+          {/* Coupon Codes Header */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b border-border/40 pb-6">
+            <SectionHeader
+              eyebrow="Discounts & Promos"
+              title="Coupon Codes"
+              subtitle={couponsLoading ? "Loading coupon codes..." : `${coupons.length} promotional code${coupons.length !== 1 ? 's' : ''}`}
             />
-          )}
-        </DialogContent>
-      </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="DELETE_TICKET_TIER"
-        description="THIS_ACTION_IS_IRREVERSIBLE"
-        subject={deleteTarget?.name}
-        subjectLabel="TICKET_TIER"
-        body="Deleting this tier will hide it from future ticket sales and public registration forms. Existing tickets inside this tier will remain active and valid."
-        confirmLabel="DELETE_TICKET_TIER"
-        isPending={isDeleting}
-        onConfirm={handleDelete}
-      />
-
-      {/* Coupon Codes Section */}
-      <div className="mt-16 pt-10 border-t border-border/40">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-          <SectionHeader
-            eyebrow="Discounts"
-            title="Coupon Codes"
-            subtitle={couponsLoading ? "Loading coupon codes..." : `${coupons.length} promotional code${coupons.length !== 1 ? 's' : ''}`}
-          />
-
-          {canEdit && (
-            <Button
-              variant="copper"
-              onClick={() => setAddCouponOpen(true)}
-              className="gap-2 h-10 px-5 text-xs font-bold rounded-full shadow-sm cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Create Coupon
-            </Button>
-          )}
-        </div>
+            {canEdit && (
+              <Button
+                variant="copper"
+                onClick={() => setAddCouponOpen(true)}
+                className="gap-2 h-10 px-5 text-xs font-bold rounded-full shadow-sm cursor-pointer shrink-0"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Create Coupon
+              </Button>
+            )}
+          </div>
 
         {couponsLoading ? (
           <div className="space-y-3 animate-pulse">
@@ -944,7 +966,57 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
             })}
           </div>
         )}
-      </div>
+        </>
+      )}
+
+      {/* ── Dialogs & Modals ────────────────────────────────────────── */}
+      {/* Add Ticket Tier Modal */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="font-display text-3xl uppercase text-foreground">Add Ticket Tier</DialogTitle>
+          </DialogHeader>
+          <TierForm onSubmit={handleAdd} loading={isSaving} prefix="add" hasSubaccount={hasSubaccount} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Ticket Tier Modal */}
+      <Dialog open={!!editTier} onOpenChange={(o) => !o && setEditTier(null)}>
+        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="font-display text-3xl uppercase text-foreground">Edit Ticket Tier</DialogTitle>
+          </DialogHeader>
+          {editTier && (
+            <TierForm
+              onSubmit={handleUpdate}
+              loading={isSaving}
+              prefix="edit"
+              hasSubaccount={hasSubaccount}
+              defaultValues={{
+                name: editTier.name,
+                price: editTier.price / 100, // Show in NGN
+                capacity: editTier.capacity ?? 0,
+                has_capacity: editTier.capacity !== null,
+                is_public: editTier.is_public,
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Ticket Tier Confirmation Modal */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="DELETE_TICKET_TIER"
+        description="THIS_ACTION_IS_IRREVERSIBLE"
+        subject={deleteTarget?.name}
+        subjectLabel="TICKET_TIER"
+        body="Deleting this tier will hide it from future ticket sales and public registration forms. Existing tickets inside this tier will remain active and valid."
+        confirmLabel="DELETE_TICKET_TIER"
+        isPending={isDeleting}
+        onConfirm={handleDelete}
+      />
 
       {/* Add Coupon Modal */}
       <Dialog open={addCouponOpen} onOpenChange={setAddCouponOpen}>
