@@ -76,6 +76,8 @@ export interface Attendee {
   source: AttendeeSource
   registration_status: RegistrationStatus | null
   ticket_tier_id: string | null
+  coupon_id?: string | null
+  discount_kobo?: number | null
   created_at: string
 }
 
@@ -226,6 +228,8 @@ export interface Payment {
   event_id: string
   attendee_id: string | null
   ticket_tier_id: string | null
+  coupon_id?: string | null
+  discount_kobo?: number | null
   paystack_reference: string
   paystack_transaction_id: number | null
   amount_kobo: number
@@ -265,7 +269,45 @@ export interface PaymentBreakdown {
   totalAmountKobo: number
   organiserPayoutKobo: number
   platformFeePercent: number
+  discountKobo?: number
 }
+
+export type CouponDiscountType = 'percent' | 'flat'
+
+export interface CouponCode {
+  id: string
+  event_id: string
+  code: string
+  discount_type: CouponDiscountType
+  discount_value: number // basis points for percent (2000 = 20%); kobo for flat
+  max_uses: number | null
+  times_used: number
+  valid_from: string | null
+  valid_until: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  tier_ids?: string[] // restricted ticket tier IDs
+}
+
+export interface CouponValidationSuccess {
+  valid: true
+  coupon_id: string
+  code: string
+  discount_type: CouponDiscountType
+  discount_value: number
+  discount_kobo: number
+  final_price_kobo: number
+  original_price_kobo: number
+}
+
+export interface CouponValidationError {
+  valid: false
+  reason: string
+}
+
+export type CouponValidationResult = CouponValidationSuccess | CouponValidationError
 
 
 // Paystack webhook payload shapes

@@ -118,6 +118,37 @@ describe('calculatePaymentBreakdown', () => {
     expect(breakdown.crenelleChargeKobo).toBe(272000) // ₦2,720
     expect(breakdown.platformFeePercent).toBe(10)
   })
+
+  it('calculates breakdown with partial coupon discount (₦10,000 ticket with ₦2,000 discount)', () => {
+    // ₦10,000 ticket (1,000,000 kobo) - ₦2,000 discount (200,000 kobo) = ₦8,000 effective (800,000 kobo)
+    // Platform fee 5% calculates on the reduced ₦8,000 amount
+    const breakdown = calculatePaymentBreakdown(1000000, 5, 200000)
+
+    expect(breakdown.ticketFeeKobo).toBe(1000000)
+    expect(breakdown.discountKobo).toBe(200000)
+    expect(breakdown.organiserPayoutKobo).toBe(800000) // Organiser receives discounted amount
+    expect(breakdown.totalAmountKobo).toBe(867000) // ₦8,670 (calculated on ₦8,000)
+    expect(breakdown.crenelleChargeKobo).toBe(67000) // ₦670
+  })
+
+  it('handles 100% coupon discount (effective price 0)', () => {
+    const breakdown = calculatePaymentBreakdown(1000000, 5, 1000000)
+
+    expect(breakdown.ticketFeeKobo).toBe(1000000)
+    expect(breakdown.discountKobo).toBe(1000000)
+    expect(breakdown.totalAmountKobo).toBe(0)
+    expect(breakdown.crenelleChargeKobo).toBe(0)
+    expect(breakdown.paystackFeeKobo).toBe(0)
+    expect(breakdown.organiserPayoutKobo).toBe(0)
+  })
+
+  it('clamps discount exceeding ticket price', () => {
+    const breakdown = calculatePaymentBreakdown(500000, 5, 800000)
+
+    expect(breakdown.ticketFeeKobo).toBe(500000)
+    expect(breakdown.totalAmountKobo).toBe(0)
+    expect(breakdown.organiserPayoutKobo).toBe(0)
+  })
 })
 
 describe('formatKoboAsNGN', () => {

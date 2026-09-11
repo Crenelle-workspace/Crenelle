@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Pencil, X, Ticket, AlertCircle, LayoutGrid, List, CreditCard, Loader2 } from 'lucide-react'
+import { Plus, Pencil, X, Ticket, AlertCircle, LayoutGrid, List, CreditCard, Loader2, Tag, Calendar, Power } from 'lucide-react'
 import { createTier, updateTier, softDeleteTier } from '@/app/actions/ticket-tiers'
+import { createCoupon, updateCoupon, deleteCoupon, toggleCouponActive, fetchCouponsForEvent } from '@/app/actions/coupons'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls, hintCls } from '@/lib/form-styles'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { SectionHeader } from '@/components/section-header'
 import { EmptyState } from '@/components/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
+import type { CouponCode, CouponDiscountType } from '@/lib/types'
 
 interface TicketTierWithAllocations {
   id: string
@@ -43,6 +45,16 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [hasSubaccount, setHasSubaccount] = useState(false)
+
+  // Coupon state
+  const [coupons, setCoupons] = useState<CouponCode[]>([])
+  const [couponsLoading, setCouponsLoading] = useState(true)
+  const [addCouponOpen, setAddCouponOpen] = useState(false)
+  const [editCoupon, setEditCoupon] = useState<CouponCode | null>(null)
+  const [deleteCouponTarget, setDeleteCouponTarget] = useState<CouponCode | null>(null)
+  const [isSavingCoupon, setIsSavingCoupon] = useState(false)
+  const [isDeletingCoupon, setIsDeletingCoupon] = useState(false)
+  const [togglingCouponId, setTogglingCouponId] = useState<string | null>(null)
 
   // Display options & filtering state
   const [viewMode, setViewMode] = useState<'grid' | 'cards' | 'list'>('grid')
@@ -108,8 +120,15 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
           .maybeSingle()
         setHasSubaccount(!!paySettings?.paystack_subaccount_code)
       }
+
+      // 4. Fetch coupon codes
+      const couponsRes = await fetchCouponsForEvent(eventId)
+      if (couponsRes.data) {
+        setCoupons(couponsRes.data)
+      }
     } finally {
       setLoading(false)
+      setCouponsLoading(false)
     }
   }, [eventId])
 
@@ -121,7 +140,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
     // Realtime subscription below drives updates; poll is a slow safety net (was 10s).
     const poll = setInterval(loadData, 60000)
 
-    // Listen to real-time updates on ticket_tiers and invitations
+    // Listen to real-time updates on ticket_tiers, invitations, and coupon_codes
     const channel = supabase
       .channel(`tickets-${eventId}`)
       .on(
@@ -134,6 +153,11 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
         { event: '*', schema: 'public', table: 'invitations', filter: `event_id=eq.${eventId}` },
         () => loadData()
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'coupon_codes', filter: `event_id=eq.${eventId}` },
+        () => loadData()
+      )
       .subscribe()
 
     return () => {
@@ -141,6 +165,111 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
       supabase.removeChannel(channel)
     }
   }, [eventId, loadData])
+
+  const handleCreateCoupon = async (data: {
+    code: string
+    discountType: CouponDiscountType
+    discountValue: number
+    maxUses: number | null
+    validFrom: string | null
+    validUntil: string | null
+    tierIds: string[]
+  }) => {
+    setIsSavingCoupon(true)
+    try {
+      const res = await createCoupon({
+        eventId,
+        ...data,
+      })
+      if (res.error) {
+        toast.error(res.error)
+      } else {
+        toast.success(`Coupon ${data.code.toUpperCase()} created successfully`)
+        setAddCouponOpen(false)
+        await loadData()
+      }
+    } catch {
+      toast.error('Failed to create coupon')
+    } finally {
+      setIsSavingCoupon(false)
+    }
+  }
+
+  const handleUpdateCoupon = async (data: {
+    code: string
+    discountType: CouponDiscountType
+    discountValue: number
+    maxUses: number | null
+    validFrom: string | null
+    validUntil: string | null
+    tierIds: string[]
+  }) => {
+    if (!editCoupon) return
+    setIsSavingCoupon(true)
+    try {
+      const res = await updateCoupon({
+        couponId: editCoupon.id,
+        eventId,
+        ...data,
+      })
+      if (res.error) {
+        toast.error(res.error)
+      } else {
+        toast.success(`Coupon ${data.code.toUpperCase()} updated`)
+        setEditCoupon(null)
+        await loadData()
+      }
+    } catch {
+      toast.error('Failed to update coupon')
+    } finally {
+      setIsSavingCoupon(false)
+    }
+  }
+
+  const handleToggleCoupon = async (coupon: CouponCode) => {
+    setTogglingCouponId(coupon.id)
+    const nextState = !coupon.is_active
+    setCoupons((prev) =>
+      prev.map((c) => (c.id === coupon.id ? { ...c, is_active: nextState } : c))
+    )
+    try {
+      const res = await toggleCouponActive(coupon.id, eventId, nextState)
+      if (res.error) {
+        setCoupons((prev) =>
+          prev.map((c) => (c.id === coupon.id ? { ...c, is_active: !nextState } : c))
+        )
+        toast.error(res.error)
+      } else {
+        toast.success(`Coupon ${coupon.code} is now ${nextState ? 'active' : 'inactive'}`)
+      }
+    } catch {
+      setCoupons((prev) =>
+        prev.map((c) => (c.id === coupon.id ? { ...c, is_active: !nextState } : c))
+      )
+      toast.error('Failed to update coupon status')
+    } finally {
+      setTogglingCouponId(null)
+    }
+  }
+
+  const handleDeleteCoupon = async () => {
+    if (!deleteCouponTarget) return
+    setIsDeletingCoupon(true)
+    try {
+      const res = await deleteCoupon(deleteCouponTarget.id, eventId)
+      if (res.error) {
+        toast.error(res.error)
+      } else {
+        toast.success(`Coupon ${deleteCouponTarget.code} deleted`)
+        setDeleteCouponTarget(null)
+        await loadData()
+      }
+    } catch {
+      toast.error('Failed to delete coupon')
+    } finally {
+      setIsDeletingCoupon(false)
+    }
+  }
 
   async function handleAdd(formData: FormData) {
     setIsSaving(true)
@@ -642,6 +771,237 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
         isPending={isDeleting}
         onConfirm={handleDelete}
       />
+
+      {/* Coupon Codes Section */}
+      <div className="mt-16 pt-10 border-t border-border/40">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+          <SectionHeader
+            eyebrow="Discounts"
+            title="Coupon Codes"
+            subtitle={couponsLoading ? "Loading coupon codes..." : `${coupons.length} promotional code${coupons.length !== 1 ? 's' : ''}`}
+          />
+
+          {canEdit && (
+            <Button
+              variant="copper"
+              onClick={() => setAddCouponOpen(true)}
+              className="gap-2 h-10 px-5 text-xs font-bold rounded-full shadow-sm cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Create Coupon
+            </Button>
+          )}
+        </div>
+
+        {couponsLoading ? (
+          <div className="space-y-3 animate-pulse">
+            {[1, 2].map((i) => (
+              <div key={i} className="border border-border/40 bg-card/20 rounded-2xl p-4 flex items-center justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-28 rounded-md" />
+                  <Skeleton className="h-3 w-40 rounded-md" />
+                </div>
+                <Skeleton className="h-8 w-20 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : coupons.length === 0 ? (
+          <EmptyState
+            icon={<Tag className="h-10 w-10" />}
+            title="NO COUPON CODES YET"
+            subtitle="Create promo codes to offer percentage discounts or fixed deductions on ticket tiers."
+            action={
+              canEdit ? (
+                <Button
+                  variant="copper"
+                  onClick={() => setAddCouponOpen(true)}
+                  className="gap-2 h-10 px-5 text-xs font-bold rounded-full cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Create First Coupon
+                </Button>
+              ) : null
+            }
+          />
+        ) : (
+          <div className="border border-border/40 bg-card/30 backdrop-blur-md rounded-2xl overflow-hidden shadow-xs divide-y divide-border/30">
+            {coupons.map((coupon) => {
+              const isExpired = coupon.valid_until && new Date() > new Date(coupon.valid_until)
+              const isScheduled = coupon.valid_from && new Date() < new Date(coupon.valid_from)
+              const isCapReached = coupon.max_uses !== null && coupon.times_used >= coupon.max_uses
+
+              const discountLabel = coupon.discount_type === 'percent'
+                ? `${coupon.discount_value / 100}% OFF`
+                : `₦${Math.ceil(coupon.discount_value / 100).toLocaleString('en-NG')} OFF`
+
+              const restrictedTierNames = coupon.tier_ids && coupon.tier_ids.length > 0
+                ? tiers.filter((t) => coupon.tier_ids?.includes(t.id)).map((t) => t.name)
+                : []
+
+              return (
+                <div
+                  key={coupon.id}
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-card/60 transition-colors"
+                >
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+                    <div className="p-2.5 rounded-xl bg-copper/10 border border-copper/20 text-copper shrink-0">
+                      <Tag className="h-5 w-5" />
+                    </div>
+
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-mono text-sm font-bold tracking-wider px-2.5 py-0.5 rounded-md bg-stone-500/10 border border-border/40 text-foreground">
+                          {coupon.code}
+                        </span>
+
+                        <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          {discountLabel}
+                        </span>
+
+                        {!coupon.is_active ? (
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-stone-500/10 text-muted-foreground border border-border/30">
+                            Inactive
+                          </span>
+                        ) : isExpired ? (
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 font-bold">
+                            Expired
+                          </span>
+                        ) : isCapReached ? (
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold">
+                            Cap Reached
+                          </span>
+                        ) : isScheduled ? (
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                            Scheduled
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+                            Active
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground font-sans">
+                        <span>
+                          {restrictedTierNames.length > 0
+                            ? `Tiers: ${restrictedTierNames.join(', ')}`
+                            : 'Applies to all ticket tiers'}
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Redemptions: <strong className="text-foreground">{coupon.times_used}</strong> / {coupon.max_uses ?? '∞'}
+                        </span>
+                        {coupon.valid_until && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              Expires {new Date(coupon.valid_until).toLocaleDateString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {canEdit && (
+                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleCoupon(coupon)}
+                        disabled={togglingCouponId === coupon.id}
+                        className="h-8 px-3 text-xs gap-1.5 font-mono cursor-pointer"
+                        title={coupon.is_active ? 'Deactivate coupon' : 'Activate coupon'}
+                      >
+                        <Power className={`h-3.5 w-3.5 ${coupon.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
+                        <span className="hidden md:inline">{coupon.is_active ? 'Disable' : 'Enable'}</span>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                        onClick={() => setEditCoupon(coupon)}
+                        aria-label={`Edit ${coupon.code}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-denied/60 hover:text-denied hover:bg-denied/5 cursor-pointer"
+                        onClick={() => setDeleteCouponTarget(coupon)}
+                        aria-label={`Delete ${coupon.code}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Add Coupon Modal */}
+      <Dialog open={addCouponOpen} onOpenChange={setAddCouponOpen}>
+        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="font-display text-3xl uppercase text-foreground">Create Coupon</DialogTitle>
+          </DialogHeader>
+          <CouponForm
+            onSubmit={handleCreateCoupon}
+            loading={isSavingCoupon}
+            prefix="add-coupon"
+            tiers={tiers}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Coupon Modal */}
+      <Dialog open={!!editCoupon} onOpenChange={(o) => !o && setEditCoupon(null)}>
+        <DialogContent className="bg-background border-2 border-foreground/20 max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle className="font-display text-3xl uppercase text-foreground">Edit Coupon</DialogTitle>
+          </DialogHeader>
+          {editCoupon && (
+            <CouponForm
+              onSubmit={handleUpdateCoupon}
+              loading={isSavingCoupon}
+              prefix="edit-coupon"
+              tiers={tiers}
+              defaultValues={{
+                code: editCoupon.code,
+                discountType: editCoupon.discount_type,
+                discountValue: editCoupon.discount_type === 'percent'
+                  ? editCoupon.discount_value / 100
+                  : Math.ceil(editCoupon.discount_value / 100),
+                maxUses: editCoupon.max_uses,
+                validFrom: editCoupon.valid_from,
+                validUntil: editCoupon.valid_until,
+                tierIds: editCoupon.tier_ids ?? [],
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Coupon Confirmation Modal */}
+      <ConfirmDialog
+        open={!!deleteCouponTarget}
+        onOpenChange={(open) => !open && setDeleteCouponTarget(null)}
+        title="DELETE_COUPON_CODE"
+        description="THIS_ACTION_IS_IRREVERSIBLE"
+        subject={deleteCouponTarget?.code}
+        subjectLabel="COUPON_CODE"
+        body="Deleting this coupon will prevent any further redemptions at checkout. Existing registrations and payments made with this coupon will not be affected."
+        confirmLabel="DELETE_COUPON"
+        isPending={isDeletingCoupon}
+        onConfirm={handleDeleteCoupon}
+      />
     </div>
   )
 }
@@ -775,3 +1135,358 @@ function TierForm({
     </form>
   )
 }
+
+function CouponForm({
+  onSubmit,
+  loading,
+  prefix,
+  tiers,
+  defaultValues,
+}: {
+  onSubmit: (data: {
+    code: string
+    discountType: CouponDiscountType
+    discountValue: number
+    maxUses: number | null
+    validFrom: string | null
+    validUntil: string | null
+    tierIds: string[]
+  }) => void
+  loading: boolean
+  prefix: string
+  tiers: TicketTierWithAllocations[]
+  defaultValues?: {
+    code: string
+    discountType: CouponDiscountType
+    discountValue: number
+    maxUses?: number | null
+    validFrom?: string | null
+    validUntil?: string | null
+    tierIds?: string[]
+  }
+}) {
+  const [code, setCode] = useState(defaultValues?.code ?? '')
+  const [discountType, setDiscountType] = useState<CouponDiscountType>(
+    defaultValues?.discountType ?? 'percent'
+  )
+  const [discountValue, setDiscountValue] = useState<number>(
+    defaultValues?.discountValue ?? 20
+  )
+  const [hasCap, setHasCap] = useState(!!defaultValues?.maxUses)
+  const [maxUses, setMaxUses] = useState<number>(defaultValues?.maxUses ?? 50)
+  const [hasExpiry, setHasExpiry] = useState(
+    !!defaultValues?.validUntil || !!defaultValues?.validFrom
+  )
+  const [validFrom, setValidFrom] = useState(
+    defaultValues?.validFrom ? defaultValues.validFrom.slice(0, 16) : ''
+  )
+  const [validUntil, setValidUntil] = useState(
+    defaultValues?.validUntil ? defaultValues.validUntil.slice(0, 16) : ''
+  )
+  const [restrictTiers, setRestrictTiers] = useState(
+    !!defaultValues?.tierIds && defaultValues.tierIds.length > 0
+  )
+  const [selectedTierIds, setSelectedTierIds] = useState<string[]>(
+    defaultValues?.tierIds ?? []
+  )
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // discount_value in DB:
+    // - percent: basis points (e.g. 20% -> 2000)
+    // - flat: kobo (e.g. ₦500 -> 50000 kobo)
+    const dbDiscountValue =
+      discountType === 'percent'
+        ? Math.round(discountValue * 100)
+        : Math.round(discountValue * 100)
+
+    onSubmit({
+      code: code.trim().toUpperCase(),
+      discountType,
+      discountValue: dbDiscountValue,
+      maxUses: hasCap ? maxUses : null,
+      validFrom: hasExpiry && validFrom ? new Date(validFrom).toISOString() : null,
+      validUntil: hasExpiry && validUntil ? new Date(validUntil).toISOString() : null,
+      tierIds: restrictTiers ? selectedTierIds : [],
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 mt-2">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={`${prefix}-code`} className={labelCls}>
+          Coupon Code *
+        </label>
+        <input
+          id={`${prefix}-code`}
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\s+/g, '').toUpperCase())}
+          placeholder="e.g. EARLYBIRD20, VIPGUEST"
+          required
+          className={`${fieldCls} uppercase font-mono tracking-wider`}
+        />
+        <span className={hintCls}>Attendees will enter this code at checkout (case-insensitive)</span>
+      </div>
+
+      {/* Discount Type */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={`${prefix}-type`} className={labelCls}>
+          Discount Type *
+        </label>
+        <select
+          id={`${prefix}-type`}
+          value={discountType}
+          onChange={(e) => {
+            const nextType = e.target.value as CouponDiscountType
+            setDiscountType(nextType)
+            if (nextType === 'percent' && discountValue > 100) {
+              setDiscountValue(20)
+            }
+          }}
+          className={fieldCls}
+        >
+          <option value="percent">Percentage (%)</option>
+          <option value="flat">Fixed Amount (₦)</option>
+        </select>
+      </div>
+
+      {/* Discount Value */}
+      {discountType === 'percent' ? (
+        <div className="flex flex-col gap-2">
+          <label className={labelCls}>Discount (%) *</label>
+          {/* Quick-select presets */}
+          <div className="grid grid-cols-5 gap-2">
+            {[10, 25, 50, 100].map((preset) => {
+              const active = discountValue === preset
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setDiscountValue(preset)}
+                  className={[
+                    'h-10 rounded-xl text-xs font-bold font-mono border transition-all duration-150',
+                    active
+                      ? 'bg-copper text-white border-copper shadow-sm scale-[1.03]'
+                      : 'bg-card/40 text-foreground/70 border-border/40 hover:border-copper/50 hover:text-copper hover:bg-copper/5',
+                  ].join(' ')}
+                >
+                  {preset}%
+                </button>
+              )
+            })}
+            {/* Custom slot */}
+            <button
+              type="button"
+              onClick={() => {
+                if ([10, 25, 50, 100].includes(discountValue)) {
+                  setDiscountValue(0)
+                }
+              }}
+              className={[
+                'h-10 rounded-xl text-xs font-bold font-mono border transition-all duration-150',
+                ![10, 25, 50, 100].includes(discountValue)
+                  ? 'bg-copper text-white border-copper shadow-sm scale-[1.03]'
+                  : 'bg-card/40 text-foreground/70 border-border/40 hover:border-copper/50 hover:text-copper hover:bg-copper/5',
+              ].join(' ')}
+            >
+              Custom
+            </button>
+          </div>
+          {/* Show custom input when no preset is active */}
+          {![10, 25, 50, 100].includes(discountValue) && (
+            <input
+              id={`${prefix}-val`}
+              type="number"
+              min="1"
+              max="100"
+              step="1"
+              value={discountValue || ''}
+              onChange={(e) => {
+                const v = Math.min(100, Math.max(1, Number(e.target.value) || 0))
+                setDiscountValue(v)
+              }}
+              required
+              autoFocus
+              className={fieldCls}
+              placeholder="Enter % e.g. 15"
+            />
+          )}
+          <span className={hintCls}>Percent off the ticket price</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`${prefix}-val`} className={labelCls}>
+            Amount (₦) *
+          </label>
+          <input
+            id={`${prefix}-val`}
+            type="number"
+            min="1"
+            step="1"
+            value={discountValue}
+            onChange={(e) => setDiscountValue(Math.max(1, Number(e.target.value) || 0))}
+            required
+            className={fieldCls}
+            placeholder="e.g. 2000"
+          />
+          <span className={hintCls}>Flat reduction in whole Naira</span>
+        </div>
+      )}
+
+      {/* Tier restrictions */}
+      <div className="flex flex-col gap-2.5 border border-border/40 p-4 bg-card/40 rounded-xl">
+        <div className="flex items-center gap-2">
+          <input
+            id={`${prefix}-restrict-tiers`}
+            type="checkbox"
+            checked={restrictTiers}
+            onChange={(e) => {
+              setRestrictTiers(e.target.checked)
+              if (!e.target.checked) setSelectedTierIds([])
+            }}
+            className="h-4 w-4 accent-copper cursor-pointer"
+          />
+          <label htmlFor={`${prefix}-restrict-tiers`} className="font-sans text-xs font-semibold text-foreground cursor-pointer">
+            Limit to Specific Ticket Tiers
+          </label>
+        </div>
+
+        {restrictTiers && (
+          <div className="mt-1 space-y-2 max-h-36 overflow-y-auto pl-1">
+            {tiers.filter((t) => t.price > 0).length === 0 ? (
+              <p className="text-[11px] text-muted-foreground font-mono">
+                No paid ticket tiers available to restrict to.
+              </p>
+            ) : (
+              tiers
+                .filter((t) => t.price > 0)
+                .map((tier) => (
+                  <label
+                    key={tier.id}
+                    className="flex items-center gap-2.5 text-xs text-foreground cursor-pointer hover:text-copper transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTierIds.includes(tier.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTierIds((prev) => [...prev, tier.id])
+                        } else {
+                          setSelectedTierIds((prev) => prev.filter((id) => id !== tier.id))
+                        }
+                      }}
+                      className="h-3.5 w-3.5 accent-copper cursor-pointer"
+                    />
+                    <span className="font-medium">{tier.name}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      (₦{Math.ceil(tier.price / 100).toLocaleString('en-NG')})
+                    </span>
+                  </label>
+                ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Redemption Limit */}
+      <div className="flex flex-col gap-2.5 border border-border/40 p-4 bg-card/40 rounded-xl">
+        <div className="flex items-center gap-2">
+          <input
+            id={`${prefix}-has-cap`}
+            type="checkbox"
+            checked={hasCap}
+            onChange={(e) => setHasCap(e.target.checked)}
+            className="h-4 w-4 accent-copper cursor-pointer"
+          />
+          <label htmlFor={`${prefix}-has-cap`} className="font-sans text-xs font-semibold text-foreground cursor-pointer">
+            Limit Total Redemptions
+          </label>
+        </div>
+
+        {hasCap && (
+          <div className="flex flex-col gap-1.5 mt-1">
+            <label htmlFor={`${prefix}-max-uses`} className={labelCls}>
+              Maximum Redemptions *
+            </label>
+            <input
+              id={`${prefix}-max-uses`}
+              type="number"
+              min="1"
+              value={maxUses}
+              onChange={(e) => setMaxUses(Math.max(1, Number(e.target.value) || 1))}
+              required={hasCap}
+              className={fieldCls}
+            />
+            <span className={hintCls}>Coupon automatically deactivates after reaching this count</span>
+          </div>
+        )}
+      </div>
+
+      {/* Date Window */}
+      <div className="flex flex-col gap-2.5 border border-border/40 p-4 bg-card/40 rounded-xl">
+        <div className="flex items-center gap-2">
+          <input
+            id={`${prefix}-has-expiry`}
+            type="checkbox"
+            checked={hasExpiry}
+            onChange={(e) => setHasExpiry(e.target.checked)}
+            className="h-4 w-4 accent-copper cursor-pointer"
+          />
+          <label htmlFor={`${prefix}-has-expiry`} className="font-sans text-xs font-semibold text-foreground cursor-pointer">
+            Set Expiration Date
+          </label>
+        </div>
+
+        {hasExpiry && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={`${prefix}-valid-from`} className={labelCls}>
+                Valid From (Optional)
+              </label>
+              <input
+                id={`${prefix}-valid-from`}
+                type="datetime-local"
+                value={validFrom}
+                onChange={(e) => setValidFrom(e.target.value)}
+                className={fieldCls}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={`${prefix}-valid-until`} className={labelCls}>
+                Expires On *
+              </label>
+              <input
+                id={`${prefix}-valid-until`}
+                type="datetime-local"
+                value={validUntil}
+                onChange={(e) => setValidUntil(e.target.value)}
+                required={hasExpiry}
+                className={fieldCls}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Button
+        type="submit"
+        variant="copper"
+        className="w-full h-11 text-xs font-bold mt-2 rounded-full gap-2 cursor-pointer"
+        disabled={loading}
+        aria-busy={loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          'Save Coupon Code'
+        )}
+      </Button>
+    </form>
+  )
+}
+

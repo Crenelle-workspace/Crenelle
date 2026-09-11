@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -23,10 +23,12 @@ import {
   Receipt,
   ArrowLeft,
   Lock,
+  Tag,
 } from 'lucide-react'
 import type { RegisterEventInfo } from '@/lib/register-event'
 import { calculatePaymentBreakdown, formatKoboAsNGN } from '@/lib/paystack'
 import { renderInlineContent } from '@/lib/render-inline'
+import type { CouponValidationResult } from '@/lib/types'
 
 export default function RegistrationClient({ event }: { event: RegisterEventInfo }) {
   const searchParams = useSearchParams()
@@ -51,7 +53,22 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
     email: string
     phone: string
     tier: { id: string; name: string; price: number; currency: string }
+    couponCode?: string
+    discountKobo?: number
   } | null>(null)
+
+  // Coupon state
+  const [showCouponInput, setShowCouponInput] = useState(false)
+  const [couponInput, setCouponInput] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string
+    discount_type: 'percent' | 'flat'
+    discount_value: number
+    discount_kobo: number
+    final_price_kobo: number
+  } | null>(null)
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [validatingCoupon, setValidatingCoupon] = useState(false)
 
   const rsvpFormRef = useRef<HTMLDivElement>(null)
   const isSubmitting = useRef(false)
@@ -117,6 +134,63 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
     rsvpFormRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const handleApplyCoupon = useCallback(
+    async (codeToApply?: string, tierIdToUse?: string) => {
+      const code = (codeToApply ?? couponInput).trim()
+      const tierId = tierIdToUse ?? selectedTierId
+      if (!code) return
+      setValidatingCoupon(true)
+      setCouponError(null)
+
+      try {
+        const res = await fetch('/api/coupons/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code,
+            event_id: event.id,
+            tier_id: tierId,
+          }),
+        })
+
+        const data: CouponValidationResult = await res.json()
+        if (!data.valid) {
+          setCouponError(data.reason || 'Invalid coupon code')
+          setAppliedCoupon(null)
+        } else {
+          setAppliedCoupon({
+            code: data.code,
+            discount_type: data.discount_type,
+            discount_value: data.discount_value,
+            discount_kobo: data.discount_kobo,
+            final_price_kobo: data.final_price_kobo,
+          })
+          setCouponError(null)
+        }
+      } catch {
+        setCouponError('Failed to validate coupon. Please try again.')
+        setAppliedCoupon(null)
+      } finally {
+        setValidatingCoupon(false)
+      }
+    },
+    [couponInput, selectedTierId, event.id]
+  )
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null)
+    setCouponInput('')
+    setCouponError(null)
+  }
+
+  // Re-validate coupon if the attendee switches ticket tiers
+  const appliedCode = appliedCoupon?.code
+  useEffect(() => {
+    if (appliedCode && selectedTierId) {
+      handleApplyCoupon(appliedCode, selectedTierId)
+    }
+  }, [selectedTierId, appliedCode, handleApplyCoupon])
+
   async function handleConfirmPaystackPayment() {
     if (!previewDetails || isSubmitting.current) return
     isSubmitting.current = true
@@ -133,12 +207,42 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
           payer_email: previewDetails.email,
           payer_name: previewDetails.fullName,
           payer_phone: previewDetails.phone || undefined,
+          coupon_code: previewDetails.couponCode || undefined,
         }),
       })
 
       const data = await res.json()
       if (!res.ok || data.error) {
         setError(data.error || 'Failed to initialize payment. Please try again.')
+        setRedirectingToPaystack(false)
+        isSubmitting.current = false
+        return
+      }
+
+      // If coupon completely covered the ticket (100% off), complete registration directly!
+      if (data.free_registration) {
+        const formData = new FormData()
+        formData.set('full_name', previewDetails.fullName)
+        formData.set('email', previewDetails.email)
+        if (previewDetails.phone) formData.set('phone', previewDetails.phone)
+        formData.set('ticket_tier_id', previewDetails.tier.id)
+        if (previewDetails.couponCode) formData.set('coupon_code', previewDetails.couponCode)
+        if (Object.keys(customAnswers).length > 0) {
+          formData.set('custom_answers', JSON.stringify(customAnswers))
+        }
+
+        const result = await submitRegistration(event.id, formData)
+        if (result.error) {
+          setError(result.error)
+          setRedirectingToPaystack(false)
+          isSubmitting.current = false
+          return
+        }
+
+        setSubmitted(true)
+        setWaitlisted(Boolean(result.waitlisted))
+        setAutoApproved(Boolean(result.autoApproved))
+        setPreviewDetails(null)
         setRedirectingToPaystack(false)
         isSubmitting.current = false
         return
@@ -192,6 +296,25 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
     const isPaidTier = selectedTier ? selectedTier.price > 0 : false
 
     try {
+      // 100% coupon discount on paid tier: route directly to free registration
+      if (isPaidTier && appliedCoupon && appliedCoupon.final_price_kobo === 0) {
+        formData.set('coupon_code', appliedCoupon.code)
+        const result = await submitRegistration(event.id, formData)
+        if (result.error) {
+          setError(result.error)
+          isSubmitting.current = false
+          setSubmitting(false)
+          return
+        }
+
+        setSubmitted(true)
+        setWaitlisted(Boolean(result.waitlisted))
+        setAutoApproved(Boolean(result.autoApproved))
+        isSubmitting.current = false
+        setSubmitting(false)
+        return
+      }
+
       if (isPaidTier && selectedTier) {
         // Open payment preview breakdown step
         setPreviewDetails({
@@ -199,6 +322,8 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
           email,
           phone,
           tier: selectedTier,
+          couponCode: appliedCoupon?.code,
+          discountKobo: appliedCoupon?.discount_kobo ?? 0,
         })
         isSubmitting.current = false
         setSubmitting(false)
@@ -647,9 +772,11 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
 
                   {/* Breakdown Table */}
                   {(() => {
+                    const discountKobo = previewDetails.discountKobo ?? 0
                     const breakdown = calculatePaymentBreakdown(
                       previewDetails.tier.price,
-                      event.platform_fee_percent ?? 5
+                      event.platform_fee_percent ?? 5,
+                      discountKobo
                     )
                     return (
                       <div className="space-y-2 border border-border/80 bg-background p-4 rounded-xl shadow-inner">
@@ -659,6 +786,18 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                             {formatKoboAsNGN(breakdown.ticketFeeKobo)}
                           </span>
                         </div>
+
+                        {discountKobo > 0 && (
+                          <div className="flex justify-between font-mono text-xs py-1 border-t border-border/30 text-emerald-600 dark:text-emerald-400">
+                            <span className="flex items-center gap-1.5 font-sans">
+                              <Tag size={12} />
+                              <span>Discount {previewDetails.couponCode ? `(${previewDetails.couponCode})` : ''}</span>
+                            </span>
+                            <span className="font-mono font-bold">
+                              -{formatKoboAsNGN(discountKobo)}
+                            </span>
+                          </div>
+                        )}
 
                         <div className="flex justify-between font-mono text-xs py-1 border-t border-border/30">
                           <span className="text-muted-foreground">
@@ -681,7 +820,11 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
 
                   <div className="flex items-center gap-2 py-1 px-2 text-[10px] font-mono text-muted-foreground">
                     <Lock size={12} className="text-emerald-400 shrink-0" />
-                    <span>Redirects to Paystack 256-bit SSL encrypted payment page</span>
+                    <span>
+                      {(previewDetails.discountKobo && previewDetails.tier.price <= previewDetails.discountKobo)
+                        ? '100% discount applied — instant confirmation upon submission'
+                        : 'Redirects to Paystack 256-bit SSL encrypted payment page'}
+                    </span>
                   </div>
 
                   {/* Actions */}
@@ -694,7 +837,12 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                     >
                       {redirectingToPaystack ? (
                         <>
-                          <Loader2 size={15} className="animate-spin" /> Redirecting to Paystack…
+                          <Loader2 size={15} className="animate-spin" /> Processing…
+                        </>
+                      ) : (previewDetails.discountKobo && previewDetails.tier.price <= previewDetails.discountKobo) ? (
+                        <>
+                          <span>Complete Registration</span>
+                          <ArrowRight size={15} strokeWidth={2} />
                         </>
                       ) : (
                         <>
@@ -815,19 +963,114 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                     </div>
                   )}
 
+                  {/* Coupon Code for paid tiers */}
+                  {(() => {
+                    const selectedTier = event.tiers?.find((t) => t.id === selectedTierId)
+                    const isPaidTier = selectedTier ? selectedTier.price > 0 : false
+                    if (!isPaidTier) return null
+
+                    if (appliedCoupon) {
+                      return (
+                        <div className="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                          <div className="flex items-center gap-2">
+                            <Tag size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span className="font-mono text-xs font-bold text-foreground tracking-wider">
+                              {appliedCoupon.code}
+                            </span>
+                            <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                              (-{appliedCoupon.discount_type === 'percent'
+                                ? `${appliedCoupon.discount_value / 100}%`
+                                : `₦${Math.ceil(appliedCoupon.discount_value / 100).toLocaleString('en-NG')}`})
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRemoveCoupon}
+                            className="text-xs text-muted-foreground hover:text-foreground font-mono cursor-pointer px-1.5 py-0.5"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )
+                    }
+
+                    if (!showCouponInput) {
+                      return (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => setShowCouponInput(true)}
+                            className="flex items-center gap-1.5 text-xs text-copper hover:text-copper/80 font-medium transition-colors cursor-pointer"
+                          >
+                            <Tag size={13} />
+                            <span>Have a coupon code?</span>
+                          </button>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <div className="space-y-1.5">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={couponInput}
+                            onChange={(e) => {
+                              setCouponInput(e.target.value.replace(/\s+/g, '').toUpperCase())
+                              setCouponError(null)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                handleApplyCoupon()
+                              }
+                            }}
+                            placeholder="COUPON CODE"
+                            className={`${inputClass} uppercase font-mono tracking-wider text-xs py-2`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleApplyCoupon()}
+                            disabled={validatingCoupon || !couponInput.trim()}
+                            className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-mono text-xs font-semibold rounded-md transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                          >
+                            {validatingCoupon ? <Loader2 size={13} className="animate-spin" /> : 'Apply'}
+                          </button>
+                        </div>
+                        {couponError && (
+                          <p className="text-xs text-red-600 dark:text-red-400 font-mono">
+                            {couponError}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })()}
+
                   {(() => {
                     const selectedTier = event.tiers?.find(
                       (t) => t.id === selectedTierId
                     )
                     const isPaidTier = selectedTier ? selectedTier.price > 0 : false
+                    const finalPrice = appliedCoupon
+                      ? appliedCoupon.final_price_kobo
+                      : (selectedTier?.price ?? 0)
                     const isProcessing = submitting || redirectingToPaystack
                     return (
                       <div className="pt-1">
-                        {isPaidTier && (
+                        {isPaidTier && finalPrice > 0 && (
                           <div className="mb-4 flex items-start gap-2.5 border-l-2 border-copper/50 bg-secondary/30 py-2.5 pl-3 pr-2 text-[11px] leading-relaxed text-muted-foreground">
                             <CreditCard size={15} strokeWidth={1.5} className="mt-px shrink-0 text-copper" />
                             <span>
                               Secure checkout via Paystack — card, bank transfer, or USSD.
+                            </span>
+                          </div>
+                        )}
+
+                        {isPaidTier && finalPrice === 0 && (
+                          <div className="mb-4 flex items-start gap-2.5 border-l-2 border-emerald-500 bg-emerald-500/10 py-2.5 pl-3 pr-2 text-[11px] leading-relaxed text-emerald-600 dark:text-emerald-400 font-medium">
+                            <CheckCircle2 size={15} strokeWidth={1.5} className="mt-px shrink-0 text-emerald-600 dark:text-emerald-400" />
+                            <span>
+                              100% discount applied — free registration, no payment required.
                             </span>
                           </div>
                         )}
@@ -837,10 +1080,14 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
                             ? 'Redirecting…'
                             : submitting
                             ? 'Submitting…'
-                            : isPaidTier
+                            : isPaidTier && finalPrice > 0
                             ? `Pay ₦${Math.ceil(
-                                (selectedTier?.price ?? 0) / 100
+                                finalPrice / 100
                               ).toLocaleString('en-NG')} & register`
+                            : isPaidTier && finalPrice === 0
+                            ? event.auto_approve_registrations
+                              ? 'Confirm registration (Free)'
+                              : 'Submit application (Free)'
                             : event.auto_approve_registrations
                             ? 'Confirm registration'
                             : 'Submit application'}
