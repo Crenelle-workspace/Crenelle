@@ -331,15 +331,20 @@ const ROUND_TO_KOBO = 1000; // ₦10 in kobo
 export function calculatePaymentBreakdown(
   ticketFeeKobo: number,
   platformFeePercent: number = 5,
+  discountKobo: number = 0,
 ): PaymentBreakdown {
-  if (ticketFeeKobo <= 0) {
+  const safeDiscountKobo = Math.max(0, discountKobo);
+  const effectiveTicketFeeKobo = Math.max(0, ticketFeeKobo - safeDiscountKobo);
+
+  if (effectiveTicketFeeKobo <= 0) {
     return {
-      ticketFeeKobo: 0,
+      ticketFeeKobo,
       crenelleChargeKobo: 0,
       paystackFeeKobo: 0,
       totalAmountKobo: 0,
       organiserPayoutKobo: 0,
       platformFeePercent,
+      discountKobo: safeDiscountKobo,
     };
   }
 
@@ -350,20 +355,23 @@ export function calculatePaymentBreakdown(
   }
 
   // Pass 1: assume total stays under the ₦2,500 flat-fee threshold.
-  let totalKobo = Math.ceil(ticketFeeKobo / (1 - combinedPercent));
+  let totalKobo = Math.ceil(effectiveTicketFeeKobo / (1 - combinedPercent));
 
   // Pass 2: if total is >= ₦2,500 threshold, include ₦100 flat fee.
   if (totalKobo >= PAYSTACK_FLAT_THRESHOLD_KOBO) {
     totalKobo = Math.ceil(
-      (ticketFeeKobo + PAYSTACK_FLAT_KOBO) / (1 - combinedPercent)
+      (effectiveTicketFeeKobo + PAYSTACK_FLAT_KOBO) / (1 - combinedPercent)
     );
   }
 
-  // Pass 3: if uncapped fee exceeds ₦2,000 cap, fee becomes fixed at cap.
-  const uncappedFee = totalKobo * PAYSTACK_PERCENT + PAYSTACK_FLAT_KOBO;
-  if (uncappedFee > PAYSTACK_FEE_CAP_KOBO) {
+  // Pass 3: if the actual Paystack fee on this total exceeds ₦2,000 cap,
+  // fee becomes fixed at cap — recalculate total accordingly.
+  // NOTE: use the fee formula directly on totalKobo (don't re-add PAYSTACK_FLAT_KOBO;
+  // Pass 2 already baked it in, and adding it again causes a spurious Pass 3 trigger).
+  const rawPaystackFee = Math.round(totalKobo * PAYSTACK_PERCENT) + PAYSTACK_FLAT_KOBO;
+  if (rawPaystackFee > PAYSTACK_FEE_CAP_KOBO) {
     totalKobo = Math.ceil(
-      (ticketFeeKobo + PAYSTACK_FEE_CAP_KOBO) / (1 - platformDecimal)
+      (effectiveTicketFeeKobo + PAYSTACK_FEE_CAP_KOBO) / (1 - platformDecimal)
     );
   }
 
@@ -371,8 +379,8 @@ export function calculatePaymentBreakdown(
   const totalAmountKobo =
     Math.ceil(totalKobo / ROUND_TO_KOBO) * ROUND_TO_KOBO;
 
-  const organiserPayoutKobo = ticketFeeKobo;
-  const crenelleChargeKobo = totalAmountKobo - ticketFeeKobo;
+  const organiserPayoutKobo = effectiveTicketFeeKobo;
+  const crenelleChargeKobo = totalAmountKobo - effectiveTicketFeeKobo;
   const paystackFeeKobo = calculatePaystackFee(totalAmountKobo);
 
   return {
@@ -382,6 +390,7 @@ export function calculatePaymentBreakdown(
     totalAmountKobo,
     organiserPayoutKobo,
     platformFeePercent,
+    discountKobo: safeDiscountKobo,
   };
 }
 

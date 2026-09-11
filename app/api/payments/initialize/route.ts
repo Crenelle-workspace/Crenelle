@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
     payer_email?: string
     payer_name?: string
     payer_phone?: string
+    coupon_code?: string
   }
 
   try {
@@ -47,6 +48,11 @@ export async function POST(request: NextRequest) {
       { error: 'event_id, ticket_tier_id, payer_email, and payer_name are required' },
       { status: 400 }
     )
+  }
+
+  // Guard against oversized coupon code strings reaching the DB
+  if (body.coupon_code && body.coupon_code.length > 64) {
+    return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 })
   }
 
   // ── Rate limiting (IP & Email) ─────────────────────────────────
@@ -182,7 +188,41 @@ export async function POST(request: NextRequest) {
     paymentSettings?.platform_fee_percent ??
     parseFloat(process.env.PAYSTACK_PLATFORM_FEE_PERCENT ?? '5')
 
-  const breakdown = calculatePaymentBreakdown(tier.price, platformFeePercent)
+  // Validate coupon code if provided
+  let couponId: string | null = null
+  let discountKobo = 0
+
+  if (body.coupon_code) {
+    const { data: couponValidation, error: couponRpcError } = await supabase.rpc(
+      'validate_and_apply_coupon',
+      {
+        p_code: body.coupon_code.trim(),
+        p_event_id: event_id,
+        p_tier_id: ticket_tier_id,
+      }
+    )
+
+    if (couponRpcError || !couponValidation || !couponValidation.valid) {
+      return NextResponse.json(
+        { error: couponValidation?.reason || 'Invalid or expired coupon code' },
+        { status: 400 }
+      )
+    }
+
+    couponId = couponValidation.coupon_id
+    discountKobo = couponValidation.discount_kobo
+
+    // If discount completely covers ticket price, signal free registration
+    if (couponValidation.final_price_kobo === 0) {
+      return NextResponse.json({
+        free_registration: true,
+        discount_kobo: discountKobo,
+        coupon_code: body.coupon_code,
+      })
+    }
+  }
+
+  const breakdown = calculatePaymentBreakdown(tier.price, platformFeePercent, discountKobo)
 
   // 7. Create or reuse the attendee record (pending, will be accepted on payment success)
   const { data: existingPendingAttendee } = await supabase
@@ -207,6 +247,8 @@ export async function POST(request: NextRequest) {
         source: 'public_registration',
         registration_status: 'pending',
         ticket_tier_id,
+        coupon_id: couponId,
+        discount_kobo: discountKobo,
       })
       .select('id')
       .single()
@@ -234,6 +276,8 @@ export async function POST(request: NextRequest) {
         name: payer_name,
         phone: payer_phone ?? null,
         ticket_tier_id,
+        coupon_id: couponId,
+        discount_kobo: discountKobo,
       })
       .eq('id', attendeeId)
 
@@ -255,6 +299,8 @@ export async function POST(request: NextRequest) {
       event_id,
       attendee_id: attendeeId,
       ticket_tier_id,
+      coupon_id: couponId,
+      discount_kobo: discountKobo,
       paystack_reference: reference,
       amount_kobo: breakdown.totalAmountKobo,
       platform_fee_kobo: breakdown.crenelleChargeKobo,
@@ -269,6 +315,8 @@ export async function POST(request: NextRequest) {
         tier_name: tier.name,
         organiser_id: event.organizer_id,
         ticket_fee_kobo: breakdown.ticketFeeKobo,
+        discount_kobo: discountKobo,
+        coupon_code: body.coupon_code ?? null,
         crenelle_charge_kobo: breakdown.crenelleChargeKobo,
         paystack_fee_kobo: breakdown.paystackFeeKobo,
       },
@@ -312,6 +360,7 @@ export async function POST(request: NextRequest) {
       tier_name: tier.name,
       attendee_id: attendeeId,
       payer_name,
+      coupon_code: body.coupon_code ?? null,
     },
   })
 

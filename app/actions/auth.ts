@@ -29,9 +29,16 @@ export async function login(formData: FormData) {
     password: result.data.password,
   });
 
-  // Generic message: never reveal whether it was the email or the password
-  // that was wrong (that difference is an account-enumeration oracle).
-  if (error) return { error: "Invalid email or password." };
+  if (error) {
+    if (error.message?.toLowerCase().includes("email not confirmed")) {
+      return {
+        error: "Please check your inbox and confirm your email before signing in.",
+      };
+    }
+    // Generic message: never reveal whether it was the email or the password
+    // that was wrong (that difference is an account-enumeration oracle).
+    return { error: "Invalid email or password." };
+  }
 
   revalidatePath("/", "layout");
   redirect("/events");

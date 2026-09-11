@@ -52,12 +52,18 @@ export async function GET(request: Request) {
   }
 
   // Return the user to an error page on failure.
+  const rawError = searchParams.get('error_description') || searchParams.get('error')
+  const isOAuth = termsAccepted || searchParams.has('provider')
+  const failureMessage = rawError || (isOAuth
+    ? 'Authentication failed. Please try again.'
+    : 'Verification link is invalid or has expired. Please try signing in or requesting a new link.')
+
   // If they were mid-flow on a settings page, send them back there with an error param.
   if (next.startsWith('/settings')) {
     const divider = next.includes('?') ? '&' : '?'
-    return NextResponse.redirect(`${origin}${next}${divider}error=OAuth+exchange+failed`)
+    return NextResponse.redirect(`${origin}${next}${divider}error=${encodeURIComponent(failureMessage)}`)
   }
 
-  return NextResponse.redirect(`${origin}/login?error=OAuth+exchange+failed`)
+  return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(failureMessage)}`)
 }
 

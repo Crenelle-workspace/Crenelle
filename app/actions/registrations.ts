@@ -103,9 +103,13 @@ export async function submitRegistration(eventId: string, formData: FormData): P
   // 4. Insert attendee with source = 'public_registration'
   //    (name / email / phone were validated & normalised above)
   const rawTierId = (formData.get('ticket_tier_id') as string) || null
+  const rawCouponCode = (formData.get('coupon_code') as string) || null
 
   // 4a. Validate the ticket tier server-side.
   let ticketTierId: string | null = null
+  let couponId: string | null = null
+  let discountKobo = 0
+
   if (rawTierId) {
     const { data: tier } = await supabase
       .from('ticket_tiers')
@@ -119,7 +123,27 @@ export async function submitRegistration(eventId: string, formData: FormData): P
     }
 
     if (tier.price > 0) {
-      return { error: 'This ticket tier requires payment. Please complete checkout to register.' }
+      if (!rawCouponCode) {
+        return { error: 'This ticket tier requires payment. Please complete checkout to register.' }
+      }
+
+      // Validate 100% coupon
+      const { data: couponVal, error: couponErr } = await supabase.rpc('validate_and_apply_coupon', {
+        p_code: rawCouponCode.trim(),
+        p_event_id: eventId,
+        p_tier_id: tier.id,
+      })
+
+      if (couponErr || !couponVal || !couponVal.valid) {
+        return { error: couponVal?.reason || 'Invalid or expired coupon code' }
+      }
+
+      if (couponVal.final_price_kobo > 0) {
+        return { error: 'This coupon does not fully cover the ticket price. Please complete payment.' }
+      }
+
+      couponId = couponVal.coupon_id
+      discountKobo = couponVal.discount_kobo
     }
 
     ticketTierId = tier.id
@@ -169,6 +193,8 @@ export async function submitRegistration(eventId: string, formData: FormData): P
         source: 'public_registration',
         registration_status: initialStatus,
         ticket_tier_id: ticketTierId,
+        coupon_id: couponId,
+        discount_kobo: discountKobo,
       })
       .select()
       .single()
@@ -186,6 +212,8 @@ export async function submitRegistration(eventId: string, formData: FormData): P
         source: 'public_registration',
         registration_status: initialStatus,
         ticket_tier_id: ticketTierId,
+        coupon_id: couponId,
+        discount_kobo: discountKobo,
       })
       .select()
       .single()
@@ -211,6 +239,8 @@ export async function submitRegistration(eventId: string, formData: FormData): P
           source: 'public_registration',
           registration_status: 'waitlist',
           ticket_tier_id: ticketTierId,
+          coupon_id: couponId,
+          discount_kobo: discountKobo,
         })
         .select()
         .single()
@@ -223,6 +253,13 @@ export async function submitRegistration(eventId: string, formData: FormData): P
       Sentry.captureException(insertError, { extra: { eventId, context: 'submit_registration_insert' } })
       return { error: insertError.message || 'Registration failed. Please try again.' }
     }
+  }
+
+  // Atomically increment coupon usage for 100% discount registrations that bypass Paystack.
+  // Only increment if the attendee is confirmed (not waitlisted) — a waitlisted attendee
+  // has not yet secured their spot, so consuming the coupon slot would be premature.
+  if (insertedAttendee && couponId && !routeToWaitlist) {
+    await supabase.rpc('increment_coupon_usage', { p_coupon_id: couponId })
   }
 
   // 5. Persist custom question answers (non-blocking — answers failing should not block registration)
