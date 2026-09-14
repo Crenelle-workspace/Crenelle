@@ -243,7 +243,7 @@ export async function fetchRevenueStats(
         paid_at,
         events (
           id,
-          title
+          name
         )
       `)
       .eq('status', 'paid')
@@ -267,7 +267,7 @@ export async function fetchRevenueStats(
         if (!eventMap[evt.id]) {
           eventMap[evt.id] = {
             eventId: evt.id,
-            eventTitle: evt.title || 'Untitled Event',
+            eventTitle: evt.name || 'Untitled Event',
             currency: row.currency || 'NGN',
             ticketsSold: 0,
             gmvKobo: 0,
