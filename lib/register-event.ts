@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { PostgrestError, PostgrestSingleResponse } from '@supabase/supabase-js'
 import type { AgendaItem, SpeakerInfo, FAQItem, RegistrationQuestion } from '@/lib/types'
 
 /** Public event payload powering the registration page. */
@@ -26,7 +27,7 @@ export interface RegisterEventInfo {
 
 export type RegisterEventResult =
   | { event: RegisterEventInfo; error?: undefined }
-  | { event?: undefined; error: 'not_found' }
+  | { event?: undefined; error: 'not_found' | 'upstream_error' }
 
 /**
  * Fetch the public registration payload for an event by its slug.
@@ -36,25 +37,95 @@ export type RegisterEventResult =
  * tiers, and organiser payment settings are all independent of one another once
  * the event row is known, so they're fetched in a single parallel round-trip.
  */
+interface EventRow {
+  id: string
+  organizer_id: string
+  name: string
+  date: string
+  time: string | null
+  timezone: string | null
+  venue: string
+  description: string | null
+  status: string
+  event_type: string
+  max_registrations: number | null
+  auto_approve_registrations?: boolean | null
+  banner_url: string | null
+  agenda: AgendaItem[] | null
+  speakers: SpeakerInfo[] | null
+  faqs: FAQItem[] | null
+  registration_questions: RegistrationQuestion[] | null
+  location_url: string | null
+}
+
+/** Milliseconds before a Supabase query is aborted and retried. */
+const QUERY_TIMEOUT_MS = 5_000
+
+/**
+ * Run the events slug lookup with a real abort timeout.
+ * Uses AbortSignal.timeout() fed into Supabase's .abortSignal() so the
+ * underlying fetch is genuinely cancelled — not just ignored.
+ * Retries once on timeout or transient error before giving up.
+ */
+async function fetchEventBySlug(
+  supabase: ReturnType<typeof createAdminClient>,
+  slug: string
+): Promise<PostgrestSingleResponse<EventRow>> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const result = await supabase
+        .from('events')
+        .select('id, organizer_id, name, date, time, timezone, venue, description, status, event_type, max_registrations, auto_approve_registrations, banner_url, agenda, speakers, faqs, registration_questions, location_url')
+        .eq('registration_slug', slug)
+        .abortSignal(AbortSignal.timeout(QUERY_TIMEOUT_MS))
+        .single()
+
+      // Success or genuine not-found — stop retrying.
+      if (!result.error || result.error.code === 'PGRST116') {
+        return result as PostgrestSingleResponse<EventRow>
+      }
+    } catch (err) {
+      // AbortError = timeout; only propagate after both attempts exhausted.
+      if (attempt === 1) throw err
+    }
+  }
+  // Unreachable, but satisfies TS.
+  throw new Error('fetchEventBySlug: exhausted retries')
+}
+
 export async function getRegisterEvent(slug: string): Promise<RegisterEventResult> {
   const supabase = createAdminClient()
 
-  const { data: event, error } = await supabase
-    .from('events')
-    .select('id, organizer_id, name, date, time, timezone, venue, description, status, event_type, max_registrations, auto_approve_registrations, banner_url, agenda, speakers, faqs, registration_questions, location_url')
-    .eq('registration_slug', slug)
-    .eq('event_type', 'open')
-    .single()
+  let eventData: EventRow | null = null
+  let eventError: PostgrestError | null = null
 
-  // Don't expose missing or draft events
-  if (error || !event || event.status === 'draft') {
+  try {
+    const result = await fetchEventBySlug(supabase, slug)
+    eventData = result.data
+    eventError = result.error
+  } catch {
+    // Timeout or network failure after both attempts — retryable upstream error.
+    return { error: 'upstream_error' }
+  }
+
+  if (eventError) {
+    // PGRST116 = "no rows returned" — event genuinely doesn't exist.
+    if (eventError.code === 'PGRST116') return { error: 'not_found' }
+    // Any other error (5xx, network, SSL) — transient, not a permanent 404.
+    return { error: 'upstream_error' }
+  }
+
+  const event = eventData
+
+  // Draft events are not publicly accessible.
+  if (!event || event.status === 'draft') {
     return { error: 'not_found' }
   }
 
   const [{ count }, { data: tiers }, { data: paymentSettings }] = await Promise.all([
     supabase
       .from('attendees')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('event_id', event.id)
       .eq('source', 'public_registration')
       .neq('registration_status', 'rejected'),

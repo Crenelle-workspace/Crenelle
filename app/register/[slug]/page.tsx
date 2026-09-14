@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getRegisterEvent } from '@/lib/register-event'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { JsonLd } from '@/components/seo/json-ld'
@@ -40,21 +39,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params
   const baseUrl = getBaseUrl()
 
-  // Query events table directly for metadata so link previews work even when previewing/drafting
-  const supabase = createAdminClient()
-  const { data: event } = await supabase
-    .from('events')
-    .select('name, date, venue, description, banner_url, event_type')
-    .eq('registration_slug', slug)
-    .maybeSingle()
+  // Reuse getRegisterEvent — same fetch the page component needs, no extra round-trip.
+  // Draft events still get valid metadata so link previews work before an event goes live.
+  const result = await getRegisterEvent(slug)
 
-  if (!event) {
+  if (result.error) {
     return {
       title: 'Event Not Found',
       description: 'The requested event registration link could not be found.',
     }
   }
 
+  const { event } = result
   const title = `Register for ${event.name}`
 
   let formattedDetails = ''
@@ -118,9 +114,13 @@ export default async function PublicRegistrationPage({ params }: PageProps) {
   const { slug } = await params
   const result = await getRegisterEvent(slug)
 
-  // Missing / draft / closed event → Next.js not-found page.
+  // Missing / draft event → Next.js not-found page.
+  // Transient upstream failure (Supabase 504/525 timeout) → error.tsx retryable state.
   if (result.error) {
-    notFound()
+    if (result.error === 'not_found') {
+      notFound()
+    }
+    throw new Error('Service temporarily unavailable. Please try again in a moment.')
   }
 
   const { event } = result

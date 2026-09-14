@@ -17,8 +17,15 @@ export async function GET(
   const { slug } = await params
   const result = await getRegisterEvent(slug)
 
-  if (result.error) {
+  if (result.error === 'not_found') {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+  }
+
+  if (result.error === 'upstream_error') {
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable' },
+      { status: 503, headers: { 'Retry-After': '10' } }
+    )
   }
 
   return NextResponse.json(result.event)
