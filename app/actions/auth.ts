@@ -88,12 +88,6 @@ export async function signup(formData: FormData) {
     };
   }
 
-  if (signUpData?.user?.id) {
-    await recordTermsAcceptance(signUpData.user.id);
-  }
-
-  revalidatePath("/", "layout");
-
   // When Supabase email confirmation is enabled, signUp() returns session: null
   // because the user must verify their address before a session is issued.
   // IMPORTANT: do NOT call recordTermsAcceptance() here.
