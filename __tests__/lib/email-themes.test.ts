@@ -86,6 +86,10 @@ describe('Email Theme Architecture (Phase 1)', () => {
     expect(html).toContain('Row A Seat 12')
     expect(html).toContain('CRNABC1234')
     expect(html).toContain('BOARDING PASS STUB')
+    expect(html).toContain('#EA580C')
+    expect(html).toContain('#FB923C')
+    expect(html).not.toContain('#0284C7')
+    expect(html).not.toContain('#38BDF8')
     expect(html).not.toContain('<script>')
   })
 

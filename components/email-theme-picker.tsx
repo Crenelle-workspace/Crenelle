@@ -35,7 +35,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     description: 'Authentic flight boarding pass with perforated coupon stub, gate/zone label grid, barcode accent, and flight typography.',
     icon: Plane,
     badge: 'POPULAR',
-    accentColor: '#0284C7',
+    accentColor: '#EA580C',
   },
   {
     id: 'minimal_mono',

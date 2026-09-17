@@ -321,7 +321,7 @@ export function RevenueStatsGrid({ initialStats }: RevenueStatsGridProps) {
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Organizer Payouts
             </span>
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl">
+            <div className="p-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl">
               <Building2 className="size-4" />
             </div>
           </div>
@@ -341,7 +341,7 @@ export function RevenueStatsGrid({ initialStats }: RevenueStatsGridProps) {
             <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Est. VAT (7.5%)
             </span>
-            <div className="p-2 bg-purple-500/10 text-purple-400 rounded-xl">
+            <div className="p-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl">
               <Receipt className="size-4" />
             </div>
           </div>
@@ -376,15 +376,15 @@ export function RevenueStatsGrid({ initialStats }: RevenueStatsGridProps) {
             {isMounted ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(140, 130, 120, 0.15)" />
                   <XAxis
                     dataKey="name"
                     tick={{ fill: '#8A847C', fontSize: 11 }}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                    axisLine={{ stroke: 'rgba(140, 130, 120, 0.25)' }}
                   />
                   <YAxis
                     tick={{ fill: '#8A847C', fontSize: 11 }}
-                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                    axisLine={{ stroke: 'rgba(140, 130, 120, 0.25)' }}
                     tickFormatter={(v) => `${currency === 'USD' ? '$' : '₦'}${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
                   />
                   <Tooltip
@@ -425,31 +425,31 @@ export function RevenueStatsGrid({ initialStats }: RevenueStatsGridProps) {
               Bank settlement reconciliation performance tracked across all registered organizer subaccounts.
             </p>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-stone-900/40 border border-border/40 rounded-xl">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3.5 bg-stone-100/80 dark:bg-stone-900/40 border border-stone-200/80 dark:border-border/40 rounded-xl transition-colors">
                 <div className="flex items-center gap-2.5">
                   <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="font-sans text-xs text-foreground">Matched Settlements</span>
+                  <span className="font-sans text-xs font-semibold text-stone-900 dark:text-foreground">Matched Settlements</span>
                 </div>
                 <span className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">
                   {stats.settlementSummary.matchedCount}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-stone-900/40 border border-border/40 rounded-xl">
+              <div className="flex items-center justify-between p-3.5 bg-stone-100/80 dark:bg-stone-900/40 border border-stone-200/80 dark:border-border/40 rounded-xl transition-colors">
                 <div className="flex items-center gap-2.5">
                   <XCircle className="size-4 text-red-600 dark:text-red-400" />
-                  <span className="font-sans text-xs text-foreground">Discrepancies</span>
+                  <span className="font-sans text-xs font-semibold text-stone-900 dark:text-foreground">Discrepancies</span>
                 </div>
                 <span className="font-mono text-sm font-bold text-red-600 dark:text-red-400">
                   {stats.settlementSummary.discrepancyCount}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-stone-900/40 border border-border/40 rounded-xl">
+              <div className="flex items-center justify-between p-3.5 bg-stone-100/80 dark:bg-stone-900/40 border border-stone-200/80 dark:border-border/40 rounded-xl transition-colors">
                 <div className="flex items-center gap-2.5">
                   <CreditCard className="size-4 text-copper" />
-                  <span className="font-sans text-xs text-foreground">Pending Settlements</span>
+                  <span className="font-sans text-xs font-semibold text-stone-900 dark:text-foreground">Pending Settlements</span>
                 </div>
                 <span className="font-mono text-sm font-bold text-copper">
                   {stats.settlementSummary.pendingCount}
@@ -493,28 +493,28 @@ export function RevenueStatsGrid({ initialStats }: RevenueStatsGridProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-border/40 font-mono text-[10px] uppercase text-muted-foreground">
-                  <th className="py-3 px-4">Rank</th>
-                  <th className="py-3 px-4">Event Title</th>
-                  <th className="py-3 px-4 text-center">Tickets Sold</th>
-                  <th className="py-3 px-4 text-right">Gross GMV</th>
-                  <th className="py-3 px-4 text-right">Crenelle Revenue</th>
-                  <th className="py-3 px-4 text-right">Last Payment</th>
+                <tr className="border-b border-border/50 font-mono text-[10px] uppercase font-bold text-stone-700 dark:text-muted-foreground">
+                  <th className="py-3.5 px-4">Rank</th>
+                  <th className="py-3.5 px-4">Event Title</th>
+                  <th className="py-3.5 px-4 text-center">Tickets Sold</th>
+                  <th className="py-3.5 px-4 text-right">Gross GMV</th>
+                  <th className="py-3.5 px-4 text-right">Crenelle Revenue</th>
+                  <th className="py-3.5 px-4 text-right">Last Payment</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/30 text-xs">
                 {stats.topEvents.map((evt, idx) => (
-                  <tr key={evt.eventId} className="hover:bg-copper/5 transition-colors">
+                  <tr key={evt.eventId} className="hover:bg-stone-100/60 dark:hover:bg-copper/5 transition-colors">
                     <td className="py-3 px-4 font-mono font-bold text-copper">#{idx + 1}</td>
-                    <td className="py-3 px-4 font-semibold text-stone-100">{evt.eventTitle}</td>
-                    <td className="py-3 px-4 text-center font-mono text-stone-300">{evt.ticketsSold}</td>
-                    <td className="py-3 px-4 text-right font-mono text-stone-300">
+                    <td className="py-3 px-4 font-semibold text-stone-900 dark:text-stone-100">{evt.eventTitle}</td>
+                    <td className="py-3 px-4 text-center font-mono font-medium text-stone-800 dark:text-stone-300">{evt.ticketsSold}</td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-stone-900 dark:text-stone-200">
                       {formatMoney(evt.gmvKobo, evt.currency)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-copper">
                       {formatMoney(evt.platformFeeKobo, evt.currency)}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono text-[11px] text-stone-300">
+                    <td className="py-3 px-4 text-right font-mono text-[11px] font-medium text-stone-600 dark:text-stone-400">
                       {evt.lastPaymentAt
                         ? new Date(evt.lastPaymentAt).toLocaleDateString('en-GB', {
                             day: '2-digit',
@@ -541,18 +541,18 @@ export function RevenueStatsGrid({ initialStats }: RevenueStatsGridProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* VAT Estimation Card */}
-          <div className="p-4 bg-stone-900/50 border border-border/40 rounded-2xl">
+          <div className="p-5 bg-stone-100/70 dark:bg-stone-900/50 border border-stone-200/80 dark:border-border/40 rounded-2xl">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-sans text-xs font-semibold text-stone-100">
+              <span className="font-sans text-xs font-bold text-stone-900 dark:text-stone-100">
                 Value Added Tax (VAT) @ {stats.taxEstimate.vatPercent}%
               </span>
-              <span className="font-mono text-[10px] text-copper uppercase">Platform Fee Tax</span>
+              <span className="font-mono text-[10px] font-bold text-copper uppercase tracking-wider">Platform Fee Tax</span>
             </div>
-            <p className="font-sans text-xs text-stone-300 mb-3">
+            <p className="font-sans text-xs text-stone-600 dark:text-stone-300 mb-3">
               Calculated on total Crenelle platform fee income ({formatMoney(stats.taxEstimate.taxablePlatformFeeKobo, currency)}).
             </p>
-            <div className="flex items-baseline justify-between pt-2 border-t border-border/30">
-              <span className="font-sans text-xs text-stone-300">Estimated VAT Liability:</span>
+            <div className="flex items-baseline justify-between pt-2.5 border-t border-stone-200/80 dark:border-border/30">
+              <span className="font-sans text-xs font-medium text-stone-700 dark:text-stone-300">Estimated VAT Liability:</span>
               <span className="font-mono text-lg font-bold text-emerald-600 dark:text-emerald-400">
                 {formatMoney(stats.taxEstimate.vatEstimateKobo, currency)}
               </span>
@@ -560,18 +560,18 @@ export function RevenueStatsGrid({ initialStats }: RevenueStatsGridProps) {
           </div>
 
           {/* WHT Estimation Card */}
-          <div className="p-4 bg-stone-900/50 border border-border/40 rounded-2xl">
+          <div className="p-5 bg-stone-100/70 dark:bg-stone-900/50 border border-stone-200/80 dark:border-border/40 rounded-2xl">
             <div className="flex items-center justify-between mb-2">
-              <span className="font-sans text-xs font-semibold text-stone-100">
+              <span className="font-sans text-xs font-bold text-stone-900 dark:text-stone-100">
                 Withholding Tax (WHT) @ {stats.taxEstimate.whtPercent}%
               </span>
-              <span className="font-mono text-[10px] text-purple-400 uppercase">Organizer Disbursements</span>
+              <span className="font-mono text-[10px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider">Organizer Disbursements</span>
             </div>
-            <p className="font-sans text-xs text-stone-300 mb-3">
+            <p className="font-sans text-xs text-stone-600 dark:text-stone-300 mb-3">
               Applicable on cumulative organizer payouts exceeding ₦10,000 threshold.
             </p>
-            <div className="flex items-baseline justify-between pt-2 border-t border-border/30">
-              <span className="font-sans text-xs text-stone-300">Estimated WHT Deduction:</span>
+            <div className="flex items-baseline justify-between pt-2.5 border-t border-stone-200/80 dark:border-border/30">
+              <span className="font-sans text-xs font-medium text-stone-700 dark:text-stone-300">Estimated WHT Deduction:</span>
               <span className="font-mono text-lg font-bold text-copper">
                 {formatMoney(stats.taxEstimate.whtEstimateKobo, currency)}
               </span>
@@ -581,9 +581,9 @@ export function RevenueStatsGrid({ initialStats }: RevenueStatsGridProps) {
 
         {/* Statutory Disclaimer Banner */}
         <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
-          <AlertCircle className="size-4 text-amber-500 shrink-0 mt-0.5" />
-          <p className="font-sans text-xs text-stone-300 leading-relaxed">
-            <strong className="text-amber-400 font-semibold">Disclaimer: </strong>
+          <AlertCircle className="size-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+          <p className="font-sans text-xs text-amber-950 dark:text-stone-300 leading-relaxed">
+            <strong className="text-amber-700 dark:text-amber-400 font-semibold">Disclaimer: </strong>
             {stats.taxEstimate.disclaimer}
           </p>
         </div>

@@ -47,8 +47,8 @@ export function renderBoardingPassTheme(options: RenderOptions & {
 
   const customMessageHtml = customMessage ? `
     <!-- Custom message callout -->
-    <div class="msg-box" style="background-color:#F1F5F9;border-left:4px solid #0284C7;padding:14px;margin-bottom:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;line-height:1.5;color:#1E293B;">
-      <strong style="color:#0284C7;display:block;margin-bottom:4px;font-size:11px;letter-spacing:1px;">ORGANIZER MESSAGE:</strong>
+    <div class="msg-box" style="background-color:#FFF7ED;border-left:4px solid #EA580C;padding:14px;margin-bottom:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;line-height:1.5;color:#1E293B;">
+      <strong style="color:#EA580C;display:block;margin-bottom:4px;font-size:11px;letter-spacing:1px;">ORGANIZER MESSAGE:</strong>
       ${escapeHtml(customMessage)}
     </div>` : ''
 
@@ -113,11 +113,11 @@ export function renderBoardingPassTheme(options: RenderOptions & {
       <table class="bg-header" style="width:100%;border-collapse:collapse;background-color:#0F172A;padding:16px 24px;">
         <tr>
           <td style="padding:16px 24px;">
-            <span style="font-size:12px;font-weight:700;letter-spacing:3px;color:#38BDF8;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">CRENELLE AIRWAYS</span>
+            <span style="font-size:12px;font-weight:700;letter-spacing:3px;color:#FB923C;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">CRENELLE AIRWAYS</span>
             <span style="display:block;font-size:9px;letter-spacing:1.5px;color:#94A3B8;margin-top:2px;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">TICKET & ENTRY SYSTEM</span>
           </td>
           <td style="padding:16px 24px;text-align:right;">
-            <span style="display:inline-block;padding:4px 10px;background-color:#0284C7;color:#FFFFFF;font-size:10px;font-weight:700;letter-spacing:2px;border-radius:2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${titleText}</span>
+            <span style="display:inline-block;padding:4px 10px;background-color:#EA580C;color:#FFFFFF;font-size:10px;font-weight:700;letter-spacing:2px;border-radius:2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${titleText}</span>
           </td>
         </tr>
       </table>
@@ -149,7 +149,7 @@ export function renderBoardingPassTheme(options: RenderOptions & {
             </td>
             <td style="padding:12px 16px;width:50%;border-bottom:1px solid #E2E8F0;">
               <span class="text-muted" style="font-size:9px;letter-spacing:2px;color:#64748B;text-transform:uppercase;display:block;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PASS REF CODE</span>
-              <span style="font-size:14px;font-weight:700;color:#0284C7;display:block;margin-top:2px;font-family:'Courier New',Courier,monospace;">${passCode}</span>
+              <span style="font-size:14px;font-weight:700;color:#EA580C;display:block;margin-top:2px;font-family:'Courier New',Courier,monospace;">${passCode}</span>
             </td>
           </tr>
           <tr>
