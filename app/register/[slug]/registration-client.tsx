@@ -208,6 +208,7 @@ export default function RegistrationClient({ event }: { event: RegisterEventInfo
           payer_name: previewDetails.fullName,
           payer_phone: previewDetails.phone || undefined,
           coupon_code: previewDetails.couponCode || undefined,
+          custom_answers: customAnswers,
         }),
       })
 

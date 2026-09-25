@@ -262,20 +262,22 @@ export async function submitRegistration(eventId: string, formData: FormData): P
     await supabase.rpc('increment_coupon_usage', { p_coupon_id: couponId })
   }
 
-  // 5. Persist custom question answers (non-blocking — answers failing should not block registration)
+  // 5. Persist custom question answers before returning from this server action.
+  // The write remains non-fatal, but it must be awaited in a serverless runtime.
   if (insertedAttendee && questions.length > 0 && Object.keys(parsedAnswers).length > 0) {
-    supabase
+    const { error: answerErr } = await supabase
       .from('registration_answers')
-      .insert({
+      .upsert({
         attendee_id: insertedAttendee.id,
         event_id: eventId,
         answers: parsedAnswers,
+      }, { onConflict: 'attendee_id' })
+
+    if (answerErr) {
+      Sentry.captureException(answerErr, {
+        extra: { eventId, attendeeId: insertedAttendee.id, context: 'save_registration_answers' },
       })
-      .then(({ error: answerErr }) => {
-        if (answerErr) {
-          Sentry.captureException(answerErr, { extra: { eventId, attendeeId: insertedAttendee!.id, context: 'save_registration_answers' } })
-        }
-      })
+    }
   }
 
   // 6. If auto-approved, create invitation and dispatch pass code notifications
