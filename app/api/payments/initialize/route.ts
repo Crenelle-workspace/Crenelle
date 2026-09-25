@@ -6,6 +6,8 @@ import {
   calculatePaymentBreakdown,
 } from '@/lib/paystack'
 import { checkRateLimitAsync } from '@/lib/rate-limit'
+import { validateRegistrationAnswers } from '@/lib/validations/registration'
+import type { RegistrationQuestion } from '@/lib/types'
 import * as Sentry from '@sentry/nextjs'
 
 /**
@@ -32,6 +34,7 @@ export async function POST(request: NextRequest) {
     payer_name?: string
     payer_phone?: string
     coupon_code?: string
+    custom_answers?: unknown
   }
 
   try {
@@ -96,7 +99,7 @@ export async function POST(request: NextRequest) {
   ] = await Promise.all([
     supabase
       .from('events')
-      .select('id, organizer_id, name, event_type, status, max_registrations, registration_slug')
+      .select('id, organizer_id, name, event_type, status, max_registrations, registration_slug, registration_questions')
       .eq('id', event_id)
       .single(),
     supabase
@@ -122,6 +125,13 @@ export async function POST(request: NextRequest) {
   if (event.status === 'ended') {
     return NextResponse.json({ error: 'This event has ended' }, { status: 400 })
   }
+
+  const questions = (event.registration_questions ?? []) as RegistrationQuestion[]
+  const answersResult = validateRegistrationAnswers(body.custom_answers, questions)
+  if ('error' in answersResult) {
+    return NextResponse.json({ error: answersResult.error }, { status: 400 })
+  }
+  const customAnswers = answersResult.answers
 
   // Validate ticket tier
   if (tierError || !tier) {
@@ -286,6 +296,31 @@ export async function POST(request: NextRequest) {
         extra: { event_id, attendeeId, context: 'payment_initialize_attendee_update' },
       })
       return NextResponse.json({ error: 'Failed to update registration' }, { status: 500 })
+    }
+  }
+
+  // Persist the paid registrant's answers before creating the payment or
+  // redirecting to Paystack. Reused pending attendees are updated safely.
+  if (questions.length > 0 && Object.keys(customAnswers).length > 0) {
+    const { error: answersError } = await supabase
+      .from('registration_answers')
+      .upsert({
+        attendee_id: attendeeId,
+        event_id,
+        answers: customAnswers,
+      }, { onConflict: 'attendee_id' })
+
+    if (answersError) {
+      Sentry.captureException(answersError, {
+        extra: { event_id, attendeeId, context: 'payment_initialize_save_registration_answers' },
+      })
+      if (isNewAttendee && attendeeId) {
+        await supabase.from('attendees').delete().eq('id', attendeeId)
+      }
+      return NextResponse.json(
+        { error: 'We could not save your registration responses. Please try again.' },
+        { status: 500 },
+      )
     }
   }
 
