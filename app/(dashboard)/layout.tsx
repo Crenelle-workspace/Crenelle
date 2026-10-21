@@ -1,11 +1,10 @@
-import Link from 'next/link'
-import Image from 'next/image'
 import { redirect } from 'next/navigation'
-import { LogOut, Settings, Plus, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { logout } from '@/app/actions/auth'
-import { ModeToggle } from '@/components/mode-toggle'
+import { getCoHostedEvents } from '@/app/actions/team'
+import { DashboardSidebar, type SidebarEvent } from './dashboard-sidebar'
+import { DashboardTopbar } from './dashboard-topbar'
 import { MobileNav } from './mobile-nav'
+import type { SetupStatus } from '@/components/workspace-setup-card'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -13,87 +12,112 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/login')
 
+  // Parallel fetch: owned events, co-hosted memberships, and setup verification data
+  const [
+    { data: ownedEvents },
+    coHostData,
+    { data: profilesData },
+    { data: paymentData },
+    { data: orgSettingsData },
+  ] = await Promise.all([
+    supabase
+      .from('events')
+      .select('id, name, date, status, event_type, organizer_id')
+      .order('date', { ascending: false }),
+    getCoHostedEvents().catch(() => ({ memberships: [], error: null })),
+    supabase
+      .from('sender_profiles')
+      .select('id')
+      .limit(1),
+    supabase
+      .from('organizer_payment_settings')
+      .select('is_verified, paystack_subaccount_code')
+      .eq('organizer_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('organizer_settings')
+      .select('org_name, email_footer')
+      .eq('organizer_id', user.id)
+      .maybeSingle(),
+  ])
+
+  // Process owned events
+  const formattedOwnedEvents: SidebarEvent[] = (ownedEvents ?? []).map((ev) => ({
+    id: ev.id,
+    name: ev.name,
+    date: ev.date,
+    status: ev.status,
+    event_type: ev.event_type,
+    isOwner: true,
+  }))
+
+  const ownedIds = new Set(formattedOwnedEvents.map((e) => e.id))
+
+  // Process co-hosted events if any (excluding any events already in owned list)
+  let coHostedEvents: SidebarEvent[] = []
+  const externalCoHostMemberships = (coHostData?.memberships ?? []).filter(
+    (m) => !ownedIds.has(m.event_id)
+  )
+
+  if (externalCoHostMemberships.length > 0) {
+    const { data: memberEvents } = await supabase
+      .from('events')
+      .select('id, name, date, status, event_type, organizer_id')
+      .in('id', externalCoHostMemberships.map((m) => m.event_id))
+      .order('date', { ascending: false })
+
+    coHostedEvents = (memberEvents ?? []).map((ev) => ({
+      id: ev.id,
+      name: ev.name,
+      date: ev.date,
+      status: ev.status,
+      event_type: ev.event_type,
+      isOwner: false,
+      role: externalCoHostMemberships.find((m) => m.event_id === ev.id)?.role ?? 'viewer',
+    }))
+  }
+
+  // Deduplicate by event ID defensively using a Map
+  const eventMap = new Map<string, SidebarEvent>()
+  for (const ev of formattedOwnedEvents) {
+    eventMap.set(ev.id, ev)
+  }
+  for (const ev of coHostedEvents) {
+    if (!eventMap.has(ev.id)) {
+      eventMap.set(ev.id, ev)
+    }
+  }
+
+  const allSidebarEvents: SidebarEvent[] = Array.from(eventMap.values())
+
+  const setupStatus: SetupStatus = {
+    hasOrgName: !!orgSettingsData?.org_name,
+    hasSenderProfile: (profilesData ?? []).length > 0,
+    hasPaymentSubaccount: !!paymentData?.is_verified && !!paymentData?.paystack_subaccount_code,
+    hasEmailFooter: !!orgSettingsData?.email_footer,
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* ── Navigation ── */}
-      <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl px-6 md:px-10 py-3.5 flex items-center justify-between transition-colors">
-        <Link
-          href="/events"
-          className="flex items-center gap-3 group"
-          aria-label="Crenelle — go to events dashboard"
-        >
-          <Image
-            src="/Brand Logos/CRENELLE WORDMARK W.png"
-            alt="Crenelle"
-            width={150}
-            height={34}
-            className="h-5 w-auto hidden dark:block object-contain"
-            priority
-          />
-          <Image
-            src="/Brand Logos/CRENELLE WORDMARK B.png"
-            alt="Crenelle"
-            width={150}
-            height={34}
-            className="h-5 w-auto block dark:hidden object-contain"
-            priority
-          />
-        </Link>
+    <div className="min-h-screen flex bg-background">
+      {/* ── Desktop Sidebar ── */}
+      <DashboardSidebar
+        userEmail={user.email ?? ''}
+        events={allSidebarEvents}
+        setupStatus={setupStatus}
+      />
 
-        <div className="flex items-center gap-3">
-          <span
-            className="font-mono text-[10px] font-bold text-muted-foreground/75 hidden sm:block truncate max-w-52 bg-stone-500/10 border border-border/30 px-3 py-1 rounded-full"
-            aria-label={`Signed in as ${user.email}`}
-          >
-            {user.email}
-          </span>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/events/new"
-              className="items-center gap-1.5 font-sans text-xs font-bold text-white bg-copper hover:bg-copper-dark px-4 py-2 rounded-full transition-all duration-300 shadow-md shadow-copper/20 hidden sm:inline-flex"
-              aria-label="New Event"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>New Event</span>
-            </Link>
-            <Link
-              href="/finances"
-              className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-foreground border border-border/40 hover:border-border hover:bg-stone-500/10 px-3.5 py-2 rounded-full transition-all"
-              aria-label="Finances"
-            >
-              <Wallet className="h-3.5 w-3.5 text-copper" aria-hidden="true" />
-              <span className="hidden sm:inline">Finances</span>
-            </Link>
-            <Link
-              href="/settings/sender-profiles"
-              className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-foreground border border-border/40 hover:border-border hover:bg-stone-500/10 px-3.5 py-2 rounded-full transition-all"
-              aria-label="Settings"
-            >
-              <Settings className="h-3.5 w-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Settings</span>
-            </Link>
-            <ModeToggle />
-            <form action={logout}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 font-sans text-xs font-bold text-muted-foreground hover:text-foreground border border-border/40 hover:border-border hover:bg-stone-500/10 px-3.5 py-2 rounded-full transition-all cursor-pointer"
-                aria-label="Sign out"
-              >
-                <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="hidden sm:inline">Sign out</span>
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Content ── */}
-      <main className="flex-1 min-w-0 px-4 pt-10 pb-24 sm:py-10 max-w-7xl mx-auto w-full">
-        {children}
-      </main>
+      {/* ── Main Viewport Area ── */}
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
+        <DashboardTopbar events={allSidebarEvents} />
+        <main className="flex-1 min-w-0 px-4 pt-6 pb-24 sm:px-8 sm:py-8 max-w-7xl mx-auto w-full">
+          {children}
+        </main>
+      </div>
 
       {/* ── Mobile bottom navigation ── */}
       <MobileNav />
     </div>
   )
 }
+
+

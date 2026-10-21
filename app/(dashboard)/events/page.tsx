@@ -75,7 +75,7 @@ export default async function EventsPage() {
   const hasEvents = totalEvents > 0
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="w-full">
       {/* ── Page header ── */}
       <div className={`${hasEvents ? 'hidden md:flex' : 'flex'} flex-col md:flex-row md:items-end justify-between mb-10 gap-6 pb-8 border-b border-border/40`}>
         <div className="space-y-1">

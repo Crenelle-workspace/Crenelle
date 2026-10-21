@@ -34,7 +34,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed bottom-3 left-4 right-4 z-40 bg-card/85 backdrop-blur-xl border border-border/50 rounded-full px-6 py-2 flex items-center justify-around sm:hidden h-16 shadow-2xl"
+      className="fixed bottom-3 left-4 right-4 z-40 bg-card/85 backdrop-blur-xl border border-border/50 rounded-full px-6 py-2 flex items-center justify-around md:hidden h-16 shadow-2xl"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon
