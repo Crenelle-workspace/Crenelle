@@ -123,4 +123,21 @@ describe('checkRateLimitAsync — durable store failure semantics', () => {
     // No durable store means no network call.
     expect(fetchSpy).not.toHaveBeenCalled()
   })
+
+  it('sends PEXPIRE with windowMs in milliseconds and the NX flag', async () => {
+    configureUpstash()
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [{ result: 1 }, { result: -1 }],
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await checkRateLimitAsync(OPTS)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [, init] = fetchMock.mock.calls[0] as [string, { body: string }]
+    const pipeline = JSON.parse(init.body)
+    expect(pipeline).toContainEqual(['PEXPIRE', 'rl:test-key', 60_000, 'NX'])
+  })
 })

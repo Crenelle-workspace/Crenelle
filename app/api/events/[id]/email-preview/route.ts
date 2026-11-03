@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { renderTicketEmail } from '@/lib/email-templates'
+import { escapeHtml } from '@/lib/email'
 import QRCode from 'qrcode'
 
 export async function GET(
@@ -73,8 +74,8 @@ export async function GET(
     partySizeText,
     eventDateFormatted,
     timeFormatted,
-    seatHtml: `<tr style="border-bottom:1px solid rgba(0,0,0,0.1);"><td style="padding:8px 0;font-weight:600;font-size:12px;">SEAT</td><td style="padding:8px 0;font-size:14px;">${seatInfo}</td></tr>`,
-    tierHtml: `<tr style="border-bottom:1px solid rgba(0,0,0,0.1);"><td style="padding:8px 0;font-weight:600;font-size:12px;">TIER</td><td style="padding:8px 0;font-size:14px;">${tierName}</td></tr>`,
+    seatHtml: `<tr style="border-bottom:1px solid rgba(0,0,0,0.1);"><td style="padding:8px 0;font-weight:600;font-size:12px;">SEAT</td><td style="padding:8px 0;font-size:14px;">${escapeHtml(seatInfo)}</td></tr>`,
+    tierHtml: `<tr style="border-bottom:1px solid rgba(0,0,0,0.1);"><td style="padding:8px 0;font-weight:600;font-size:12px;">TIER</td><td style="padding:8px 0;font-size:14px;">${escapeHtml(tierName)}</td></tr>`,
     unsubscribeUrl: '#',
     qrCidOrSrc: qrDataUrl,
     qrToken,
@@ -87,6 +88,7 @@ export async function GET(
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'X-Frame-Options': 'SAMEORIGIN',
+      'Content-Security-Policy': "default-src 'none'; img-src https: http: data:; style-src 'unsafe-inline'; font-src https: data:; sandbox",
     },
   })
 }

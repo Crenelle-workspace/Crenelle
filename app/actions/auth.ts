@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signupSchema, loginSchema } from "@/lib/validations/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recordTermsAcceptance } from "@/lib/consent";
+import { checkRateLimitAsync } from "@/lib/rate-limit";
 import * as Sentry from "@sentry/nextjs";
 
 // The trusted app origin used as the base for auth redirect URLs.
@@ -22,6 +23,15 @@ export async function login(formData: FormData) {
   if (!result.success) {
     const error = result.error.issues[0]?.message || "VALIDATION_FAILED";
     return { error };
+  }
+
+  const loginLimit = await checkRateLimitAsync({
+    key: `auth_login:${result.data.email.trim().toLowerCase()}`,
+    limit: 10,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!loginLimit.allowed) {
+    return { error: "Too many sign-in attempts. Please wait a few minutes and try again." };
   }
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -64,6 +74,15 @@ export async function signup(formData: FormData) {
       error:
         "Please accept the Terms & Conditions and Privacy Policy to create an account.",
     };
+  }
+
+  const signupLimit = await checkRateLimitAsync({
+    key: `auth_signup:${result.data.email.trim().toLowerCase()}`,
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!signupLimit.allowed) {
+    return { error: "Too many sign-up attempts. Please wait a few minutes and try again." };
   }
 
   const { data: signUpData, error } = await supabase.auth.signUp({
@@ -179,6 +198,14 @@ export async function sendPasswordResetEmailAction() {
  * extra layer here — any 429 from Supabase is surfaced as an error object.
  */
 export async function resendConfirmationEmail(email: string) {
+  const resendLimit = await checkRateLimitAsync({
+    key: `auth_resend:${(email ?? "").trim().toLowerCase()}`,
+    limit: 3,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!resendLimit.allowed) {
+    return { error: "Too many confirmation email requests. Please wait before trying again." };
+  }
   const supabase = await createClient();
 
   const { error } = await supabase.auth.resend({

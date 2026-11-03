@@ -84,12 +84,12 @@ export async function GET(
     if (!isOrganizer) {
       const { data: membership } = await adminSupabase
         .from('event_members')
-        .select('id')
+        .select('id, role')
         .eq('event_id', eventId)
         .eq('member_id', user.id)
         .maybeSingle()
 
-      if (!membership) {
+      if (!membership || membership.role !== 'co_organiser') {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
     }
@@ -308,7 +308,9 @@ ${xmlRows}
     // ── Export Format: CSV (with UTF-8 BOM) ────────────────────────────────
     const escapeCSV = (val: unknown): string => {
       if (val === null || val === undefined) return ''
-      const str = String(val)
+      const rawStr = String(val)
+      const isFormulaTrigger = /^[=+\-@\t\r]/.test(rawStr.trimStart()) && !/^\+\d[\d\s()-]*$/.test(rawStr.trim())
+      const str = isFormulaTrigger ? `'${rawStr}` : rawStr
       if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
         return `"${str.replace(/"/g, '""')}"`
       }

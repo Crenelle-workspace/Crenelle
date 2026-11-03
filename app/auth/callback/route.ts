@@ -12,7 +12,7 @@ import * as Sentry from '@sentry/nextjs'
 function safeRedirectPath(raw: string | null, fallback: string): string {
   if (!raw) return fallback
   // Must start with exactly one '/' and not be a protocol-relative URL
-  if (raw.startsWith('/') && !raw.startsWith('//')) return raw
+  if (raw.startsWith('/') && !raw.startsWith('//') && !raw.startsWith('/\\')) return raw
   return fallback
 }
 

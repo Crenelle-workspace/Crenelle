@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendCoHostInviteEmail } from '@/lib/email'
+import { checkRateLimitAsync } from '@/lib/rate-limit'
 import type { EventMember, MemberRole } from '@/lib/types'
 import * as Sentry from '@sentry/nextjs'
 
@@ -104,6 +105,14 @@ export async function inviteTeamMember(
   const admin = createAdminClient()
 
   // Verify current user owns this event
+  const rateLimit = await checkRateLimitAsync({
+    key: `team_invite:${user.id}`,
+    limit: 20,
+    windowMs: 15 * 60 * 1000,
+  })
+  if (!rateLimit.allowed) {
+    return { error: 'Too many team invitations sent recently. Please try again later.' }
+  }
   const { data: event } = await supabase
     .from('events')
     .select('organizer_id, name')
@@ -119,16 +128,22 @@ export async function inviteTeamMember(
     return { error: 'You cannot invite yourself as a co-host' }
   }
 
-  // Look up the invitee in auth.users via admin client
-  // Supabase admin.listUsers supports filtering but we paginate to find the email
-  const { data: { users }, error: listError } = await admin.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  })
-
-  if (listError) return { error: 'Failed to look up user: ' + listError.message }
-
-  const invitee = users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+  // Look up the invitee in auth.users via the admin client. listUsers is
+  // paginated, so walk pages instead of only checking the first 1,000 users.
+  const normalizedTargetEmail = email.trim().toLowerCase()
+  let invitee: { id: string; email?: string; user_metadata?: Record<string, string> } | undefined
+  let page = 1
+  const perPage = 1000
+  while (page <= 20) {
+    const { data: { users }, error: listError } = await admin.auth.admin.listUsers({
+      page,
+      perPage,
+    })
+    if (listError) return { error: 'Failed to look up user: ' + listError.message }
+    invitee = users.find(u => u.email?.toLowerCase() === normalizedTargetEmail)
+    if (invitee || users.length < perPage) break
+    page++
+  }
 
   if (!invitee) {
     return {
@@ -171,7 +186,7 @@ export async function inviteTeamMember(
 
   // Send notification email — fire-and-forget (errors logged, not surfaced)
   if (eventRow) {
-    void sendCoHostInviteEmail({
+    await sendCoHostInviteEmail({
       inviteeEmail: invitee.email!,
       inviteeName: invitee.user_metadata?.full_name ?? invitee.user_metadata?.name ?? invitee.email?.split('@')[0] ?? 'there',
       inviterName,

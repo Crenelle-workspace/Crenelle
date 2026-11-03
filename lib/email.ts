@@ -285,6 +285,7 @@ export async function sendInvitationEmail({
     .from('invitations')
     .select('*, attendee:attendees(name, email), ticket_tier:ticket_tiers(id, name, price)')
     .eq('id', invitationId)
+    .eq('event_id', eventId)
     .single()
 
   if (invFetchError || !invitation) {
@@ -294,6 +295,21 @@ export async function sendInvitationEmail({
 
   const actualRecipientName = invitation.attendee?.name || recipientName
   const actualRecipientEmail = invitation.attendee?.email || recipientEmail
+  if (!actualRecipientEmail) {
+    return { error: 'Recipient email is missing' }
+  }
+  if (actualRecipientEmail.toLowerCase() !== (recipientEmail ?? '').toLowerCase()) {
+    const { data: actualUnsub } = await supabase
+      .from('email_unsubscribes')
+      .select('id')
+      .ilike('email', actualRecipientEmail)
+      .not('unsubscribed_at', 'is', null)
+      .maybeSingle()
+    if (actualUnsub) {
+      console.log(`[email] Skipping invitation — ${actualRecipientEmail} is unsubscribed`)
+      return { success: true, skipped: true }
+    }
+  }
   const qrToken = invitation.qr_token
   const partySize = invitation.party_size || 1
   const partySizeText = partySize === 1 ? '1 PERSON' : `${partySize} PEOPLE`
@@ -464,6 +480,7 @@ export async function sendReminderEmailsDirect({
       .from('invitations')
       .select('*, attendee:attendees(name, email), ticket_tier:ticket_tiers(id, name, price)')
       .eq('id', recipient.invitationId)
+      .eq('event_id', eventId)
       .single()
 
     const qrToken = invitation?.qr_token || recipient.invitationId
