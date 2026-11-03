@@ -8,6 +8,7 @@ import { EventTabs } from './event-tabs'
 import { EventBreadcrumbs } from './event-breadcrumbs'
 import { EventStatusBadge } from './event-status-badge'
 import { EventHeaderContainer } from './event-header-container'
+import { EventRoleBanner } from '@/components/event-role-banner'
 
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }
@@ -134,6 +135,9 @@ export default async function EventLayout({
             variant="header"
           />
         </div>
+        {!access.isOwner && access.role && (
+          <EventRoleBanner role={access.role} eventName={event.name} />
+        )}
       </EventHeaderContainer>
 
       {/* Tab navigation (hidden on laptop lg+ since Sidebar contains all tabs) */}

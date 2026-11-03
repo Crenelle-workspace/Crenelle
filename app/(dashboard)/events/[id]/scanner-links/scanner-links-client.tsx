@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SectionHeader } from '@/components/section-header'
+import { ReadOnlyPill } from '@/components/read-only-pill'
 import { EmptyState } from '@/components/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
@@ -164,10 +165,18 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
             </DialogContent>
           </Dialog>
         ) : (
-          <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 rounded-full px-3.5 py-2 h-10 shrink-0">
-            <Lock className="h-3 w-3" aria-hidden="true" />
-            View-only
-          </span>
+          <div className="flex items-center gap-2">
+            <ReadOnlyPill mode="view-only" label="SCANNER LINKS // VIEW-ONLY" />
+            <Button
+              disabled
+              variant="outline"
+              className="opacity-60 cursor-not-allowed gap-2 text-xs font-bold rounded-full select-none"
+              title="Creating scanner links requires Scanner Manager or Co-Organizer role"
+            >
+              <Lock className="h-3.5 w-3.5 text-copper" />
+              Create Link (Restricted)
+            </Button>
+          </div>
         )}
       </div>
 
@@ -198,7 +207,7 @@ export default function ScannerLinksClient({ canManage }: { canManage: boolean }
         <EmptyState
           icon={<Link2 className="h-10 w-10" />}
           title="No Scanner Links Yet"
-          subtitle="Create a scanner link and share it with your door ushers on event day."
+          subtitle={canManage ? "Create a scanner link and share it with your door ushers on event day." : "No scanner links have been created for this event yet. Only Scanner Managers and the Event Owner can generate links."}
           action={
             canManage ? (
               <Button

@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SectionHeader } from '@/components/section-header'
+import { ReadOnlyPill } from '@/components/read-only-pill'
+import { Lock } from 'lucide-react'
 import { EmptyState } from '@/components/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
@@ -420,7 +422,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
               subtitle={loading ? "Loading admission tiers..." : `${tiers.length} active admission tier${tiers.length !== 1 ? 's' : ''}`}
             />
 
-            {canEdit && (
+            {canEdit ? (
               <Button
                 variant="copper"
                 className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full cursor-pointer"
@@ -429,6 +431,19 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Add Tier
               </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <ReadOnlyPill label="TICKETS // READ-ONLY" />
+                <Button
+                  variant="outline"
+                  disabled
+                  className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full cursor-not-allowed opacity-60 select-none"
+                  title="Ticket tiers are configured exclusively by the event organizer"
+                >
+                  <Lock className="h-3.5 w-3.5 text-copper" />
+                  Add Tier (Restricted)
+                </Button>
+              </div>
             )}
           </div>
 
@@ -539,7 +554,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
         <EmptyState
           icon={<Ticket className="h-10 w-10" />}
           title="NO TICKET TIERS YET"
-          subtitle="Configure admissions tiers to start offering tickets or public registration options."
+          subtitle={canEdit ? "Configure admissions tiers to start offering tickets or public registration options." : "Ticket tiers are configured exclusively by the event organizer. No admission tiers have been added yet."}
           action={
             canEdit ? (
               <Button
@@ -803,7 +818,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
               subtitle={couponsLoading ? "Loading coupon codes..." : `${coupons.length} promotional code${coupons.length !== 1 ? 's' : ''}`}
             />
 
-            {canEdit && (
+            {canEdit ? (
               <Button
                 variant="copper"
                 onClick={() => setAddCouponOpen(true)}
@@ -812,6 +827,19 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
                 <Plus className="h-3.5 w-3.5" />
                 Create Coupon
               </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <ReadOnlyPill label="COUPONS // READ-ONLY" />
+                <Button
+                  variant="outline"
+                  disabled
+                  className="gap-2 h-10 px-5 text-xs font-bold shrink-0 rounded-full cursor-not-allowed opacity-60 select-none"
+                  title="Coupon codes are configured exclusively by the event organizer"
+                >
+                  <Lock className="h-3.5 w-3.5 text-copper" />
+                  Create Coupon (Restricted)
+                </Button>
+              </div>
             )}
           </div>
 
@@ -831,7 +859,7 @@ export default function TicketsPageClient({ canEdit }: { canEdit: boolean }) {
           <EmptyState
             icon={<Tag className="h-10 w-10" />}
             title="NO COUPON CODES YET"
-            subtitle="Create promo codes to offer percentage discounts or fixed deductions on ticket tiers."
+            subtitle={canEdit ? "Create promo codes to offer percentage discounts or fixed deductions on ticket tiers." : "Coupon codes and promotional discounts are configured exclusively by the event organizer."}
             action={
               canEdit ? (
                 <Button

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SectionHeader } from '@/components/section-header'
+import { ReadOnlyPill } from '@/components/read-only-pill'
 import { EmptyState } from '@/components/empty-state'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -274,11 +275,18 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
               </DialogContent>
             </Dialog>
           ) : (
-            /* Read-only indicator for co-hosts */
-            <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 rounded-full px-3.5 py-2 h-10 shrink-0">
-              <Lock className="h-3 w-3" aria-hidden="true" />
-              Read-only
-            </span>
+            <div className="flex items-center gap-2">
+              <ReadOnlyPill mode="view-only" label="GUEST LIST // VIEW-ONLY" />
+              <Button
+                disabled
+                variant="outline"
+                className="opacity-60 cursor-not-allowed gap-2 text-xs font-bold rounded-full select-none"
+                title="Guest management restricted to Co-Organizers and Owner"
+              >
+                <Lock className="h-3.5 w-3.5 text-copper" />
+                Add Guest (Restricted)
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -317,7 +325,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
         <EmptyState
           icon={<Users className="h-10 w-10" />}
           title="No Guests Yet"
-          subtitle="Add guests to generate their QR entry cards"
+          subtitle={canEdit ? "Add guests to generate their QR entry cards" : "No guests have been added to this event yet. Only Co-Organizers and the Event Owner can invite guests."}
           action={
             canEdit ? (
               <Button

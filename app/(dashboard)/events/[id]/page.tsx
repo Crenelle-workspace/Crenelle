@@ -21,6 +21,7 @@ import type { Event, AgendaItem, SpeakerInfo, FAQItem, RegistrationQuestion, Sen
 import { EventBannerInput } from '@/components/event-banner-input'
 import { getOptimizedBannerUrl } from '@/lib/images'
 import { EventStatusBadge } from './event-status-badge'
+import { ReadOnlyPill } from '@/components/read-only-pill'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function EventOverviewPage() {
@@ -53,6 +54,8 @@ export default function EventOverviewPage() {
   // Registration counts for open events
   const [regCounts, setRegCounts] = useState({ pending: 0, accepted: 0, rejected: 0 })
   const [canEdit, setCanEdit] = useState(false)
+  const [canRemind, setCanRemind] = useState(false)
+  const [role, setRole] = useState<'owner' | 'co_organiser' | 'scanner_manager' | 'viewer' | null>(null)
 
   // Revenue summary (paid tickets)
   const [revenue, setRevenue] = useState<{
@@ -78,10 +81,28 @@ export default function EventOverviewPage() {
       if (data) {
         setEvent(data)
 
-        // Resolve current user to check if they are the owner
+        // Resolve current user to check if they are the owner or co-host member
         const { data: { user } } = await supabase.auth.getUser()
-        if (user && data.organizer_id === user.id) {
-          setCanEdit(true)
+        if (user) {
+          if (data.organizer_id === user.id) {
+            setCanEdit(true)
+            setCanRemind(true)
+            setRole('owner')
+          } else {
+            const { data: member } = await supabase
+              .from('event_members')
+              .select('role')
+              .eq('event_id', id)
+              .eq('member_id', user.id)
+              .maybeSingle()
+
+            const memberRole = member?.role as 'co_organiser' | 'scanner_manager' | 'viewer' | undefined
+            if (memberRole) {
+              setRole(memberRole)
+              setCanEdit(false)
+              setCanRemind(memberRole === 'co_organiser')
+            }
+          }
         }
 
         // Do not overwrite active form edits if the user is currently editing
@@ -228,6 +249,7 @@ export default function EventOverviewPage() {
   }
 
   function handleStartEditing() {
+    if (!canEdit) return
     if (event) {
       setEditEventType(event.event_type || 'closed')
       setEditTimezone(event.timezone || 'Africa/Lagos')
@@ -523,36 +545,69 @@ export default function EventOverviewPage() {
         <div className="brutalist-card">
         {/* Card header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-8 pb-6 border-b border-border/40">
-          <p className="font-sans text-xs font-semibold text-muted-foreground uppercase tracking-wider">Event Details</p>
+          <div className="flex items-center gap-3">
+            <p className="font-sans text-xs font-semibold text-muted-foreground uppercase tracking-wider">Event Details</p>
+            {!canEdit && role && (
+              <ReadOnlyPill mode="read-only" label="OVERVIEW // READ-ONLY" />
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setReminderOpen(true)}
-              className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-9 px-3 sm:px-4"
-            >
-              <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-              Remind
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleStartEditing}
-              className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-9 px-3 sm:px-4"
-            >
-              <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDelete}
-              className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-red-500 hover:bg-red-500/10 border border-red-500/20 rounded-full h-9 px-3 sm:px-4"
-              aria-label={`Delete event ${event.name}`}
-            >
-              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-              Delete
-            </Button>
+            {canRemind ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReminderOpen(true)}
+                className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-9 px-3 sm:px-4"
+              >
+                <Mail className="h-3.5 w-3.5" aria-hidden="true" />
+                Remind
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled
+                title="Broadcast reminders restricted: Requires Co-Organiser or Owner permissions"
+                className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground/60 border border-border/40 rounded-full h-9 px-3 sm:px-4 cursor-not-allowed opacity-60 select-none"
+              >
+                <Lock className="h-3 w-3 text-copper" aria-hidden="true" />
+                Remind
+              </Button>
+            )}
+            {canEdit ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStartEditing}
+                className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground hover:text-foreground border border-border/40 rounded-full h-9 px-3 sm:px-4"
+              >
+                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                Edit
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled
+                title="Event editing is restricted to the primary organizer"
+                className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-muted-foreground/60 border border-border/40 rounded-full h-9 px-3 sm:px-4 cursor-not-allowed opacity-60 select-none"
+              >
+                <Lock className="h-3 w-3 text-copper" aria-hidden="true" />
+                Edit
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                className="gap-1.5 sm:gap-2 font-sans text-xs font-semibold text-red-500 hover:bg-red-500/10 border border-red-500/20 rounded-full h-9 px-3 sm:px-4"
+                aria-label={`Delete event ${event.name}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                Delete
+              </Button>
+            )}
           </div>
         </div>
 
@@ -731,7 +786,17 @@ export default function EventOverviewPage() {
         </div>
 
         {/* ── Revenue Summary Card (only when paid tickets exist) ── */}
-        {revenue && revenue.paidCount > 0 && (
+        {(role === 'scanner_manager' || role === 'viewer') ? (
+          <div className="brutalist-card">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b-2 border-foreground/10">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">REVENUE_SUMMARY</p>
+              <Lock className="h-3.5 w-3.5 text-copper" />
+            </div>
+            <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+              Financial and revenue metrics are restricted to Organizers and Co-Organizers.
+            </p>
+          </div>
+        ) : revenue && revenue.paidCount > 0 ? (
           <div className="brutalist-card">
             <div className="flex items-center justify-between mb-4 pb-4 border-b-2 border-foreground/10">
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-copper">REVENUE_SUMMARY</p>
@@ -771,7 +836,7 @@ export default function EventOverviewPage() {
               </a>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
