@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
+  Home,
   Calendar,
   Wallet,
   ScanLine,
@@ -26,7 +27,6 @@ import {
   Plus,
   Sparkles,
   CheckCircle2,
-  ExternalLink,
 } from 'lucide-react'
 import { logout } from '@/app/actions/auth'
 import { StatusChangeDialog } from '@/components/status-change-dialog'
@@ -73,7 +73,6 @@ export function DashboardSidebar({
   const activeEvent = activeEventId ? uniqueEvents.find((e) => e.id === activeEventId) : null
 
   const isSettings = pathname.startsWith('/settings')
-  const hasLiveEvents = uniqueEvents.some((e) => e.status === 'live')
   const userInitial = userEmail ? userEmail.charAt(0).toUpperCase() : 'U'
 
   // Readiness calculations
@@ -129,9 +128,9 @@ export function DashboardSidebar({
       {/* ── Brand Logo Header ── */}
       <div className="h-16 px-6 flex items-center justify-between border-b border-border/40 shrink-0">
         <Link
-          href="/events"
+          href="/home"
           className="flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/40 rounded-lg"
-          aria-label="Crenelle — go to events dashboard"
+          aria-label="Crenelle — go to workspace home"
         >
           <Image
             src="/Brand Logos/CRENELLE WORDMARK W.png"
@@ -363,6 +362,25 @@ export function DashboardSidebar({
                 Workspace Hub
               </span>
               <nav aria-label="Main sections" className="space-y-1">
+                {/* Home */}
+                <Link
+                  href="/home"
+                  aria-current={pathname === '/home' ? 'page' : undefined}
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-sans text-xs font-bold transition-all duration-200 ${
+                    pathname === '/home'
+                      ? 'bg-foreground text-background shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
+                  }`}
+                >
+                  <Home
+                    className={`h-4 w-4 shrink-0 transition-colors ${
+                      pathname === '/home' ? 'text-background' : 'text-copper'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span>Home</span>
+                </Link>
+
                 {/* Events */}
                 <Link
                   href="/events"
@@ -410,26 +428,6 @@ export function DashboardSidebar({
                     aria-hidden="true"
                   />
                   <span>Finances</span>
-                </Link>
-
-                {/* Door Scanner Mode */}
-                <Link
-                  href="/scan"
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-xl font-sans text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-stone-500/10 transition-all duration-200 group"
-                  title="Launch mobile camera scanner"
-                >
-                  <div className="flex items-center gap-3">
-                    <ScanLine className="h-4 w-4 shrink-0 text-copper" aria-hidden="true" />
-                    <span>Door Scanner</span>
-                  </div>
-                  {hasLiveEvents ? (
-                    <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Live
-                    </span>
-                  ) : (
-                    <ExternalLink className="h-3 w-3 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-                  )}
                 </Link>
               </nav>
             </div>

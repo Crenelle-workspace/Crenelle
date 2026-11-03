@@ -36,12 +36,14 @@ export function DashboardTopbar({ events = [] }: DashboardTopbarProps) {
 
   // Calculate hierarchical breadcrumbs
   const crumbs: Array<{ label: string; href?: string }> = [
-    { label: 'Workspace', href: '/events' },
+    { label: 'Workspace', href: '/home' },
   ]
 
   const eventMatch = pathname.match(/^\/events\/([^/]+)(?:\/([^/]+))?$/)
 
-  if (pathname === '/events') {
+  if (pathname === '/home') {
+    crumbs.push({ label: 'Home' })
+  } else if (pathname === '/events') {
     crumbs.push({ label: 'Events' })
   } else if (pathname === '/events/new') {
     crumbs.push({ label: 'Events', href: '/events' }, { label: 'New Event' })
@@ -77,9 +79,9 @@ export function DashboardTopbar({ events = [] }: DashboardTopbarProps) {
       <div className="flex items-center gap-3 sm:gap-4 min-w-0">
         {/* Mobile & Tablet brand logo (< lg) */}
         <Link
-          href="/events"
+          href="/home"
           className="flex lg:hidden items-center gap-2.5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-copper/40 rounded-lg"
-          aria-label="Crenelle — go to events dashboard"
+          aria-label="Crenelle — go to workspace home"
         >
           <Image
             src="/Brand Logos/CRENELLE WORDMARK W.png"
@@ -104,6 +106,16 @@ export function DashboardTopbar({ events = [] }: DashboardTopbarProps) {
           aria-label="Tablet navigation"
           className="hidden md:flex lg:hidden items-center gap-1 border-l border-border/40 pl-4"
         >
+          <Link
+            href="/home"
+            className={`font-sans text-xs font-bold px-3 py-1.5 rounded-full transition-colors ${
+              pathname === '/home'
+                ? 'bg-foreground text-background shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
+            }`}
+          >
+            Home
+          </Link>
           <Link
             href="/events"
             className={`font-sans text-xs font-bold px-3 py-1.5 rounded-full transition-colors ${
