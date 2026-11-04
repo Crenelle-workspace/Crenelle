@@ -487,7 +487,7 @@ export default function LiveDashboardPage({ role }: { role?: string }) {
     } finally {
       setLoading(false)
     }
-  }, [eventId])
+  }, [eventId, fetchAiSummaries])
 
   useEffect(() => {
     void loadData()

@@ -53,7 +53,6 @@ interface AttendeeRow {
 export default function RegistrationsPage({
   canManageGuests = true,
   isOwner = true,
-  role = 'owner',
 }: {
   canManageGuests?: boolean
   isOwner?: boolean

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Shield, Lock, Check, X as XIcon, Info } from 'lucide-react'
+import { Shield, Lock, Check, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
