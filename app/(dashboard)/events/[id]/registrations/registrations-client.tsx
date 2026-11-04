@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, MessageSquare, Download, FileSpreadsheet, FileText, ChevronDown, Loader2, Lock } from 'lucide-react'
 import { ReadOnlyPill } from '@/components/read-only-pill'
 import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails, bulkAcceptRegistrations, bulkRejectRegistrations } from '@/app/actions/registrations'
+import { resendAttendeePass } from '@/app/actions/attendees'
 import { toggleAutoApprove } from '@/app/actions/events'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
@@ -65,6 +66,7 @@ export default function RegistrationsPage({
   const [search, setSearch] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [promotingId, setPromotingId] = useState<string | null>(null)
+  const [resendingId, setResendingId] = useState<string | null>(null)
   const [reminderOpen, setReminderOpen] = useState(false)
   const [reminderMessage, setReminderMessage] = useState('')
   const [sendingReminder, setSendingReminder] = useState(false)
@@ -254,6 +256,25 @@ export default function RegistrationsPage({
     } finally {
       setIsTogglingAutoApprove(false)
       isTogglingRef.current = false
+    }
+  }
+
+  async function handleResendPass(reg: Registration) {
+    if (resendingId || !canManageGuests) return
+    setResendingId(reg.id)
+    try {
+      const result = await resendAttendeePass(reg.id, eventId)
+      if (result?.error) {
+        toast.error(result.error)
+      } else if (result?.warning) {
+        toast.warning(`Pass sent with notice: ${result.warning}`)
+      } else {
+        toast.success(`Entry pass resent to ${reg.email}`)
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to resend pass')
+    } finally {
+      setResendingId(null)
     }
   }
 
@@ -803,7 +824,26 @@ export default function RegistrationsPage({
                       )
                     )}
                     {reg.status === 'accepted' && (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <>
+                        {canManageGuests && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={resendingId === reg.id}
+                            className="h-8 w-8 text-copper/80 hover:text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
+                            onClick={() => handleResendPass(reg)}
+                            aria-label={`Resend entry pass to ${reg.full_name}`}
+                            title={`Resend QR entry pass to ${reg.email}`}
+                          >
+                            {resendingId === reg.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-copper" />
+                            ) : (
+                              <Send className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      </>
                     )}
                     {reg.status === 'rejected' && (
                       <XCircle className="h-4 w-4 text-red-600/70 dark:text-red-400/70 shrink-0" />

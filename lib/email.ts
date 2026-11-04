@@ -228,6 +228,7 @@ export interface EventDetails {
   name: string
   date: string
   time: string | null
+  timezone?: string | null
   venue: string
   description?: string | null
   banner_url?: string | null
@@ -328,6 +329,7 @@ export async function sendInvitationEmail({
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'UTC',
   })
 
   // Fetch tier perks if assigned
@@ -439,16 +441,24 @@ export async function sendReminderEmailsDirect({
   customMessage,
 }: ReminderEmailsOptions) {
   const supabase = createAdminClient()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://crenelle.org'
 
   // Resolve organiser identity once
   const organizer = await fetchOrganizerForEvent(eventId)
 
-  // Filter out unsubscribed recipients
-  const { data: unsubList } = await supabase
+  // Fetch all email_unsubscribes rows once (both unsubscribed status and existing tokens)
+  const { data: unsubRows } = await supabase
     .from('email_unsubscribes')
-    .select('email')
-    .not('unsubscribed_at', 'is', null)
-  const unsubSet = new Set((unsubList ?? []).map((r: { email: string }) => r.email.toLowerCase()))
+    .select('email, token, unsubscribed_at')
+
+  const unsubSet = new Set<string>()
+  const tokenMap = new Map<string, string>()
+  for (const row of (unsubRows ?? []) as Array<{ email: string; token?: string; unsubscribed_at?: string | null }>) {
+    const lower = row.email.toLowerCase()
+    if (row.unsubscribed_at) unsubSet.add(lower)
+    if (row.token) tokenMap.set(lower, row.token)
+  }
+
   const filteredRecipients = recipients.filter(r => !unsubSet.has(r.email.toLowerCase()))
 
   if (filteredRecipients.length === 0) {
@@ -460,6 +470,7 @@ export async function sendReminderEmailsDirect({
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'UTC',
   })
 
   let theme = event.email_theme
@@ -468,44 +479,95 @@ export async function sendReminderEmailsDirect({
     if (dbEvent?.email_theme) theme = dbEvent.email_theme
   }
 
-  let sent = 0
-  const errors: string[] = []
-
-  for (const recipient of filteredRecipients) {
-    // Generate per-recipient unsubscribe URL
-    const unsubscribeUrl = await getUnsubscribeUrl(recipient.email)
-
-    // Fetch invitation details to get qr_token, party_size, ticket_tier
-    const { data: invitation } = await supabase
+  // Batch-fetch all invitations for the filtered recipients in a single query
+  const invitationIds = Array.from(new Set(filteredRecipients.map(r => r.invitationId).filter(Boolean)))
+  type InvitationWithDetails = {
+    id: string
+    qr_token?: string
+    party_size?: number
+    seat_info?: string | null
+    ticket_tier_id?: string | null
+    attendee?: { name?: string; email?: string } | null
+    ticket_tier?: { id: string; name: string; price: number } | null
+  }
+  const invitationMap = new Map<string, InvitationWithDetails>()
+  if (invitationIds.length > 0) {
+    const { data: invitationsData } = await supabase
       .from('invitations')
       .select('*, attendee:attendees(name, email), ticket_tier:ticket_tiers(id, name, price)')
-      .eq('id', recipient.invitationId)
+      .in('id', invitationIds)
       .eq('event_id', eventId)
-      .single()
 
-    const qrToken = invitation?.qr_token || recipient.invitationId
-    const partySize = invitation?.party_size || 1
-    const partySizeText = partySize === 1 ? '1 PERSON' : `${partySize} PEOPLE`
-    const actualRecipientName = invitation?.attendee?.name || recipient.name
+    for (const inv of (invitationsData ?? []) as InvitationWithDetails[]) {
+      invitationMap.set(inv.id, inv)
+    }
+  }
 
-    // Generate QR code PNG buffer server-side
-    const qrBuffer = await generateQrBuffer(qrToken)
+  // Batch-fetch all tier perks for any referenced ticket tiers in a single query
+  const uniqueTierIds = Array.from(
+    new Set(
+      Array.from(invitationMap.values())
+        .map(inv => inv.ticket_tier_id)
+        .filter((tid): tid is string => Boolean(tid))
+    )
+  )
+  const perksByTierMap = new Map<string, string[]>()
+  if (uniqueTierIds.length > 0) {
+    const { data: allPerks } = await supabase
+      .from('tier_perks')
+      .select('tier_id, label, sort_order')
+      .in('tier_id', uniqueTierIds)
+      .order('sort_order', { ascending: true })
 
-    let tierHtml = ''
-    let tierPerksList: string[] = []
-    if (invitation?.ticket_tier_id && invitation?.ticket_tier) {
-      const { data: perks } = await supabase
-        .from('tier_perks')
-        .select('label')
-        .eq('tier_id', invitation.ticket_tier_id)
-        .order('sort_order', { ascending: true })
+    for (const perk of (allPerks ?? []) as Array<{ tier_id: string; label: string }>) {
+      const list = perksByTierMap.get(perk.tier_id) ?? []
+      list.push(perk.label)
+      perksByTierMap.set(perk.tier_id, list)
+    }
+  }
 
-      tierPerksList = perks ? perks.map(p => p.label) : []
-      const perksText = tierPerksList.length > 0
-        ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${tierPerksList.map(p => escapeHtml(p)).join(' · ')}</div>`
-        : ''
+  let sent = 0
+  const errors: string[] = []
+  const logsToInsert: Array<{
+    event_id: string
+    recipient_email: string
+    email_type: 'reminder'
+    subject: string
+    resend_email_id: string | null
+  }> = []
 
-      tierHtml = `
+  // Process recipients in concurrent batches of 4 (staying safely under Resend's 5 req/sec limit
+  // while cutting total execution time by ~4x and eliminating 3*N sequential DB queries).
+  const BATCH_SIZE = 4
+  for (let i = 0; i < filteredRecipients.length; i += BATCH_SIZE) {
+    const chunk = filteredRecipients.slice(i, i + BATCH_SIZE)
+
+    await Promise.all(
+      chunk.map(async (recipient) => {
+        const lowerEmail = recipient.email.toLowerCase()
+        const existingToken = tokenMap.get(lowerEmail)
+        const unsubscribeUrl = existingToken
+          ? `${appUrl}/api/unsubscribe?token=${existingToken}`
+          : await getUnsubscribeUrl(recipient.email)
+
+        const invitation = invitationMap.get(recipient.invitationId)
+        const qrToken = invitation?.qr_token || recipient.invitationId
+        const partySize = invitation?.party_size || 1
+        const partySizeText = partySize === 1 ? '1 PERSON' : `${partySize} PEOPLE`
+        const actualRecipientName = invitation?.attendee?.name || recipient.name
+
+        // Generate QR code PNG buffer server-side
+        const qrBuffer = await generateQrBuffer(qrToken)
+
+        let tierHtml = ''
+        let tierPerksList: string[] = []
+        if (invitation?.ticket_tier_id && invitation?.ticket_tier) {
+          tierPerksList = perksByTierMap.get(invitation.ticket_tier_id) ?? []
+          const perksText = tierPerksList.length > 0
+            ? `<div style="margin-top:4px;font-size:11px;color:#9E9890;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">PERKS: ${tierPerksList.map(p => escapeHtml(p)).join(' · ')}</div>`
+            : ''
+
+          tierHtml = `
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">TICKET TIER</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
@@ -513,83 +575,86 @@ export async function sendReminderEmailsDirect({
               ${perksText}
             </td>
           </tr>`
-    }
+        }
 
-    // Add seat details if assigned
-    let seatHtml = ''
-    if (invitation?.seat_info) {
-      seatHtml = `
+        let seatHtml = ''
+        if (invitation?.seat_info) {
+          seatHtml = `
           <tr>
             <td style="padding:10px 0;font-size:10px;letter-spacing:2.5px;color:#BF8430;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;width:120px;font-weight:600;">SEAT</td>
             <td class="text-primary" style="padding:10px 0;font-size:15px;color:#0C0B09;font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
               ${escapeHtml(invitation.seat_info)}
             </td>
           </tr>`
-    }
+        }
 
-    const html = renderTicketEmail({
-      theme,
-      emailType: 'reminder',
-      event,
-      recipientName: actualRecipientName,
-      partySizeText,
-      eventDateFormatted: eventDate,
-      timeFormatted: formatTimeTo12Hour(event.time),
-      seatHtml,
-      tierHtml,
-      unsubscribeUrl,
-      customMessage,
-      qrCidOrSrc: 'cid:qrcode',
-      qrToken,
-      seatInfo: invitation?.seat_info,
-      tierName: invitation?.ticket_tier?.name,
-      tierPerks: tierPerksList,
-    })
-
-    try {
-      const { data: sendData, error: sendError } = await getResend().emails.send({
-        from: formatFromHeader(organizer.name),
-        ...(organizer.email ? { replyTo: organizer.email } : {}),
-        to: recipient.email,
-        subject: `Reminder — ${event.name}`,
-        html,
-        attachments: [
-          {
-            filename: 'qrcode.png',
-            content: qrBuffer,
-            contentId: 'qrcode',
-          },
-        ],
-      })
-
-      if (sendError) {
-        // Resend SDK error object has name + message; log the full object for debugging
-        const errObj = sendError as unknown as { message?: string; name?: string }
-        const errMsg = sendError.message || errObj.name || JSON.stringify(sendError)
-        console.error(`Resend error for ${recipient.email}:`, JSON.stringify(sendError))
-        errors.push(`${recipient.email}: ${errMsg}`)
-      } else {
-        sent++
-        console.log(`[email] Reminder sent to ${recipient.email}, id=${sendData?.id}`)
-        // Log the email — store Resend message ID for webhook correlation
-        await supabase.from('email_logs').insert({
-          event_id: eventId,
-          recipient_email: recipient.email,
-          email_type: 'reminder',
-          subject: `Reminder — ${event.name}`,
-          resend_email_id: sendData?.id ?? null,
+        const html = renderTicketEmail({
+          theme,
+          emailType: 'reminder',
+          event,
+          recipientName: actualRecipientName,
+          partySizeText,
+          eventDateFormatted: eventDate,
+          timeFormatted: formatTimeTo12Hour(event.time),
+          seatHtml,
+          tierHtml,
+          unsubscribeUrl,
+          customMessage,
+          qrCidOrSrc: 'cid:qrcode',
+          qrToken,
+          seatInfo: invitation?.seat_info,
+          tierName: invitation?.ticket_tier?.name,
+          tierPerks: tierPerksList,
         })
-      }
-    } catch (e: unknown) {
-      const err = e as Error
-      const errMsg = err.message || err.name || JSON.stringify(e)
-      console.error(`Exception sending reminder to ${recipient.email}:`, errMsg)
-      errors.push(`${recipient.email}: ${errMsg}`)
-    }
 
-    // Rate-limit throttling: Resend free tier allows 5 requests/second.
-    // Sleep 250ms between sequential emails to comfortably stay under this limit.
-    await new Promise((resolve) => setTimeout(resolve, 250))
+        try {
+          const { data: sendData, error: sendError } = await getResend().emails.send({
+            from: formatFromHeader(organizer.name),
+            ...(organizer.email ? { replyTo: organizer.email } : {}),
+            to: recipient.email,
+            subject: `Reminder — ${event.name}`,
+            html,
+            attachments: [
+              {
+                filename: 'qrcode.png',
+                content: qrBuffer,
+                contentId: 'qrcode',
+              },
+            ],
+          })
+
+          if (sendError) {
+            const errObj = sendError as unknown as { message?: string; name?: string }
+            const errMsg = sendError.message || errObj.name || JSON.stringify(sendError)
+            console.error(`Resend error for ${recipient.email}:`, JSON.stringify(sendError))
+            errors.push(`${recipient.email}: ${errMsg}`)
+          } else {
+            sent++
+            console.log(`[email] Reminder sent to ${recipient.email}, id=${sendData?.id}`)
+            logsToInsert.push({
+              event_id: eventId,
+              recipient_email: recipient.email,
+              email_type: 'reminder',
+              subject: `Reminder — ${event.name}`,
+              resend_email_id: sendData?.id ?? null,
+            })
+          }
+        } catch (e: unknown) {
+          const err = e as Error
+          const errMsg = err.message || err.name || JSON.stringify(e)
+          console.error(`Exception sending reminder to ${recipient.email}:`, errMsg)
+          errors.push(`${recipient.email}: ${errMsg}`)
+        }
+      })
+    )
+
+    if (i + BATCH_SIZE < filteredRecipients.length) {
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+  }
+
+  if (logsToInsert.length > 0) {
+    await supabase.from('email_logs').insert(logsToInsert)
   }
 
   return {

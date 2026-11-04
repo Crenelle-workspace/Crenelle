@@ -50,6 +50,10 @@ export default function EventOverviewPage() {
   const [reminderOpen, setReminderOpen] = useState(false)
   const [reminderMessage, setReminderMessage] = useState('')
   const [sendingReminder, setSendingReminder] = useState(false)
+  const [updateNoticeInfo, setUpdateNoticeInfo] = useState<{
+    changedFields: string[]
+    guestCount: number
+  } | null>(null)
 
   // Registration counts for open events
   const [regCounts, setRegCounts] = useState({ pending: 0, accepted: 0, rejected: 0 })
@@ -237,12 +241,50 @@ export default function EventOverviewPage() {
     if (isSubmitting.current) return
     isSubmitting.current = true
     setLoading(true)
+
+    const prevDate = event?.date ?? ''
+    const prevTime = event?.time ?? null
+    const prevVenue = (event?.venue ?? '').trim()
+
+    const newName = (formData.get('name') as string) || event?.name || 'the event'
+    const newDate = (formData.get('date') as string) || ''
+    const newTime = (formData.get('time') as string) || null
+    const newVenue = ((formData.get('venue') as string) || '').trim()
+
     const result = await updateEvent(id, formData)
     if (result?.error) {
       setError(result.error)
     } else {
       setEditing(false)
+      toast.success('Event details updated')
+
+      // Refresh local event state immediately
+      const supabase = createClient()
+      const { data: updatedEvent } = await supabase.from('events').select('*').eq('id', id).single()
+      if (updatedEvent) setEvent(updatedEvent)
       router.refresh()
+
+      // Check if critical schedule/location fields changed while confirmed guests exist
+      const changedFields: string[] = []
+      if (newDate && prevDate && newDate !== prevDate) changedFields.push('date')
+      if (newTime !== prevTime) changedFields.push('time')
+      if (newVenue && prevVenue && newVenue !== prevVenue) changedFields.push('venue')
+
+      if (changedFields.length > 0) {
+        const { count } = await supabase
+          .from('invitations')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_id', id)
+          .neq('status', 'cancelled')
+
+        if (count && count > 0) {
+          setUpdateNoticeInfo({ changedFields, guestCount: count })
+          setReminderMessage(
+            `Important update: The ${changedFields.join(' & ')} for ${newName} has been updated. Please review the updated event schedule and venue details below — your existing QR entry pass remains valid.`
+          )
+          setReminderOpen(true)
+        }
+      }
     }
     setLoading(false)
     isSubmitting.current = false
@@ -712,15 +754,34 @@ export default function EventOverviewPage() {
       />
 
       {/* ── Reminder Dialog ── */}
-      <Dialog open={reminderOpen} onOpenChange={setReminderOpen}>
+      <Dialog
+        open={reminderOpen}
+        onOpenChange={(open) => {
+          setReminderOpen(open)
+          if (!open) setUpdateNoticeInfo(null)
+        }}
+      >
         <DialogContent className="bg-background border-2 border-foreground/20 max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display text-3xl uppercase text-foreground">Send Reminder</DialogTitle>
+            <DialogTitle className="font-display text-3xl uppercase text-foreground">
+              {updateNoticeInfo ? 'Notify Confirmed Guests?' : 'Send Reminder'}
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-5 mt-2">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/60 leading-relaxed">
-              Send a reminder email with event details and QR entry pass to all confirmed guests.
-            </p>
+            {updateNoticeInfo ? (
+              <div className="border-l-4 border-copper bg-copper/10 p-3.5 rounded-r-xl">
+                <p className="font-sans text-xs font-bold text-foreground mb-1">
+                  Event {updateNoticeInfo.changedFields.join(' & ')} updated
+                </p>
+                <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+                  You have <span className="font-bold text-foreground">{updateNoticeInfo.guestCount}</span> confirmed guest{updateNoticeInfo.guestCount === 1 ? '' : 's'} with previously issued passes. Send them an updated pass email now so they have the new details?
+                </p>
+              </div>
+            ) : (
+              <p className="font-mono text-[10px] uppercase tracking-widest text-foreground/60 leading-relaxed">
+                Send a reminder email with event details and QR entry pass to all confirmed guests.
+              </p>
+            )}
 
             <div className="flex flex-col gap-2">
               <label htmlFor="overview-reminder-msg" className={labelCls}>Custom Message (optional)</label>
@@ -734,24 +795,40 @@ export default function EventOverviewPage() {
               />
             </div>
 
-            <Button
-              variant="signal"
-              className="w-full h-12 text-sm gap-2"
-              disabled={sendingReminder}
-              onClick={handleSendReminder}
-            >
-              {sendingReminder ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  SENDING...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  SEND REMINDERS →
-                </>
+            <div className="flex items-center gap-2">
+              {updateNoticeInfo && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-12 px-4 text-xs font-semibold border border-border/40"
+                  disabled={sendingReminder}
+                  onClick={() => {
+                    setReminderOpen(false)
+                    setUpdateNoticeInfo(null)
+                  }}
+                >
+                  Skip for Now
+                </Button>
               )}
-            </Button>
+              <Button
+                variant="signal"
+                className="flex-1 h-12 text-sm gap-2"
+                disabled={sendingReminder}
+                onClick={handleSendReminder}
+              >
+                {sendingReminder ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    SENDING...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    {updateNoticeInfo ? 'SEND UPDATE EMAILS →' : 'SEND REMINDERS →'}
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
