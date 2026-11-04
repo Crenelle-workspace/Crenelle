@@ -78,7 +78,7 @@ export function EventsDashboardClient({
   coHostedEvents = [],
   setupStatus,
 }: EventsDashboardClientProps) {
-  const { events, invitations, logs, eventStats, summaryMetrics } =
+  const { events, eventStats, summaryMetrics } =
     useDashboardData({
       initialEvents,
       initialInvitations,

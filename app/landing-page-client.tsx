@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Activity,
 } from "lucide-react";
-import { ModeToggle } from "@/components/mode-toggle";
 import { cn } from "@/lib/utils";
 import { TiltEventCard } from "@/components/landing/tilt-event-card";
 import { InteractiveTicketStack } from "@/components/landing/interactive-ticket-stack";
