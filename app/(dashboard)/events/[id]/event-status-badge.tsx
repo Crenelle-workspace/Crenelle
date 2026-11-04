@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { StatusChangeDialog } from '@/components/status-change-dialog'
+import { Lock } from 'lucide-react'
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
   live:      { label: 'Live',      cls: 'status-live' },
@@ -64,7 +65,11 @@ export function EventStatusBadge({
     }
 
     return (
-      <div className={`inline-flex items-center gap-2 self-start sm:self-end shrink-0 ${statusInfo.cls}`}>
+      <div
+        className={`inline-flex items-center gap-2 self-start sm:self-end shrink-0 cursor-not-allowed select-none ${statusInfo.cls}`}
+        title="Status change restricted: Only the primary event organizer can change event status."
+      >
+        <Lock className="size-3 text-copper shrink-0 opacity-80" aria-hidden="true" />
         {initialStatus === 'live' && (
           <span className="size-1.5 rounded-full bg-current animate-blink shrink-0" aria-hidden="true" />
         )}
@@ -101,9 +106,11 @@ export function EventStatusBadge({
 
   return (
     <span
-      className={`inline-block px-4 py-1 font-display text-lg uppercase ${statusColors[initialStatus] ?? ''}`}
+      className={`inline-flex items-center gap-2 px-4 py-1 font-display text-lg uppercase cursor-not-allowed select-none ${statusColors[initialStatus] ?? ''}`}
       aria-label={`Status: ${initialStatus}`}
+      title="Status change restricted: Only the primary event organizer can change event status."
     >
+      <Lock className="size-4 text-copper shrink-0 opacity-80" aria-hidden="true" />
       {initialStatus}
     </span>
   )

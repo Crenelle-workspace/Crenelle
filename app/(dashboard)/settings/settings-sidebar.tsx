@@ -35,34 +35,33 @@ export function SettingsSidebar() {
   ]
 
   return (
-    <div className="flex flex-col gap-6 select-none">
-      <div>
-        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-2.5 py-1 rounded-full inline-block mb-4">
-          Settings Menu
-        </span>
-        <nav aria-label="Settings sections" className="flex flex-row md:flex-col gap-1.5 overflow-x-auto md:overflow-visible border-b md:border-b-0 border-border/40 pb-3 md:pb-0">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname.startsWith(item.href) && !item.disabled
+    <nav
+      aria-label="Settings sections"
+      className="mb-8 select-none w-full max-w-full overflow-x-auto no-scrollbar py-1"
+    >
+      <div className="inline-flex min-w-max gap-1.5 border border-border/40 bg-card/40 backdrop-blur-xl p-1.5 rounded-full shadow-xs">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = pathname.startsWith(item.href) && !item.disabled
 
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-2.5 px-4 py-2.5 font-sans text-xs font-bold rounded-xl transition-all duration-300 whitespace-nowrap shrink-0 ${
-                  isActive
-                    ? 'bg-foreground text-background shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
-                }`}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden="true" />
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex items-center gap-2 font-sans text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap transition-all duration-300 ${
+                isActive
+                  ? 'bg-foreground text-background shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-stone-500/10'
+              }`}
+            >
+              <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+              <span>{item.label}</span>
+            </Link>
+          )
+        })}
       </div>
-    </div>
+    </nav>
   )
 }
+

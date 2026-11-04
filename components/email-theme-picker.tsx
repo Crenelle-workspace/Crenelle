@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Check, Eye, Sparkles, Plane, LayoutTemplate, Moon, Flame, Maximize2 } from 'lucide-react'
+import { Check, Eye, Sparkles, Plane, LayoutTemplate, Moon, Flame, Maximize2, Lock } from 'lucide-react'
+import { ReadOnlyPill } from '@/components/read-only-pill'
 import { updateEventEmailTheme } from '@/app/actions/events'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -78,15 +79,21 @@ const THEME_OPTIONS: ThemeOption[] = [
 export function EmailThemePicker({
   eventId,
   currentTheme = 'classic',
+  canEdit = true,
 }: {
   eventId: string
   currentTheme?: EmailTheme
+  canEdit?: boolean
 }) {
   const [selectedTheme, setSelectedTheme] = useState<EmailTheme>(currentTheme)
   const [previewTheme, setPreviewTheme] = useState<EmailTheme | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const handleSelectTheme = (themeId: EmailTheme) => {
+    if (!canEdit) {
+      setPreviewTheme(themeId)
+      return
+    }
     setSelectedTheme(themeId)
     startTransition(async () => {
       const res = await updateEventEmailTheme(eventId, themeId)
@@ -109,6 +116,9 @@ export function EmailThemePicker({
             Choose the visual style for attendee ticket confirmation and reminder emails.
           </p>
         </div>
+        {!canEdit && (
+          <ReadOnlyPill mode="preview" label="PREVIEW ONLY" />
+        )}
       </div>
 
       {/* Theme Options Grid */}
@@ -172,19 +182,35 @@ export function EmailThemePicker({
                   <Eye className="w-3.5 h-3.5 mr-1" /> Live Preview
                 </Button>
 
-                <Button
-                  type="button"
-                  variant={isSelected ? 'copper' : 'outline'}
-                  size="sm"
-                  disabled={isPending}
-                  className="text-xs font-mono h-8"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleSelectTheme(option.id)
-                  }}
-                >
-                  {isSelected ? 'Selected' : 'Use Theme'}
-                </Button>
+                {canEdit ? (
+                  <Button
+                    type="button"
+                    variant={isSelected ? 'copper' : 'outline'}
+                    size="sm"
+                    disabled={isPending}
+                    className="text-xs font-mono h-8"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleSelectTheme(option.id)
+                    }}
+                  >
+                    {isSelected ? 'Selected' : 'Use Theme'}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs font-mono h-8 gap-1.5 opacity-60"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setPreviewTheme(option.id)
+                    }}
+                  >
+                    <Lock className="w-3 h-3 text-copper" />
+                    Preview
+                  </Button>
+                )}
               </div>
             </div>
           )
@@ -199,7 +225,7 @@ export function EmailThemePicker({
               <Eye className="w-5 h-5 text-copper" />
               Theme Preview — {THEME_OPTIONS.find(t => t.id === previewTheme)?.name}
             </DialogTitle>
-            {previewTheme && previewTheme !== selectedTheme && (
+            {canEdit && previewTheme && previewTheme !== selectedTheme && (
               <Button
                 size="sm"
                 className="font-mono text-xs mr-6"

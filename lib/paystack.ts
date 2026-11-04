@@ -253,7 +253,7 @@ export async function fetchSubaccount(
  */
 export async function updateSubaccount(
   subaccountCode: string,
-  params: Partial<Pick<PaystackSubaccountParams, 'percentage_charge' | 'business_name' | 'description'>>,
+  params: Partial<Pick<PaystackSubaccountParams, 'percentage_charge' | 'business_name' | 'description' | 'settlement_bank' | 'account_number'>>,
 ): Promise<
   | { data: PaystackSubaccountResponse; error: null }
   | { data: null; error: string }

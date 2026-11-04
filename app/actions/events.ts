@@ -7,6 +7,21 @@ import { generateSlug } from '@/lib/utils/slug'
 
 
 
+function sanitizeHttpUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href
+    }
+  } catch {
+    // Reject invalid or non-http(s) URLs (e.g. javascript:, data:)
+  }
+  return null
+}
+
 export async function createEvent(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -63,7 +78,7 @@ export async function createEvent(formData: FormData) {
       auto_approve_registrations: formData.get('auto_approve_registrations') === 'true' || formData.get('auto_approve_registrations') === 'on',
       banner_url: (formData.get('banner_url') as string) || null,
       sender_profile_id: (formData.get('sender_profile_id') as string) || null,
-      location_url: (formData.get('location_url') as string) || null,
+      location_url: sanitizeHttpUrl(formData.get('location_url') as string),
       email_theme: emailTheme,
       agenda,
       speakers,
@@ -148,7 +163,7 @@ export async function updateEvent(id: string, formData: FormData) {
     max_registrations: formData.get('max_registrations') ? Number(formData.get('max_registrations')) : null,
     auto_approve_registrations: formData.get('auto_approve_registrations') === 'true' || formData.get('auto_approve_registrations') === 'on',
     banner_url: newBannerUrl,
-    location_url: (formData.get('location_url') as string) || null,
+    location_url: sanitizeHttpUrl(formData.get('location_url') as string),
   }
 
   if (formData.has('sender_profile_id')) {

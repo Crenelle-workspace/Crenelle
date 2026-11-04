@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import { Plus, Pencil, X, Users, Lock, Download, Loader2 } from 'lucide-react'
-import { addAttendee, updateAttendee, cancelAttendeeInvitation, addMultipleAttendees, updateAttendeeTicketTier } from '@/app/actions/attendees'
+import { Plus, Pencil, X, Users, Lock, Download, Loader2, Send } from 'lucide-react'
+import { addAttendee, updateAttendee, cancelAttendeeInvitation, addMultipleAttendees, updateAttendeeTicketTier, resendAttendeePass } from '@/app/actions/attendees'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SectionHeader } from '@/components/section-header'
+import { ReadOnlyPill } from '@/components/read-only-pill'
 import { EmptyState } from '@/components/empty-state'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -30,6 +31,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSavingTier, setIsSavingTier] = useState<string | null>(null)
+  const [resendingId, setResendingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const exportToCSV = () => {
@@ -196,11 +198,39 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
     try {
       const result = await updateAttendee(editGuest.id, eventId, formData)
       if (result?.error) toast.error(result.error)
-      else { toast.success('Guest updated'); setEditGuest(null); await loadGuests() }
+      else if (result?.warning) {
+        toast.warning(result.warning)
+        setEditGuest(null)
+        await loadGuests()
+      } else {
+        const sentPass = formData.get('resend_pass') === 'true' || formData.get('resend_pass') === 'on'
+        toast.success(sentPass ? 'Guest updated & pass sent' : 'Guest updated')
+        setEditGuest(null)
+        await loadGuests()
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'An error occurred')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleResendPass(guest: GuestWithInvitation) {
+    if (resendingId) return
+    setResendingId(guest.id)
+    try {
+      const result = await resendAttendeePass(guest.id, eventId)
+      if (result?.error) {
+        toast.error(result.error)
+      } else if (result?.warning) {
+        toast.warning(`Pass sent with notice: ${result.warning}`)
+      } else {
+        toast.success(`Entry pass sent to ${guest.email || guest.phone || guest.name}`)
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to resend pass')
+    } finally {
+      setResendingId(null)
     }
   }
 
@@ -274,11 +304,18 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
               </DialogContent>
             </Dialog>
           ) : (
-            /* Read-only indicator for co-hosts */
-            <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground border border-border/40 rounded-full px-3.5 py-2 h-10 shrink-0">
-              <Lock className="h-3 w-3" aria-hidden="true" />
-              Read-only
-            </span>
+            <div className="flex items-center gap-2">
+              <ReadOnlyPill mode="view-only" label="GUEST LIST // VIEW-ONLY" />
+              <Button
+                disabled
+                variant="outline"
+                className="opacity-60 cursor-not-allowed gap-2 text-xs font-bold rounded-full select-none"
+                title="Guest management restricted to Co-Organizers and Owner"
+              >
+                <Lock className="h-3.5 w-3.5 text-copper" />
+                Add Guest (Restricted)
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -317,7 +354,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
         <EmptyState
           icon={<Users className="h-10 w-10" />}
           title="No Guests Yet"
-          subtitle="Add guests to generate their QR entry cards"
+          subtitle={canEdit ? "Add guests to generate their QR entry cards" : "No guests have been added to this event yet. Only Co-Organizers and the Event Owner can invite guests."}
           action={
             canEdit ? (
               <Button
@@ -384,16 +421,34 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
                 <span className="font-sans text-xs text-muted-foreground truncate">
                   {guest.invitation?.seat_info || '—'}
                 </span>
-                {/* Edit/Delete only shown to owners */}
+                {/* Resend / Edit / Delete shown to owners & co-organisers */}
                 <div className="flex gap-1 justify-end">
                   {canEdit && (
                     <>
+                      {(guest.email || guest.phone) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={resendingId === guest.id}
+                          className="h-8 w-8 text-copper/70 hover:text-copper hover:bg-copper/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0"
+                          onClick={() => handleResendPass(guest)}
+                          aria-label={`Resend pass to ${guest.name}`}
+                          title={`Resend QR entry pass to ${guest.email || guest.phone}`}
+                        >
+                          {resendingId === guest.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-copper" aria-hidden="true" />
+                          ) : (
+                            <Send className="h-3.5 w-3.5" aria-hidden="true" />
+                          )}
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-foreground/20 hover:text-foreground hover:bg-foreground/5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         onClick={() => setEditGuest(guest)}
                         aria-label={`Edit guest ${guest.name}`}
+                        title="Edit guest details"
                       >
                         <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                       </Button>
@@ -403,6 +458,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
                         className="h-8 w-8 text-denied/40 hover:text-denied hover:bg-denied/5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         onClick={() => setDeleteTarget(guest)}
                         aria-label={`Remove guest ${guest.name}`}
+                        title="Cancel guest invitation"
                       >
                         <X className="h-3.5 w-3.5" aria-hidden="true" />
                       </Button>
@@ -444,6 +500,22 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
                     </span>
                     {canEdit && (
                       <div className="flex gap-1">
+                        {(guest.email || guest.phone) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={resendingId === guest.id}
+                            className="h-7 w-7 text-copper hover:bg-copper/10"
+                            onClick={() => handleResendPass(guest)}
+                            title="Resend QR entry pass"
+                          >
+                            {resendingId === guest.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-copper" />
+                            ) : (
+                              <Send className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -593,6 +665,21 @@ function GuestForm({
           ))}
         </select>
       </div>
+
+      {prefix === 'edit' && (
+        <label className="flex items-center gap-2.5 cursor-pointer select-none pt-1">
+          <input
+            type="checkbox"
+            name="resend_pass"
+            value="true"
+            defaultChecked
+            className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer"
+          />
+          <span className="font-sans text-xs text-muted-foreground">
+            Send updated QR entry pass to guest on save
+          </span>
+        </label>
+      )}
 
       <Button
         type="submit"

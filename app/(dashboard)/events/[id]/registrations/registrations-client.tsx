@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, MessageSquare, Download, FileSpreadsheet, FileText, ChevronDown, Loader2 } from 'lucide-react'
+import { Check, X, Mail, Search, UserPlus, Clock, CheckCircle2, XCircle, Send, ArrowUpCircle, Zap, CheckSquare, MessageSquare, Download, FileSpreadsheet, FileText, ChevronDown, Loader2, Lock } from 'lucide-react'
+import { ReadOnlyPill } from '@/components/read-only-pill'
 import { acceptRegistration, rejectRegistration, promoteFromWaitlist, sendReminderEmails, bulkAcceptRegistrations, bulkRejectRegistrations } from '@/app/actions/registrations'
+import { resendAttendeePass } from '@/app/actions/attendees'
 import { toggleAutoApprove } from '@/app/actions/events'
 import { createClient } from '@/lib/supabase/client'
 import { fieldCls, labelCls } from '@/lib/form-styles'
@@ -48,7 +50,15 @@ interface AttendeeRow {
   payments?: { status: string; created_at: string }[]
 }
 
-export default function RegistrationsPage() {
+export default function RegistrationsPage({
+  canManageGuests = true,
+  isOwner = true,
+  role = 'owner',
+}: {
+  canManageGuests?: boolean
+  isOwner?: boolean
+  role?: string
+} = {}) {
   const { id: eventId } = useParams<{ id: string }>()
   const [registrations, setRegistrations] = useState<Registration[]>([])
   const [event, setEvent] = useState<Event | null>(null)
@@ -56,6 +66,7 @@ export default function RegistrationsPage() {
   const [search, setSearch] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [promotingId, setPromotingId] = useState<string | null>(null)
+  const [resendingId, setResendingId] = useState<string | null>(null)
   const [reminderOpen, setReminderOpen] = useState(false)
   const [reminderMessage, setReminderMessage] = useState('')
   const [sendingReminder, setSendingReminder] = useState(false)
@@ -248,6 +259,25 @@ export default function RegistrationsPage() {
     }
   }
 
+  async function handleResendPass(reg: Registration) {
+    if (resendingId || !canManageGuests) return
+    setResendingId(reg.id)
+    try {
+      const result = await resendAttendeePass(reg.id, eventId)
+      if (result?.error) {
+        toast.error(result.error)
+      } else if (result?.warning) {
+        toast.warning(`Pass sent with notice: ${result.warning}`)
+      } else {
+        toast.success(`Entry pass resent to ${reg.email}`)
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to resend pass')
+    } finally {
+      setResendingId(null)
+    }
+  }
+
   async function handlePromote(reg: Registration) {
     if (promotingId) return
     setPromotingId(reg.id)
@@ -386,33 +416,52 @@ export default function RegistrationsPage() {
     <div className="relative pb-24">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 border-b-2 border-foreground/10 pb-6">
-        <SectionHeader
-          eyebrow="Public RSVPs"
-          title="Registrations"
-          subtitle={loading ? "Loading registrations..." : `${counts.pending} pending · ${counts.accepted} accepted · ${counts.rejected} rejected · ${counts.waitlist} waitlist`}
-        />
+        <div className="flex items-center gap-3">
+          <SectionHeader
+            eyebrow="Public RSVPs"
+            title="Registrations"
+            subtitle={loading ? "Loading registrations..." : `${counts.pending} pending · ${counts.accepted} accepted · ${counts.rejected} rejected · ${counts.waitlist} waitlist`}
+          />
+          {!canManageGuests && (
+            <div className="mb-2">
+              <ReadOnlyPill mode="view-only" label="REGISTRATIONS // VIEW-ONLY" />
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {/* Auto-Approve Toggle */}
           {event?.event_type === 'open' && (
-            <Button
-              variant="outline"
-              disabled={isTogglingAutoApprove}
-              onClick={handleToggleAutoApprove}
-              className={`gap-2 h-10 px-4 text-xs font-bold rounded-full transition-all border ${
-                event.auto_approve_registrations
-                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25'
-                  : 'bg-background border-border/40 text-muted-foreground hover:text-foreground'
-              }`}
-              title="Automatically accept public registrations as soon as they submit"
-            >
-              {isTogglingAutoApprove ? (
-                <Loader2 className="h-4 w-4 animate-spin text-copper" />
-              ) : (
-                <Zap className={`h-4 w-4 ${event.auto_approve_registrations ? 'fill-current text-emerald-500' : ''}`} />
-              )}
-              Auto-Approve: {isTogglingAutoApprove ? 'UPDATING...' : event.auto_approve_registrations ? 'ON' : 'OFF'}
-            </Button>
+            isOwner ? (
+              <Button
+                variant="outline"
+                disabled={isTogglingAutoApprove}
+                onClick={handleToggleAutoApprove}
+                className={`gap-2 h-10 px-4 text-xs font-bold rounded-full transition-all border ${
+                  event.auto_approve_registrations
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25'
+                    : 'bg-background border-border/40 text-muted-foreground hover:text-foreground'
+                }`}
+                title="Automatically accept public registrations as soon as they submit"
+              >
+                {isTogglingAutoApprove ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-copper" />
+                ) : (
+                  <Zap className={`h-4 w-4 ${event.auto_approve_registrations ? 'fill-current text-emerald-500' : ''}`} />
+                )}
+                Auto-Approve: {isTogglingAutoApprove ? 'UPDATING...' : event.auto_approve_registrations ? 'ON' : 'OFF'}
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                disabled
+                className="gap-2 h-10 px-4 text-xs font-bold rounded-full transition-all border bg-background border-border/40 text-muted-foreground/60 cursor-not-allowed opacity-60 select-none"
+                title="Auto-approval setting is managed exclusively by the event organizer"
+              >
+                <Lock className="h-3.5 w-3.5 text-copper" />
+                Auto-Approve: {event.auto_approve_registrations ? 'ON' : 'OFF'}
+              </Button>
+            )
           )}
 
           {/* Export Dropdown */}
@@ -459,14 +508,26 @@ export default function RegistrationsPage() {
           </DropdownMenu>
 
           {/* Send Reminder */}
-          <Button
-            variant="ghost"
-            className="gap-2 h-10 px-4 text-xs font-semibold text-foreground/70 hover:text-foreground border border-border/40 rounded-full"
-            onClick={() => setReminderOpen(true)}
-          >
-            <Mail className="h-4 w-4" />
-            Send Reminder
-          </Button>
+          {canManageGuests ? (
+            <Button
+              variant="ghost"
+              className="gap-2 h-10 px-4 text-xs font-semibold text-foreground/70 hover:text-foreground border border-border/40 rounded-full"
+              onClick={() => setReminderOpen(true)}
+            >
+              <Mail className="h-4 w-4" />
+              Send Reminder
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              disabled
+              className="gap-2 h-10 px-4 text-xs font-semibold text-muted-foreground/60 border border-border/40 rounded-full cursor-not-allowed opacity-60 select-none"
+              title="Broadcast reminders restricted: Requires Co-Organiser or Owner permissions"
+            >
+              <Lock className="h-3.5 w-3.5 text-copper" />
+              Send Reminder
+            </Button>
+          )}
 
           {/* Copy registration link */}
           {event?.registration_slug && (
@@ -617,13 +678,17 @@ export default function RegistrationsPage() {
           {/* Table header (Desktop) */}
           <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_100px_100px_70px_112px] bg-card border-b border-border/40 px-4 py-3 gap-4 items-center">
             <div className="flex items-center justify-center">
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={toggleSelectAll}
-                className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer"
-                title="Select all visible"
-              />
+              {canManageGuests ? (
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-border text-copper focus:ring-copper cursor-pointer"
+                  title="Select all visible"
+                />
+              ) : (
+                <div className="h-4 w-4" />
+              )}
             </div>
             {['Name', 'Email / Phone', 'Payment', 'Status', 'Date', ''].map((h, idx) => (
               <span
@@ -652,16 +717,18 @@ export default function RegistrationsPage() {
                 {/* Desktop Row View (sm:grid) */}
                 <div className="hidden sm:grid sm:grid-cols-[36px_minmax(130px,1.2fr)_minmax(160px,1.5fr)_100px_100px_70px_112px] items-center px-4 py-4 gap-4">
                   <div className="flex items-center justify-center">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      disabled={isAccepted}
-                      onChange={() => toggleSelectOne(reg.id)}
-                      className={`h-4 w-4 rounded border-border text-copper focus:ring-copper ${
-                        isAccepted ? 'cursor-not-allowed opacity-35' : 'cursor-pointer'
-                      }`}
-                      title={isAccepted ? 'Accepted registrants cannot be modified or rejected' : 'Select registrant'}
-                    />
+                    {canManageGuests ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        disabled={isAccepted}
+                        onChange={() => toggleSelectOne(reg.id)}
+                        className={`h-4 w-4 rounded border-border text-copper focus:ring-copper ${
+                          isAccepted ? 'cursor-not-allowed opacity-35' : 'cursor-pointer'
+                        }`}
+                        title={isAccepted ? 'Accepted registrants cannot be modified or rejected' : 'Select registrant'}
+                      />
+                    ) : null}
                   </div>
                   <div className="flex flex-col truncate min-w-0 pr-2">
                     <span className="font-sans text-sm text-foreground font-semibold truncate">{reg.full_name}</span>
@@ -694,46 +761,89 @@ export default function RegistrationsPage() {
                   </span>
                   <div className="flex items-center gap-1 justify-end">
                     {reg.status === 'pending' && (
-                      <>
+                      canManageGuests ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-all shrink-0 rounded-full"
+                            onClick={() => handleAccept(reg)}
+                            aria-label={`Accept ${reg.full_name}`}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all shrink-0 rounded-full"
+                            onClick={() => handleReject(reg)}
+                            aria-label={`Reject ${reg.full_name}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-all shrink-0 rounded-full"
-                          onClick={() => handleAccept(reg)}
-                          aria-label={`Accept ${reg.full_name}`}
+                          disabled
+                          className="h-8 w-8 text-muted-foreground/40 cursor-not-allowed opacity-50 shrink-0 rounded-full"
+                          title="Registration approvals restricted to Co-Organizers and Owner"
                         >
-                          <Check className="h-4 w-4" />
+                          <Lock className="h-3.5 w-3.5 text-copper" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all shrink-0 rounded-full"
-                          onClick={() => handleReject(reg)}
-                          aria-label={`Reject ${reg.full_name}`}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </>
+                      )
                     )}
                     {reg.status === 'waitlist' && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={promotingId === reg.id}
-                        className="h-8 w-8 text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
-                        onClick={() => handlePromote(reg)}
-                        aria-label={`Promote ${reg.full_name} from waitlist`}
-                        title="Promote to pending"
-                      >
-                        {promotingId === reg.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-copper" />
-                        ) : (
-                          <ArrowUpCircle className="h-4 w-4" />
-                        )}
-                      </Button>
+                      canManageGuests ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={promotingId === reg.id}
+                          className="h-8 w-8 text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
+                          onClick={() => handlePromote(reg)}
+                          aria-label={`Promote ${reg.full_name} from waitlist`}
+                          title="Promote to pending"
+                        >
+                          {promotingId === reg.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-copper" />
+                          ) : (
+                            <ArrowUpCircle className="h-4 w-4" />
+                          )}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled
+                          className="h-8 w-8 text-muted-foreground/40 cursor-not-allowed opacity-50 shrink-0 rounded-full"
+                          title="Waitlist promotion restricted to Co-Organizers and Owner"
+                        >
+                          <Lock className="h-3.5 w-3.5 text-copper" />
+                        </Button>
+                      )
                     )}
                     {reg.status === 'accepted' && (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <>
+                        {canManageGuests && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={resendingId === reg.id}
+                            className="h-8 w-8 text-copper/80 hover:text-copper hover:bg-copper/10 transition-all shrink-0 rounded-full"
+                            onClick={() => handleResendPass(reg)}
+                            aria-label={`Resend entry pass to ${reg.full_name}`}
+                            title={`Resend QR entry pass to ${reg.email}`}
+                          >
+                            {resendingId === reg.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-copper" />
+                            ) : (
+                              <Send className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      </>
                     )}
                     {reg.status === 'rejected' && (
                       <XCircle className="h-4 w-4 text-red-600/70 dark:text-red-400/70 shrink-0" />
@@ -760,16 +870,18 @@ export default function RegistrationsPage() {
                 {/* Mobile Card View (sm:hidden) */}
                 <div className="sm:hidden flex flex-col p-4 gap-3">
                   <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      disabled={isAccepted}
-                      onChange={() => toggleSelectOne(reg.id)}
-                      className={`h-4 w-4 rounded border-border text-copper focus:ring-copper mt-0.5 ${
-                        isAccepted ? 'cursor-not-allowed opacity-35' : 'cursor-pointer'
-                      }`}
-                      title={isAccepted ? 'Accepted registrants cannot be modified or rejected' : 'Select registrant'}
-                    />
+                    {canManageGuests && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        disabled={isAccepted}
+                        onChange={() => toggleSelectOne(reg.id)}
+                        className={`h-4 w-4 rounded border-border text-copper focus:ring-copper mt-0.5 ${
+                          isAccepted ? 'cursor-not-allowed opacity-35' : 'cursor-pointer'
+                        }`}
+                        title={isAccepted ? 'Accepted registrants cannot be modified or rejected' : 'Select registrant'}
+                      />
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex flex-col min-w-0 pr-1">
@@ -803,47 +915,65 @@ export default function RegistrationsPage() {
                   </div>
 
                   {reg.status === 'pending' && (
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/20 pl-7">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-3 text-xs gap-1.5 text-red-600 dark:text-red-400 border border-red-500/30 hover:bg-red-500/10 rounded-full"
-                        onClick={() => handleReject(reg)}
-                      >
-                        <X className="h-3.5 w-3.5" /> Reject
-                      </Button>
-                      <Button
-                        variant="copper"
-                        size="sm"
-                        className="h-8 px-3 text-xs gap-1.5 rounded-full"
-                        onClick={() => handleAccept(reg)}
-                      >
-                        <Check className="h-3.5 w-3.5" /> Accept
-                      </Button>
-                    </div>
+                    canManageGuests ? (
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/20 pl-7">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-3 text-xs gap-1.5 text-red-600 dark:text-red-400 border border-red-500/30 hover:bg-red-500/10 rounded-full"
+                          onClick={() => handleReject(reg)}
+                        >
+                          <X className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                        <Button
+                          variant="copper"
+                          size="sm"
+                          className="h-8 px-3 text-xs gap-1.5 rounded-full"
+                          onClick={() => handleAccept(reg)}
+                        >
+                          <Check className="h-3.5 w-3.5" /> Accept
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/20 pl-7">
+                        <span className="font-sans text-[11px] text-muted-foreground flex items-center gap-1.5">
+                          <Lock className="h-3 w-3 text-copper" />
+                          Approvals restricted to Co-Organizers
+                        </span>
+                      </div>
+                    )
                   )}
                   {reg.status === 'waitlist' && (
-                    <div className="flex items-center justify-end pt-2 border-t border-border/20 pl-7">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={promotingId === reg.id}
-                        className="h-8 px-3 text-xs gap-1.5 text-copper border border-copper/30 hover:bg-copper/10 rounded-full"
-                        onClick={() => handlePromote(reg)}
-                      >
-                        {promotingId === reg.id ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-copper" />
-                            Promoting...
-                          </>
-                        ) : (
-                          <>
-                            <ArrowUpCircle className="h-3.5 w-3.5" />
-                            Promote to Pending
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    canManageGuests ? (
+                      <div className="flex items-center justify-end pt-2 border-t border-border/20 pl-7">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={promotingId === reg.id}
+                          className="h-8 px-3 text-xs gap-1.5 text-copper border border-copper/30 hover:bg-copper/10 rounded-full"
+                          onClick={() => handlePromote(reg)}
+                        >
+                          {promotingId === reg.id ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin text-copper" />
+                              Promoting...
+                            </>
+                          ) : (
+                            <>
+                              <ArrowUpCircle className="h-3.5 w-3.5" />
+                              Promote to Pending
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end pt-2 border-t border-border/20 pl-7">
+                        <span className="font-sans text-[11px] text-muted-foreground flex items-center gap-1.5">
+                          <Lock className="h-3 w-3 text-copper" />
+                          Promotion restricted to Co-Organizers
+                        </span>
+                      </div>
+                    )
                   )}
                   {/* Mobile answers button */}
                   {eventQuestions.length > 0 && reg.custom_answers && (
@@ -866,7 +996,7 @@ export default function RegistrationsPage() {
       )}
 
       {/* Floating Bulk Action Bar */}
-      {selectedIds.length > 0 && (
+      {canManageGuests && selectedIds.length > 0 && (
         <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:w-full max-w-xl px-1 sm:px-4">
           <div className="bg-stone-900/95 dark:bg-stone-950/95 text-stone-100 backdrop-blur-md border border-stone-800 shadow-2xl rounded-full px-3 py-2.5 sm:px-5 sm:py-3 flex items-center justify-between gap-1.5 sm:gap-3 overflow-hidden">
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">

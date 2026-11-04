@@ -59,7 +59,9 @@ export async function proxy(request: NextRequest) {
   // Unauthenticated users hitting any protected prefix are redirected to /login.
   // The `next` param lets the login page send them back after they authenticate.
   const isProtected =
+    pathname.startsWith('/home') ||
     pathname.startsWith('/events') ||
+    pathname.startsWith('/finances') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/admin')
 

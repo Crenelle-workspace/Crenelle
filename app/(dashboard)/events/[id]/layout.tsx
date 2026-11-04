@@ -7,6 +7,8 @@ import { getEventAccess } from '@/lib/team-access'
 import { EventTabs } from './event-tabs'
 import { EventBreadcrumbs } from './event-breadcrumbs'
 import { EventStatusBadge } from './event-status-badge'
+import { EventHeaderContainer } from './event-header-container'
+import { EventRoleBanner } from '@/components/event-role-banner'
 
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }
@@ -82,8 +84,8 @@ export default async function EventLayout({
 
   return (
     <div>
-      {/* Navigation header row: Back Link on left, Breadcrumbs on right */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      {/* Navigation header row: Back Link on left, Breadcrumbs on right (hidden on laptop lg+ since Topbar and Sidebar provide them) */}
+      <div className="flex lg:hidden flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <Link
           href="/events"
           className="inline-flex items-center gap-2 font-sans text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground transition-colors group"
@@ -94,47 +96,54 @@ export default async function EventLayout({
         <EventBreadcrumbs id={id} eventName={event.name} />
       </div>
 
-      {/* Event heading */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 pb-6 border-b border-border/40">
-        <div className="space-y-1.5">
-          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-2.5 py-1 rounded-full inline-block">
-            Event Workspace
-          </span>
-          <h1 className="font-display font-semibold text-foreground leading-[0.95] tracking-tight text-4xl sm:text-6xl">
-            {event.name}
-          </h1>
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <p className="font-sans text-xs font-semibold text-muted-foreground">
-              {new Date(event.date).toLocaleDateString('en-GB', {
-                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-              })}
-            </p>
-            {event.event_type === 'open' && (
-              <span className="font-mono text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 border border-copper/30 bg-copper/10 text-copper rounded-full">
-                Open Event
-              </span>
-            )}
-            {/* Co-host role badge — only shown to non-owners */}
-            {!access.isOwner && access.role && (
-              <span className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 border border-copper/30 bg-copper/10 text-copper rounded-full">
-                <Users className="h-2.5 w-2.5" aria-hidden="true" />
-                {roleLabels[access.role] ?? 'CO-HOST'}
-              </span>
-            )}
+      {/* Event heading: shown on overview on all screens, but streamlined away on sub-pages on lg+ */}
+      <EventHeaderContainer id={id}>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 pb-6 border-b border-border/40">
+          <div className="space-y-1.5">
+            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-copper bg-copper/10 border border-copper/20 px-2.5 py-1 rounded-full inline-block">
+              Event Workspace
+            </span>
+            <h1 className="font-display font-semibold text-foreground leading-[0.95] tracking-tight text-4xl sm:text-6xl">
+              {event.name}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <p className="font-sans text-xs font-semibold text-muted-foreground">
+                {new Date(event.date).toLocaleDateString('en-GB', {
+                  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                })}
+              </p>
+              {event.event_type === 'open' && (
+                <span className="font-mono text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 border border-copper/30 bg-copper/10 text-copper rounded-full">
+                  Open Event
+                </span>
+              )}
+              {/* Co-host role badge — only shown to non-owners */}
+              {!access.isOwner && access.role && (
+                <span className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 border border-copper/30 bg-copper/10 text-copper rounded-full">
+                  <Users className="h-2.5 w-2.5" aria-hidden="true" />
+                  {roleLabels[access.role] ?? 'CO-HOST'}
+                </span>
+              )}
+            </div>
           </div>
+
+          <EventStatusBadge
+            eventId={id}
+            eventName={event.name}
+            initialStatus={event.status}
+            canEdit={access.canEdit}
+            variant="header"
+          />
         </div>
+        {!access.isOwner && access.role && (
+          <EventRoleBanner role={access.role} eventName={event.name} />
+        )}
+      </EventHeaderContainer>
 
-        <EventStatusBadge
-          eventId={id}
-          eventName={event.name}
-          initialStatus={event.status}
-          canEdit={access.canEdit}
-          variant="header"
-        />
+      {/* Tab navigation (hidden on laptop lg+ since Sidebar contains all tabs) */}
+      <div className="lg:hidden">
+        <EventTabs id={id} tabs={tabs} />
       </div>
-
-      {/* Tab navigation */}
-      <EventTabs id={id} tabs={tabs} />
 
       {children}
     </div>

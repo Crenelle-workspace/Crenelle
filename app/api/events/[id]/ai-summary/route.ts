@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimitAsync } from '@/lib/rate-limit'
 import { GoogleGenAI } from '@google/genai'
 
 interface AiSummaryRequestBody {
@@ -41,6 +42,18 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const rateLimit = await checkRateLimitAsync({
+      key: `ai_summary:${user.id}`,
+      limit: 20,
+      windowMs: 15 * 60 * 1000,
+    })
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many AI summary requests. Please wait a few minutes and try again.' },
+        { status: 429 }
+      )
+    }
+
     // ── Parse request body ──────────────────────────────────────────────────
     const body = (await request.json()) as AiSummaryRequestBody
     const { questionLabel, answers } = body
@@ -54,7 +67,7 @@ export async function POST(
     // ── Build a tight prompt with the aggregated digest ─────────────────────
     const answersDigest = answers
       .slice(0, 20) // cap at 20 unique answers to keep prompt tiny
-      .map((a) => `- "${a.text}" (${a.count} respondent${a.count !== 1 ? 's' : ''})`)
+      .map((a) => `- "${String(a.text ?? '').slice(0, 500)}" (${Number(a.count) || 0} respondent${a.count !== 1 ? 's' : ''})`)
       .join('\n')
 
     const prompt = `You are an event intelligence analyst writing for a post-event executive report.
