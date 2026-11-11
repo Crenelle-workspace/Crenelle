@@ -83,7 +83,7 @@ describe('signup — consent enforcement', () => {
 
     // redirect() throws NEXT_REDIRECT on success (stubbed in vitest.setup.ts)
     await expect(signup(makeFormData({ ...VALID, terms: 'on' }))).rejects.toThrow(
-      'NEXT_REDIRECT:/events'
+      'NEXT_REDIRECT:/home'
     )
 
     expect(signUp).toHaveBeenCalledWith({

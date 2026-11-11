@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Plus, Pencil, X, Users, Lock, Download, Loader2, Send } from 'lucide-react'
 import { addAttendee, updateAttendee, cancelAttendeeInvitation, addMultipleAttendees, updateAttendeeTicketTier, resendAttendeePass } from '@/app/actions/attendees'
@@ -32,6 +32,7 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSavingTier, setIsSavingTier] = useState<string | null>(null)
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const resendingRef = useRef<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
   const exportToCSV = () => {
@@ -216,14 +217,15 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
   }
 
   async function handleResendPass(guest: GuestWithInvitation) {
-    if (resendingId) return
+    if (resendingRef.current.has(guest.id) || resendingId) return
+    resendingRef.current.add(guest.id)
     setResendingId(guest.id)
     try {
       const result = await resendAttendeePass(guest.id, eventId)
       if (result?.error) {
         toast.error(result.error)
       } else if (result?.warning) {
-        toast.warning(`Pass sent with notice: ${result.warning}`)
+        toast.warning(result.warning)
       } else {
         toast.success(`Entry pass sent to ${guest.email || guest.phone || guest.name}`)
       }
@@ -231,6 +233,9 @@ export default function GuestsPageClient({ canEdit }: { canEdit: boolean }) {
       toast.error(e instanceof Error ? e.message : 'Failed to resend pass')
     } finally {
       setResendingId(null)
+      setTimeout(() => {
+        resendingRef.current.delete(guest.id)
+      }, 3000)
     }
   }
 

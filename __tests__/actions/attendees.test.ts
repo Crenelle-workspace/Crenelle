@@ -27,6 +27,7 @@ import {
   resendAttendeePass,
 } from '@/app/actions/attendees'
 import { sendInvitationEmail } from '@/lib/email'
+import { __resetRateLimitStoreForTests } from '@/lib/rate-limit'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ const mockSendEmail = sendInvitationEmail as ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  __resetRateLimitStoreForTests()
   // Restore default email mock after each test
   mockSendEmail.mockResolvedValue({ success: true })
 })
@@ -366,5 +368,59 @@ describe('resendAttendeePass', () => {
 
     const result = await resendAttendeePass('att-1', 'event-1')
     expect(result).toEqual({ error: 'Cannot resend pass for a cancelled invitation.' })
+  })
+
+  it('deduplicates rapid consecutive calls for the same attendee (idempotency guard)', async () => {
+    mockCreateClient.mockResolvedValue({
+      from: vi.fn((table: string) => {
+        if (table === 'attendees') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: { id: 'att-1', name: 'Alice', email: 'alice@x.com', phone: null, party_size: 1 },
+              error: null,
+            }),
+          }
+        }
+        if (table === 'events') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: { name: 'Gala', date: '2026-12-01', time: '18:00', venue: 'Lagos' },
+              error: null,
+            }),
+          }
+        }
+        if (table === 'invitations') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { id: 'inv-1', status: 'active' },
+              error: null,
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }
+      }),
+    })
+
+    const first = await resendAttendeePass('att-1', 'event-1')
+    expect(first).toEqual({ success: true })
+    expect(mockSendEmail).toHaveBeenCalledTimes(1)
+
+    // Immediate second call triggers debounce guard without sending duplicate email
+    const second = await resendAttendeePass('att-1', 'event-1')
+    expect(second).toEqual({
+      success: true,
+      warning: 'A pass was just sent to this guest. Please wait 15 seconds before requesting another.',
+    })
+    expect(mockSendEmail).toHaveBeenCalledTimes(1)
   })
 })

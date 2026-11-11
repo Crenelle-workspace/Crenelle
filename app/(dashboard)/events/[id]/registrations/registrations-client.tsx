@@ -66,6 +66,7 @@ export default function RegistrationsPage({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [promotingId, setPromotingId] = useState<string | null>(null)
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const resendingRef = useRef<Set<string>>(new Set())
   const [reminderOpen, setReminderOpen] = useState(false)
   const [reminderMessage, setReminderMessage] = useState('')
   const [sendingReminder, setSendingReminder] = useState(false)
@@ -259,14 +260,15 @@ export default function RegistrationsPage({
   }
 
   async function handleResendPass(reg: Registration) {
-    if (resendingId || !canManageGuests) return
+    if (resendingRef.current.has(reg.id) || resendingId || !canManageGuests) return
+    resendingRef.current.add(reg.id)
     setResendingId(reg.id)
     try {
       const result = await resendAttendeePass(reg.id, eventId)
       if (result?.error) {
         toast.error(result.error)
       } else if (result?.warning) {
-        toast.warning(`Pass sent with notice: ${result.warning}`)
+        toast.warning(result.warning)
       } else {
         toast.success(`Entry pass resent to ${reg.email}`)
       }
@@ -274,6 +276,9 @@ export default function RegistrationsPage({
       toast.error(e instanceof Error ? e.message : 'Failed to resend pass')
     } finally {
       setResendingId(null)
+      setTimeout(() => {
+        resendingRef.current.delete(reg.id)
+      }, 3000)
     }
   }
 

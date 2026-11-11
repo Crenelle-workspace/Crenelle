@@ -48,6 +48,15 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  async redirects() {
+    return [
+      {
+        source: '/dashboard',
+        destination: '/home',
+        permanent: false,
+      },
+    ]
+  },
 }
 
 export default withSentryConfig(nextConfig, {
