@@ -56,7 +56,7 @@ export default function Error({
           <div className="flex items-center gap-4">
             <ModeToggle />
             <Link
-              href="/events"
+              href="/home"
               className="inline-flex items-center justify-center rounded-full bg-foreground text-background font-sans text-xs font-bold px-6 py-2.5 hover:bg-copper hover:text-white transition-all duration-300 shadow-md shadow-black/5"
             >
               Dashboard
@@ -99,7 +99,7 @@ export default function Error({
               <span>Try Again</span>
             </button>
             <Link
-              href="/events"
+              href="/home"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-border/60 bg-card/50 text-foreground font-sans text-xs font-bold px-8 py-3.5 hover:border-copper/50 hover:bg-copper/5 transition-all duration-300 w-full sm:w-auto"
             >
               <LayoutDashboard className="w-4 h-4" />
@@ -142,7 +142,7 @@ export default function Error({
             <Link href="/" className="hover:text-foreground transition-colors">
               Home
             </Link>
-            <Link href="/events" className="hover:text-foreground transition-colors">
+            <Link href="/home" className="hover:text-foreground transition-colors">
               Dashboard
             </Link>
           </div>

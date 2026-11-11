@@ -251,7 +251,9 @@ export default function ScannerClient({
   }
 
   const processScanRef = useRef(processScan)
-  processScanRef.current = processScan
+  useEffect(() => {
+    processScanRef.current = processScan
+  })
 
   const startScanner = useCallback(async () => {
     if (scannerRef.current) return

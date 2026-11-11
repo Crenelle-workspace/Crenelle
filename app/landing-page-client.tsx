@@ -10,7 +10,6 @@ import {
   ShieldCheck,
   Activity,
 } from "lucide-react";
-import { ModeToggle } from "@/components/mode-toggle";
 import { cn } from "@/lib/utils";
 import { TiltEventCard } from "@/components/landing/tilt-event-card";
 import { InteractiveTicketStack } from "@/components/landing/interactive-ticket-stack";
@@ -99,7 +98,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
               className="flex flex-col sm:flex-row gap-4 items-center justify-center lg:justify-start w-full sm:w-auto pt-2"
             >
               <Link
-                href={user ? "/events" : "/login"}
+                href={user ? "/home" : "/login"}
                 className="inline-flex items-center gap-2.5 bg-foreground text-background text-xs font-bold px-8 py-3.5 rounded-full hover:bg-copper hover:text-white transition-all duration-300 shadow-lg shadow-black/5"
               >
                 Create Your Event
@@ -413,7 +412,7 @@ export function LandingPageClient({ user }: LandingPageClientProps) {
 
           <div className="pt-4">
             <Link
-              href={user ? "/events" : "/login"}
+              href={user ? "/home" : "/login"}
               className="inline-flex items-center gap-2 bg-foreground text-background text-sm font-bold px-10 py-4.5 rounded-full hover:bg-copper hover:text-white transition-all duration-300 shadow-xl shadow-black/10 dark:shadow-black/30"
             >
               Start Hosting for Free

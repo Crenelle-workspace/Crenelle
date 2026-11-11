@@ -255,11 +255,15 @@ describe('submitRegistration', () => {
           }
         }
         if (table === 'ticket_tiers') {
-          return {
+          // Supports both the single-tier lookup (.maybeSingle()) and the
+          // "list this event's tiers" query, which is awaited directly.
+          const chain = {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             maybeSingle: vi.fn().mockResolvedValue({ data: tier, error: null }),
+            then: (resolve: (v: unknown) => unknown) => resolve({ data: tier ? [tier] : [], error: null }),
           }
+          return chain
         }
         // attendees
         return {
@@ -292,6 +296,62 @@ describe('submitRegistration', () => {
     expect(result).toEqual({
       error: 'This ticket tier requires payment. Please complete checkout to register.',
     })
+  })
+
+  it('rejects registration when ticket_tier_id is omitted on an event with a paid public tier', async () => {
+    mockCreateAdminClient.mockReturnValue(
+      mockClientWithTier({ id: 'tier-paid', price: 500000, is_public: true, deleted_at: null }),
+    )
+
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'Omitted Tier Freeloader' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({
+      error: 'Please select a ticket tier to register for this event.',
+    })
+  })
+
+  it('allows registration without a tier when the event only has free tiers', async () => {
+    mockCreateAdminClient.mockReturnValue(
+      mockClientWithTier({ id: 'tier-free', price: 0, is_public: true, deleted_at: null }),
+    )
+
+    const fd = makeFormData({ email: uniqueEmail(), full_name: 'Free Visitor' })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({ success: true, waitlisted: false })
+  })
+
+  it('refuses a 100% coupon registration when the coupon was exhausted concurrently', async () => {
+    const deleteEq = vi.fn().mockResolvedValue({ error: null })
+    const base = mockClientWithTier({ id: 'tier-paid', price: 500000, is_public: true, deleted_at: null })
+    mockCreateAdminClient.mockReturnValue({
+      from: vi.fn((table: string) => {
+        const t = base.from(table) as Record<string, unknown>
+        if (table === 'attendees') t.delete = vi.fn(() => ({ eq: deleteEq }))
+        return t
+      }),
+      rpc: vi.fn((fn: string) => {
+        if (fn === 'validate_and_apply_coupon') {
+          return Promise.resolve({
+            data: { valid: true, coupon_id: 'coupon-1', discount_kobo: 500000, final_price_kobo: 0 },
+            error: null,
+          })
+        }
+        // increment_coupon_usage: no slot left
+        return Promise.resolve({ data: false, error: null })
+      }),
+    })
+
+    const fd = makeFormData({
+      email: uniqueEmail(),
+      full_name: 'Late Coupon User',
+      ticket_tier_id: 'tier-paid',
+      coupon_code: 'FREE100',
+    })
+    const result = await submitRegistration('event-1', fd)
+    expect(result).toEqual({
+      error: 'This coupon has reached its usage limit. Please try another code or complete payment.',
+    })
+    expect(deleteEq).toHaveBeenCalledWith('id', 'att-new')
   })
 
   it('rejects a tier id that does not belong to the event (IDOR)', async () => {

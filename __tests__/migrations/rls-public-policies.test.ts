@@ -84,4 +84,21 @@ describe('RLS regression guard — no later migration re-opens the holes', () =>
       expect(reopens, `${f} re-opens anon entry_logs INSERT`).toBe(false)
     }
   })
+
+  it('migration 056 drops public self-register INSERT on attendees and restricts email logs to service_role', () => {
+    const file056 = migrationFiles().find((f) => f.startsWith('056_'))
+    expect(file056).toBeDefined()
+    const sql = normalize(read(file056!))
+    expect(sql).toContain(
+      'drop policy if exists "public can self-register as attendee" on public.attendees'
+    )
+    expect(sql).toContain('on public.email_logs for insert to service_role with check (true)')
+    expect(sql).toContain('on public.email_events for insert to service_role with check (true)')
+  })
+
+  it('placeholder for loop closure', () => {
+    for (const f of laterFiles) {
+      expect(f).toBeDefined()
+    }
+  })
 })

@@ -2,27 +2,32 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calendar, Plus, Settings, Wallet } from 'lucide-react'
+import { Calendar, Home, Plus, Settings, Wallet } from 'lucide-react'
 
 export function MobileNav() {
   const pathname = usePathname()
 
   const tabs = [
     {
+      label: 'Home',
+      href: '/home',
+      icon: Home,
+    },
+    {
       label: 'Events',
       href: '/events',
       icon: Calendar,
-    },
-    {
-      label: 'Finances',
-      href: '/finances',
-      icon: Wallet,
     },
     {
       label: 'New Event',
       href: '/events/new',
       icon: Plus,
       isFab: true,
+    },
+    {
+      label: 'Finances',
+      href: '/finances',
+      icon: Wallet,
     },
     {
       label: 'Settings',
@@ -34,7 +39,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label="Mobile navigation"
-      className="fixed bottom-3 left-4 right-4 z-40 bg-card/85 backdrop-blur-xl border border-border/50 rounded-full px-6 py-2 flex items-center justify-around sm:hidden h-16 shadow-2xl"
+      className="fixed bottom-3 left-4 right-4 z-40 bg-card/85 backdrop-blur-xl border border-border/50 rounded-full px-4 py-2 flex items-center justify-around md:hidden h-16 shadow-2xl"
     >
       {tabs.map((tab) => {
         const Icon = tab.icon
@@ -64,7 +69,7 @@ export function MobileNav() {
             key={tab.label}
             href={tab.href}
             aria-current={isActive ? 'page' : undefined}
-            className={`flex flex-col items-center gap-1 py-1 px-3 focus-visible:outline-none transition-colors ${
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 focus-visible:outline-none transition-colors ${
               isActive ? 'text-copper font-bold' : 'text-muted-foreground hover:text-foreground'
             }`}
           >

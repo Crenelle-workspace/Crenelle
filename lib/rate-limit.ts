@@ -154,9 +154,9 @@ export async function checkRateLimitAsync(
     const pipeline: unknown[] = [
       ['INCR', pttlKey],
       ['PTTL', pttlKey],
-      // PEXPIRE is always sent; Redis no-ops it when the key already has a TTL
-      // set (i.e. not first hit). The result is ignored — we use the PTTL result.
-      ['PEXPIRE', pttlKey, Math.ceil(options.windowMs / 1000)],
+      // PEXPIRE takes MILLISECONDS. NX sets the TTL only when the key has none
+      // (first hit of a window), so later hits never extend or shrink the window.
+      ['PEXPIRE', pttlKey, options.windowMs, 'NX'],
     ]
 
     const res = await fetch(url, {

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sendInvitationEmail } from '@/lib/email'
 import { validateEmailBlob } from '@/lib/validations/guest-import'
 import { sendInvitationWhatsApp } from '@/lib/whatsapp'
+import { checkRateLimitAsync } from '@/lib/rate-limit'
 import * as Sentry from '@sentry/nextjs'
 
 export async function addAttendee(eventId: string, formData: FormData) {
@@ -239,12 +240,140 @@ export async function addMultipleAttendees(eventId: string, emailsText: string, 
   }
 }
 
-export async function updateAttendee(attendeeId: string, eventId: string, formData: FormData) {
+export async function resendAttendeePass(attendeeId: string, eventId: string): Promise<{ success?: boolean; error?: string; warning?: string }> {
+  const supabase = await createClient()
+
+  const [{ data: attendee, error: attError }, { data: event, error: evError }] = await Promise.all([
+    supabase.from('attendees').select('*').eq('id', attendeeId).eq('event_id', eventId).single(),
+    supabase
+      .from('events')
+      .select('name, date, time, timezone, venue, description, banner_url, email_theme')
+      .eq('id', eventId)
+      .single(),
+  ])
+
+  if (attError || !attendee) return { error: 'Guest not found' }
+  if (evError || !event) return { error: 'Event not found' }
+
+  if (!attendee.email && !attendee.phone) {
+    return { error: 'This guest has no email address or phone number on file.' }
+  }
+
+  // Find or create invitation for this guest
+  let { data: invitation } = await supabase
+    .from('invitations')
+    .select('id, status')
+    .eq('attendee_id', attendeeId)
+    .eq('event_id', eventId)
+    .maybeSingle()
+
+  if (invitation?.status === 'cancelled') {
+    return { error: 'Cannot resend pass for a cancelled invitation.' }
+  }
+
+  // ── Idempotency / Debounce Guard ──────────────────────────────────────────
+  // Protects against rapid button double-clicks or client network retry loops.
+  const resendLimit = await checkRateLimitAsync({
+    key: `resend_pass:${attendeeId}`,
+    limit: 1,
+    windowMs: 15 * 1000, // 15-second debounce window
+  })
+
+  if (!resendLimit.allowed) {
+    return {
+      success: true,
+      warning: 'A pass was just sent to this guest. Please wait 15 seconds before requesting another.',
+    }
+  }
+
+  if (!invitation) {
+    const { data: createdInv, error: createInvError } = await supabase
+      .from('invitations')
+      .insert({
+        event_id: eventId,
+        attendee_id: attendeeId,
+        party_size: 1,
+        status: 'active',
+        ticket_tier_id: attendee.ticket_tier_id ?? null,
+      })
+      .select('id, status')
+      .single()
+
+    if (createInvError || !createdInv) {
+      return { error: createInvError?.message || 'Failed to generate entry pass' }
+    }
+    invitation = createdInv
+  }
+
+  let emailWarning: string | undefined
+  let whatsappWarning: string | undefined
+
+  const timeBucket = Math.floor(Date.now() / 15000)
+  const idempotencyKey = `resend-pass:${attendeeId}:${timeBucket}`
+
+  await Promise.all([
+    attendee.email
+      ? (async () => {
+          try {
+            const emailResult = await sendInvitationEmail({
+              eventId,
+              recipientEmail: attendee.email,
+              recipientName: attendee.name,
+              invitationId: invitation.id,
+              event,
+              idempotencyKey,
+            })
+            if (emailResult && 'error' in emailResult && emailResult.error) {
+              emailWarning = emailResult.error
+            }
+          } catch (e: unknown) {
+            Sentry.captureException(e, { extra: { eventId, attendeeId, context: 'resend_attendee_pass_email' } })
+            emailWarning = e instanceof Error ? e.message : 'Email dispatch failed'
+          }
+        })()
+      : Promise.resolve(),
+    attendee.phone
+      ? (async () => {
+          try {
+            const whatsappResult = await sendInvitationWhatsApp({
+              eventId,
+              recipientPhone: attendee.phone,
+              recipientName: attendee.name,
+              invitationId: invitation.id,
+              event,
+            })
+            if (whatsappResult && 'error' in whatsappResult && whatsappResult.error) {
+              whatsappWarning = whatsappResult.error
+            }
+          } catch (e: unknown) {
+            Sentry.captureException(e, { extra: { eventId, attendeeId, context: 'resend_attendee_pass_whatsapp' } })
+            whatsappWarning = e instanceof Error ? e.message : 'WhatsApp dispatch failed'
+          }
+        })()
+      : Promise.resolve(),
+  ])
+
+  if (emailWarning && (!attendee.phone || whatsappWarning)) {
+    return { error: `Failed to send pass: ${emailWarning}` }
+  }
+
+  const warnings: string[] = []
+  if (emailWarning) warnings.push(`Email failed: ${emailWarning}`)
+  if (whatsappWarning) warnings.push(`WhatsApp failed: ${whatsappWarning}`)
+
+  return {
+    success: true,
+    ...(warnings.length > 0 ? { warning: warnings.join('; ') } : {}),
+  }
+}
+
+export async function updateAttendee(attendeeId: string, eventId: string, formData: FormData): Promise<{ success?: boolean; error?: string; warning?: string }> {
   const supabase = await createClient()
 
   const name = formData.get('name') as string
   const phone = (formData.get('phone') as string) || null
   const email = (formData.get('email') as string) || null
+  const shouldResendPass = formData.get('resend_pass') === 'true' || formData.get('resend_pass') === 'on'
 
   const { error } = await supabase
     .from('attendees')
@@ -267,8 +396,18 @@ export async function updateAttendee(attendeeId: string, eventId: string, formDa
     })
     .eq('attendee_id', attendeeId)
 
+  let warning: string | undefined
+  if (shouldResendPass && (email || phone)) {
+    const resendResult = await resendAttendeePass(attendeeId, eventId)
+    if (resendResult?.error) {
+      warning = `Guest updated, but pass delivery failed: ${resendResult.error}`
+    } else if (resendResult?.warning) {
+      warning = `Guest updated (${resendResult.warning})`
+    }
+  }
+
   revalidatePath(`/events/${eventId}/guests`)
-  return { success: true }
+  return { success: true, ...(warning ? { warning } : {}) }
 }
 
 export async function cancelAttendeeInvitation(attendeeId: string, eventId: string) {

@@ -58,7 +58,7 @@ type RawDbLog = {
   } | { id: string; party_size: number; seat_info: string | null; ticket_tier_id: string | null; attendee: GuestName | GuestName[] | null }[] | null
 }
 
-export default function LiveDashboardPage() {
+export default function LiveDashboardPage({ role }: { role?: string }) {
   const { id: eventId } = useParams<{ id: string }>()
   const [totalInvited, setTotalInvited] = useState(0)
   const [totalSeats, setTotalSeats] = useState(0)
@@ -487,7 +487,7 @@ export default function LiveDashboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [eventId])
+  }, [eventId, fetchAiSummaries])
 
   useEffect(() => {
     void loadData()
@@ -626,7 +626,14 @@ export default function LiveDashboardPage() {
                     partySize: e.invitation.party_size,
                     scannerGate: e.gate_name,
                   })),
-                  financials,
+                  financials: (role === 'scanner_manager' || role === 'viewer') ? {
+                    grossRevenueKobo: 0,
+                    platformFeeKobo: 0,
+                    organiserPayoutKobo: 0,
+                    currency: 'NGN',
+                    paidTicketsCount: 0,
+                    freeTicketsCount: 0,
+                  } : financials,
                   tierBreakdown,
                   registrationFunnel,
                   customQuestions: customQuestions.map((q) =>

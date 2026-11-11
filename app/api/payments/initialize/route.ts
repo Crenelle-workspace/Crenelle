@@ -279,7 +279,22 @@ export async function POST(request: NextRequest) {
     attendeeId = attendee.id
     isNewAttendee = true
   } else {
-    // Update existing pending attendee with potentially new details
+    // Update existing pending attendee ONLY if it originated from an abandoned paid checkout.
+    // If the pending attendee has no prior payment record, they already registered via the free
+    // or 100%-coupon flow and are awaiting organizer approval — reject to prevent overwrite.
+    const { data: priorPayment } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('attendee_id', attendeeId)
+      .limit(1)
+      .maybeSingle()
+
+    if (!priorPayment) {
+      return NextResponse.json(
+        { error: 'You have already registered for this event with this email' },
+        { status: 409 }
+      )
+    }
     const { error: attendeeUpdateError } = await supabase
       .from('attendees')
       .update({

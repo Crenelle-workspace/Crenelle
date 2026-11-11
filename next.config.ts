@@ -1,5 +1,5 @@
 import type { NextConfig } from 'next'
-import { withSentryConfig } from '@sentry/nextjs'
+import { withSentryConfig } from '@sentry/nextjs/config'
 
 const nextConfig: NextConfig = {
   // Optimize barrel-import heavy packages: Next rewrites `import { X } from 'pkg'`
@@ -45,6 +45,15 @@ const nextConfig: NextConfig = {
             value: 'max-age=63072000; includeSubDomains; preload',
           },
         ],
+      },
+    ]
+  },
+  async redirects() {
+    return [
+      {
+        source: '/dashboard',
+        destination: '/home',
+        permanent: false,
       },
     ]
   },

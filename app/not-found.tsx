@@ -74,7 +74,7 @@ export default function NotFound() {
           <div className="flex items-center gap-4">
             <ModeToggle />
             <Link
-              href="/events"
+              href="/home"
               className="inline-flex items-center justify-center rounded-full bg-foreground text-background font-sans text-xs font-bold px-6 py-2.5 hover:bg-copper hover:text-white transition-all duration-300 shadow-md shadow-black/5"
             >
               Dashboard
@@ -132,7 +132,7 @@ export default function NotFound() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10"
           >
             <Link
-              href="/events"
+              href="/home"
               className="inline-flex items-center justify-center gap-2.5 rounded-full bg-foreground text-background font-sans text-xs font-bold px-8 py-3.5 hover:bg-copper hover:text-white transition-all duration-300 shadow-lg shadow-black/5 w-full sm:w-auto"
             >
               <LayoutDashboard className="w-4 h-4" />
@@ -211,7 +211,7 @@ export default function NotFound() {
             <Link href="/" className="hover:text-foreground transition-colors">
               Home
             </Link>
-            <Link href="/events" className="hover:text-foreground transition-colors">
+            <Link href="/home" className="hover:text-foreground transition-colors">
               Dashboard
             </Link>
             <Link href="/login" className="hover:text-foreground transition-colors">

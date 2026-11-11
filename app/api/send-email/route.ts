@@ -32,13 +32,41 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'invitation') {
-      const { recipientEmail, recipientName, invitationId } = body
+      const { invitationId } = body
+      if (!invitationId || typeof invitationId !== 'string') {
+        return NextResponse.json({ error: 'invitationId is required' }, { status: 400 })
+      }
+
+      // SECURITY: derive recipientEmail and recipientName from the event's own
+      // invitation record rather than trusting the request body (prevents IDOR
+      // and authenticated open mail relay).
+      const { data: inv, error: invError } = await supabase
+        .from('invitations')
+        .select('id, status, attendee:attendees(email, name)')
+        .eq('id', invitationId)
+        .eq('event_id', eventId)
+        .neq('status', 'cancelled')
+        .single()
+
+      const attendee = Array.isArray(inv?.attendee) ? inv.attendee[0] : inv?.attendee
+      if (invError || !inv || !attendee?.email) {
+        return NextResponse.json({ error: 'Invitation not found or guest has no email' }, { status: 404 })
+      }
+
+      const recipientEmail = attendee.email
+      const recipientName = attendee.name ?? 'Guest'
+      const idempotencyKey =
+        request.headers.get('idempotency-key') ||
+        (typeof body.idempotencyKey === 'string' ? body.idempotencyKey : undefined) ||
+        `invitation-${invitationId}`
+
       const res = await sendInvitationEmail({
         eventId,
         recipientEmail,
         recipientName,
         invitationId,
         event,
+        idempotencyKey,
       })
 
       if (res.error) {

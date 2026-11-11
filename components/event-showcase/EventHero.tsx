@@ -172,7 +172,7 @@ export function EventHero({
                 {venue}
               </p>
             </div>
-            {locationUrl && (
+            {locationUrl && /^https?:\/\//i.test(locationUrl) && (
               <a
                 href={locationUrl}
                 target="_blank"

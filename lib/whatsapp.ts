@@ -76,6 +76,7 @@ export async function sendInvitationWhatsApp({
     .from('invitations')
     .select('*, attendee:attendees(name, email, phone)')
     .eq('id', invitationId)
+    .eq('event_id', eventId)
     .single()
 
   if (invFetchError || !invitation) {

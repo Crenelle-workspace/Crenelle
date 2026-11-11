@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendInvitationEmail, sendReminderEmailsDirect, type ReminderEmailRecipient } from '@/lib/email'
 import { checkRateLimitAsync } from '@/lib/rate-limit'
 import { sendInvitationWhatsApp } from '@/lib/whatsapp'
-import { RegistrationInputSchema } from '@/lib/validations/registration'
+import { RegistrationInputSchema, validateRegistrationAnswers } from '@/lib/validations/registration'
 import type { RegistrationQuestion } from '@/lib/types'
 import * as Sentry from '@sentry/nextjs'
 
@@ -147,33 +147,31 @@ export async function submitRegistration(eventId: string, formData: FormData): P
     }
 
     ticketTierId = tier.id
+  } else {
+    // No ticket_tier_id supplied. If the event sells any public paid tier, the
+    // visitor must pick a tier (and pay, or use a 100% coupon) — otherwise
+    // omitting the field would register them for free.
+    const { data: eventTiers } = await supabase
+      .from('ticket_tiers')
+      .select('price, is_public, deleted_at')
+      .eq('event_id', eventId)
+
+    const hasPaidPublicTier = ((eventTiers ?? []) as { price: number; is_public: boolean; deleted_at: string | null }[])
+      .some((t) => t.deleted_at === null && t.is_public === true && t.price > 0)
+    if (hasPaidPublicTier) {
+      return { error: 'Please select a ticket tier to register for this event.' }
+    }
   }
 
   // 4b. Validate and parse custom question answers (server-side enforcement)
   const questions = (event.registration_questions ?? []) as RegistrationQuestion[]
   let parsedAnswers: Record<string, string | string[]> = {}
   if (questions.length > 0) {
-    const rawAnswers = formData.get('custom_answers') as string | null
-    if (rawAnswers) {
-      try {
-        parsedAnswers = JSON.parse(rawAnswers) as Record<string, string | string[]>
-      } catch {
-        return { error: 'Invalid form submission. Please try again.' }
-      }
-    }
-    // Enforce required questions
-    for (const q of questions) {
-      if (!q.required) continue
-      const val = parsedAnswers[q.id]
-      const isEmpty =
-        val === undefined ||
-        val === null ||
-        (typeof val === 'string' && val.trim() === '') ||
-        (Array.isArray(val) && val.length === 0)
-      if (isEmpty) {
-        return { error: `Please answer the required question: "${q.label}"` }
-      }
-    }
+    // Same validator as /api/payments/initialize: payload size cap, per-answer
+    // length cap, option allowlists, required checks, unknown keys dropped.
+    const validated = validateRegistrationAnswers(formData.get('custom_answers'), questions)
+    if (validated.error !== undefined) return { error: validated.error }
+    parsedAnswers = validated.answers
   }
 
   const isAutoApprove = Boolean(event.auto_approve_registrations) && !routeToWaitlist
@@ -255,11 +253,19 @@ export async function submitRegistration(eventId: string, formData: FormData): P
     }
   }
 
-  // Atomically increment coupon usage for 100% discount registrations that bypass Paystack.
-  // Only increment if the attendee is confirmed (not waitlisted) — a waitlisted attendee
-  // has not yet secured their spot, so consuming the coupon slot would be premature.
-  if (insertedAttendee && couponId && !routeToWaitlist) {
-    await supabase.rpc('increment_coupon_usage', { p_coupon_id: couponId })
+  // Atomically claim a coupon slot for 100% discount registrations that bypass
+  // Paystack. Waitlisted registrants claim too: there is no later point where
+  // promotion reliably re-checks the coupon, and claiming here guarantees
+  // max_uses can never be exceeded. increment_coupon_usage returns false when
+  // the coupon was exhausted/deactivated between validation and now.
+  if (insertedAttendee && couponId) {
+    const { data: claimed, error: claimError } = await supabase.rpc('increment_coupon_usage', {
+      p_coupon_id: couponId,
+    })
+    if (claimError || claimed !== true) {
+      await supabase.from('attendees').delete().eq('id', insertedAttendee.id)
+      return { error: 'This coupon has reached its usage limit. Please try another code or complete payment.' }
+    }
   }
 
   // 5. Persist custom question answers before returning from this server action.

@@ -7,7 +7,7 @@ interface EventCardProps {
   date: string
   time: string
   guestCount: number
-  capacity: number
+  capacity?: number | null
   status: "OPEN" | "CLOSED" | "LIVE" | "PUBLISHED" | "DRAFT"
   eventType?: "closed" | "open"
   onStatusClick?: (e: React.MouseEvent) => void
@@ -27,7 +27,8 @@ export function EventCard({
   className,
   guestLabel,
 }: EventCardProps) {
-  const percentage = capacity > 0 ? Math.min((guestCount / capacity) * 100, 100) : 0
+  const hasCapacity = typeof capacity === 'number' && capacity > 0
+  const percentage = hasCapacity ? Math.min((guestCount / (capacity as number)) * 100, 100) : 0
   const displayTime = formatEventTime(time)
 
   const statusConfig: Record<string, { cls: string; label: string }> = {
@@ -115,19 +116,24 @@ export function EventCard({
               <span className="font-mono text-2xl font-bold text-foreground leading-none">
                 {guestCount.toString().padStart(3, '0')}
               </span>
-              <span className="font-mono text-xs text-muted-foreground">/ {capacity}</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {hasCapacity ? `/ ${capacity}` : '/ ∞'}
+              </span>
             </div>
           </div>
 
           <div className="flex-1">
             <div className="flex justify-between mb-1.5">
               <p className="font-sans text-[9px] uppercase font-bold tracking-wider text-muted-foreground/75">Capacity</p>
-              <p className="font-mono text-[9px] font-bold text-copper">{Math.round(percentage)}%</p>
+              <p className="font-mono text-[9px] font-bold text-copper">{hasCapacity ? `${Math.round(percentage)}%` : 'Open'}</p>
             </div>
             <div className="w-full h-1.5 bg-stone-200/50 dark:bg-stone-900 rounded-full overflow-hidden">
               <div
                 className="h-full bg-copper rounded-full transition-all duration-700 shadow-xs shadow-copper/50"
-                style={{ width: `${percentage}%` }}
+                style={{
+                  width: hasCapacity ? `${percentage}%` : guestCount > 0 ? '100%' : '0%',
+                  opacity: hasCapacity ? 1 : 0.6,
+                }}
               />
             </div>
           </div>

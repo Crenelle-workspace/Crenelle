@@ -68,7 +68,9 @@ export async function GET(request: NextRequest) {
 
   function escapeCSV(value: string | number | null | undefined): string {
     if (value === null || value === undefined) return ''
-    const str = String(value)
+    const rawStr = String(value)
+    const isFormulaTrigger = /^[=+\-@\t\r]/.test(rawStr.trimStart()) && !/^\+\d[\d\s()-]*$/.test(rawStr.trim())
+    const str = isFormulaTrigger ? `'${rawStr}` : rawStr
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {
       return `"${str.replace(/"/g, '""')}"`
     }
