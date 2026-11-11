@@ -55,12 +55,18 @@ export async function POST(request: NextRequest) {
 
       const recipientEmail = attendee.email
       const recipientName = attendee.name ?? 'Guest'
+      const idempotencyKey =
+        request.headers.get('idempotency-key') ||
+        (typeof body.idempotencyKey === 'string' ? body.idempotencyKey : undefined) ||
+        `invitation-${invitationId}`
+
       const res = await sendInvitationEmail({
         eventId,
         recipientEmail,
         recipientName,
         invitationId,
         event,
+        idempotencyKey,
       })
 
       if (res.error) {

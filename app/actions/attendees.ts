@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sendInvitationEmail } from '@/lib/email'
 import { validateEmailBlob } from '@/lib/validations/guest-import'
 import { sendInvitationWhatsApp } from '@/lib/whatsapp'
+import { checkRateLimitAsync } from '@/lib/rate-limit'
 import * as Sentry from '@sentry/nextjs'
 
 export async function addAttendee(eventId: string, formData: FormData) {
@@ -270,6 +271,21 @@ export async function resendAttendeePass(attendeeId: string, eventId: string): P
     return { error: 'Cannot resend pass for a cancelled invitation.' }
   }
 
+  // ── Idempotency / Debounce Guard ──────────────────────────────────────────
+  // Protects against rapid button double-clicks or client network retry loops.
+  const resendLimit = await checkRateLimitAsync({
+    key: `resend_pass:${attendeeId}`,
+    limit: 1,
+    windowMs: 15 * 1000, // 15-second debounce window
+  })
+
+  if (!resendLimit.allowed) {
+    return {
+      success: true,
+      warning: 'A pass was just sent to this guest. Please wait 15 seconds before requesting another.',
+    }
+  }
+
   if (!invitation) {
     const { data: createdInv, error: createInvError } = await supabase
       .from('invitations')
@@ -292,6 +308,9 @@ export async function resendAttendeePass(attendeeId: string, eventId: string): P
   let emailWarning: string | undefined
   let whatsappWarning: string | undefined
 
+  const timeBucket = Math.floor(Date.now() / 15000)
+  const idempotencyKey = `resend-pass:${attendeeId}:${timeBucket}`
+
   await Promise.all([
     attendee.email
       ? (async () => {
@@ -302,6 +321,7 @@ export async function resendAttendeePass(attendeeId: string, eventId: string): P
               recipientName: attendee.name,
               invitationId: invitation.id,
               event,
+              idempotencyKey,
             })
             if (emailResult && 'error' in emailResult && emailResult.error) {
               emailWarning = emailResult.error

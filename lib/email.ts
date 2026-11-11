@@ -241,6 +241,7 @@ export interface InvitationEmailOptions {
   recipientName: string
   invitationId: string
   event: EventDetails
+  idempotencyKey?: string
 }
 
 export interface ReminderEmailRecipient {
@@ -265,6 +266,7 @@ export async function sendInvitationEmail({
   recipientName,
   invitationId,
   event,
+  idempotencyKey,
 }: InvitationEmailOptions) {
   const supabase = createAdminClient()
 
@@ -393,35 +395,59 @@ export async function sendInvitationEmail({
     tierPerks: tierPerksList,
   })
 
+  const effectiveIdempotencyKey = idempotencyKey || `invitation-${invitationId}`
+
   try {
-    const { data: sendData, error: sendError } = await getResend().emails.send({
-      from: formatFromHeader(organizer.name),
-      ...(organizer.email ? { replyTo: organizer.email } : {}),
-      to: actualRecipientEmail,
-      subject: `You're confirmed — ${event.name}`,
-      html,
-      attachments: [
-        {
-          filename: 'qrcode.png',
-          content: qrBuffer,
-          contentId: 'qrcode',
+    const { data: sendData, error: sendError } = await getResend().emails.send(
+      {
+        from: formatFromHeader(organizer.name),
+        ...(organizer.email ? { replyTo: organizer.email } : {}),
+        to: actualRecipientEmail,
+        subject: `You're confirmed — ${event.name}`,
+        html,
+        headers: {
+          'X-Entity-Ref-ID': invitationId,
         },
-      ],
-    })
+        attachments: [
+          {
+            filename: 'qrcode.png',
+            content: qrBuffer,
+            contentId: 'qrcode',
+          },
+        ],
+      },
+      {
+        idempotencyKey: effectiveIdempotencyKey,
+      }
+    )
 
     if (sendError) {
       console.error('Resend error:', sendError)
       return { error: sendError.message || 'Failed to send email' }
     }
 
-    // Log the email — store Resend message ID for webhook correlation
-    await supabase.from('email_logs').insert({
-      event_id: eventId,
-      recipient_email: actualRecipientEmail,
-      email_type: 'invitation',
-      subject: `You're confirmed — ${event.name}`,
-      resend_email_id: sendData?.id ?? null,
-    })
+    // Log the email — store Resend message ID for webhook correlation.
+    // Use upsert to handle duplicate deliveries gracefully if Resend returns the same message ID.
+    if (sendData?.id) {
+      await supabase.from('email_logs').upsert(
+        {
+          event_id: eventId,
+          recipient_email: actualRecipientEmail,
+          email_type: 'invitation',
+          subject: `You're confirmed — ${event.name}`,
+          resend_email_id: sendData.id,
+        },
+        { onConflict: 'resend_email_id', ignoreDuplicates: true }
+      )
+    } else {
+      await supabase.from('email_logs').insert({
+        event_id: eventId,
+        recipient_email: actualRecipientEmail,
+        email_type: 'invitation',
+        subject: `You're confirmed — ${event.name}`,
+        resend_email_id: null,
+      })
+    }
 
     return { success: true }
   } catch (e: unknown) {
