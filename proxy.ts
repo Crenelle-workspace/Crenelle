@@ -73,11 +73,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // ── Authenticated redirect ───────────────────────────────────────────────
-  // Logged-in users hitting /login or /signup are sent straight to /events
+  // Logged-in users hitting /login or /signup are sent straight to /home
   if (user && (pathname === '/login' || pathname === '/signup')) {
-    const eventsUrl = request.nextUrl.clone()
-    eventsUrl.pathname = '/events'
-    return NextResponse.redirect(eventsUrl)
+    const homeUrl = request.nextUrl.clone()
+    homeUrl.pathname = '/home'
+    return NextResponse.redirect(homeUrl)
   }
 
   // Return the (possibly cookie-updated) response

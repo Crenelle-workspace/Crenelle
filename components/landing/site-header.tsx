@@ -91,7 +91,7 @@ export function SiteHeader({ user, className }: SiteHeaderProps) {
         <div className="hidden md:flex items-center gap-4">
           <ModeToggle />
           <Link
-            href={user ? "/events" : "/login"}
+            href={user ? "/home" : "/login"}
             className="inline-flex items-center justify-center rounded-full bg-foreground text-background font-sans text-xs font-bold px-6 py-2.5 hover:bg-copper hover:text-white transition-colors duration-300 shadow-sm"
           >
             {user ? "Go to Dashboard" : "Sign In"}
@@ -139,7 +139,7 @@ export function SiteHeader({ user, className }: SiteHeaderProps) {
 
           <div className="pt-2 border-t border-border/30">
             <Link
-              href={user ? "/events" : "/login"}
+              href={user ? "/home" : "/login"}
               onClick={() => setMobileMenuOpen(false)}
               className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-foreground text-background font-sans text-xs font-bold py-3 hover:bg-copper hover:text-white transition-colors"
             >

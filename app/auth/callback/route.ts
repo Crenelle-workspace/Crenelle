@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   // For email+password signups the confirmation link does NOT carry this param —
   // terms consent was captured at form submission and is recorded here instead.
   const termsAccepted = searchParams.get('terms_accepted') === 'true'
-  const next = safeRedirectPath(searchParams.get('next'), '/events')
+  const next = safeRedirectPath(searchParams.get('next'), '/home')
 
   if (code) {
     const supabase = await createClient()
