@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { COMPANY_LEGAL_NAME } from '@/lib/company'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -75,7 +76,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           <p className="font-mono text-[9px] text-muted-foreground/50 uppercase tracking-widest pt-4">
-            © 2026 CRENELLE SECURITY & TICKETING SERVICES
+            © {new Date().getFullYear()} {COMPANY_LEGAL_NAME.toUpperCase()}
           </p>
         </div>
       </div>

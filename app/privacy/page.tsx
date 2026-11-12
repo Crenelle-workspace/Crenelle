@@ -10,6 +10,11 @@ import {
   LegalTable,
   A,
 } from "@/components/legal/legal-page";
+import {
+  COMPANY_LEGAL_NAME,
+  COMPANY_LOCATION,
+  COMPANY_SUPPORT_EMAIL,
+} from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -17,16 +22,18 @@ export const metadata: Metadata = {
     "How Crenelle collects, uses and protects personal data for event organisers and their guests.",
 };
 
-const CONTACT = "support@crenelle.org";
+const CONTACT = COMPANY_SUPPORT_EMAIL;
 
 export default function PrivacyPolicyPage() {
   return (
     <LegalPage title="Privacy Policy" lastUpdated="31 July 2026">
       <H2 id="who-we-are">1. Who we are</H2>
       <P>
-        Crenelle (&ldquo;Crenelle&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) is a
-        QR-based access control and guest management platform operating from Lagos
-        State, Nigeria.
+        Crenelle is a QR-based access control and guest management platform
+        operated by{" "}
+        <strong className="text-foreground">{COMPANY_LEGAL_NAME}</strong>{" "}
+        (&ldquo;Crenelle&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;), operating
+        from {COMPANY_LOCATION}.
       </P>
       <P>
         For any question about this policy, or to exercise your rights, contact us
@@ -369,9 +376,9 @@ export default function PrivacyPolicyPage() {
 
       <H2 id="contact">12. Contact</H2>
       <P>
-        Crenelle
+        {COMPANY_LEGAL_NAME}
         <br />
-        Lagos State, Nigeria
+        {COMPANY_LOCATION}
         <br />
         <A href={`mailto:${CONTACT}`}>{CONTACT}</A>
       </P>

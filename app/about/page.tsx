@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 import { SiteHeader } from "@/components/landing/site-header";
 import { SiteFooter } from "@/components/landing/site-footer";
+import {
+  COMPANY_LEGAL_NAME,
+  COMPANY_LOCATION,
+  COMPANY_SUPPORT_EMAIL,
+} from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "About Us — The Access Credential Layer for Modern Events | Crenelle",
@@ -201,14 +206,14 @@ export default function AboutPage() {
         <section className="max-w-4xl mx-auto">
           <div className="rounded-2xl border border-border/40 bg-card/30 p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="space-y-1 text-center sm:text-left">
-              <h3 className="text-base font-bold text-foreground">Crenelle Technologies</h3>
+              <h3 className="text-base font-bold text-foreground">{COMPANY_LEGAL_NAME}</h3>
               <p className="text-xs text-muted-foreground">
-                Lagos State, Nigeria · Operating in compliance with the Nigeria Data Protection Act 2023 (NDPA).
+                Operating the Crenelle platform from {COMPANY_LOCATION} · Compliant with the Nigeria Data Protection Act 2023 (NDPA).
               </p>
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
               <a
-                href="mailto:support@crenelle.org"
+                href={`mailto:${COMPANY_SUPPORT_EMAIL}`}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border/60 text-xs font-semibold text-foreground hover:text-copper hover:border-copper/40 transition-colors"
               >
                 <Mail className="w-3.5 h-3.5 text-copper" />
