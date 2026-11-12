@@ -4,6 +4,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import AboutPage, { metadata as aboutMetadata } from "@/app/about/page";
 import PricingPage, { metadata as pricingMetadata } from "@/app/pricing/page";
 import FaqPage, { metadata as faqMetadata } from "@/app/faq/page";
+import PrivacyPolicyPage from "@/app/privacy/page";
+import TermsPage from "@/app/terms/page";
 import { PricingCalculator } from "@/components/pricing/pricing-calculator";
 import { FaqClient } from "@/components/faq/faq-client";
 import { SiteHeader } from "@/components/landing/site-header";
@@ -32,7 +34,7 @@ describe("Marketing & Trust Pages", () => {
       expect(screen.getByText("Founder")).toBeDefined();
       expect(screen.getByText("Jeremiah Ogunleye")).toBeDefined();
       expect(screen.getByText("Co-Founder & Technical Lead")).toBeDefined();
-      expect(screen.getByText("Crenelle Technologies")).toBeDefined();
+      expect(screen.getAllByText(/Crenelle Technological Solutions Limited/).length).toBeGreaterThan(0);
     });
 
     it("renders company origin and mission", () => {
@@ -109,12 +111,22 @@ describe("Marketing & Trust Pages", () => {
       expect(screen.getByText("FAQ")).toBeDefined();
     });
 
-    it("renders SiteFooter with structured Product and Company columns", () => {
+    it("renders SiteFooter with structured Product and Company columns and legal business name", () => {
       render(<SiteFooter />);
       expect(screen.getByText("Product")).toBeDefined();
       expect(screen.getByText("Company")).toBeDefined();
       expect(screen.getByText("About & Team")).toBeDefined();
       expect(screen.getByText("Pricing")).toBeDefined();
+      expect(screen.getAllByText(/Crenelle Technological Solutions Limited/).length).toBeGreaterThan(0);
+    });
+
+    it("renders the exact legal business name on Privacy Policy and Terms pages", () => {
+      const { unmount } = render(<PrivacyPolicyPage />);
+      expect(screen.getAllByText(/Crenelle Technological Solutions Limited/).length).toBeGreaterThan(0);
+      unmount();
+
+      render(<TermsPage />);
+      expect(screen.getAllByText(/Crenelle Technological Solutions Limited/).length).toBeGreaterThan(0);
     });
   });
 });

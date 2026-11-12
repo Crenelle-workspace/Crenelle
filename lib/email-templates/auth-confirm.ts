@@ -22,6 +22,8 @@
  * The {{ .ConfirmationURL }} placeholder is replaced by Supabase at send time.
  * If calling programmatically (Option B), pass the real URL as `confirmationUrl`.
  */
+import { COMPANY_LEGAL_NAME } from '@/lib/company'
+
 export function renderConfirmSignupEmail({
   confirmationUrl,
 }: {
@@ -154,7 +156,7 @@ export function renderConfirmSignupEmail({
                 CRENELLE &bull; EVENT &amp; TICKETING SERVICES
               </p>
               <p style="margin:6px 0 0;font-size:10px;color:#9E9890;text-align:center;">
-                &copy; 2026 Crenelle. All rights reserved.
+                &copy; ${new Date().getFullYear()} ${COMPANY_LEGAL_NAME}. All rights reserved.
               </p>
             </td>
           </tr>

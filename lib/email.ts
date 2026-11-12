@@ -2,6 +2,16 @@ import { Resend } from 'resend'
 import QRCode from 'qrcode'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { renderTicketEmail } from './email-templates'
+import { sendZohoEmail } from './zoho-cpaas'
+
+export type EmailProvider = 'resend' | 'zoho_cpaas'
+
+/** Returns the active transactional email provider controlled by `EMAIL_PROVIDER`. */
+export function getEmailProvider(): EmailProvider {
+  return process.env.EMAIL_PROVIDER?.trim().toLowerCase() === 'zoho_cpaas'
+    ? 'zoho_cpaas'
+    : 'resend'
+}
 
 /** Generates a PNG Buffer server-side for inline CID email attachments */
 async function generateQrBuffer(qrToken: string): Promise<Buffer> {
@@ -24,12 +34,7 @@ function getResend() {
   return _resend
 }
 
-// The sending address — domain must be verified in your Resend dashboard.
-// Set EMAIL_FROM_ADDRESS=noreply@yourdomain.com in .env.local.
-// Falls back to the legacy EMAIL_FROM value (address part only) if not set.
-// Lazy getter: reads env vars at call time (not at module import time) to avoid
-// edge-runtime / Next.js static-init issues where process.env may not be ready.
-function getSendingAddress(): string {
+function getConfiguredSendingAddress(): string | null {
   // Strip whitespace so a value like "  " (all spaces) is treated as unset
   const fromAddr = (process.env.EMAIL_FROM_ADDRESS ?? '').trim()
   if (fromAddr) return fromAddr
@@ -38,13 +43,29 @@ function getSendingAddress(): string {
   const legacyMatch = (process.env.EMAIL_FROM ?? '').match(/<(.+)>/)
   if (legacyMatch?.[1]?.trim()) return legacyMatch[1].trim()
 
+  return null
+}
+
+// The sending address — domain must be verified in your email provider dashboard.
+// Set EMAIL_FROM_ADDRESS=noreply@yourdomain.com in .env.local.
+// Falls back to the legacy EMAIL_FROM value (address part only) if not set.
+// Lazy getter: reads env vars at call time (not at module import time) to avoid
+// edge-runtime / Next.js static-init issues where process.env may not be ready.
+function getSendingAddress(): string {
+  const configured = getConfiguredSendingAddress()
+  if (configured) return configured
+
   // Final fallback — Resend sandbox (only delivers to account owner)
   console.warn(
     '[email] WARNING: EMAIL_FROM_ADDRESS is not set. Using Resend onboarding sandbox address ' +
     '(onboarding@resend.dev). Emails will ONLY deliver to the Resend account owner email. ' +
-    'Set EMAIL_FROM_ADDRESS=noreply@yourdomain.com in .env.local with a verified Resend domain.'
+    'Set EMAIL_FROM_ADDRESS=noreply@yourdomain.com in .env.local with a verified domain.'
   )
   return 'onboarding@resend.dev'
+}
+
+function sanitizeDisplayName(displayName: string): string {
+  return displayName.replace(/["\r\n]/g, '').replace(/\s+/g, ' ').trim() || 'Crenelle'
 }
 
 /**
@@ -89,8 +110,159 @@ export function safeImageUrl(value: unknown): string {
 
 /** Formats display name into a valid RFC 5322 From header: "Display Name" <address@domain.com> */
 export function formatFromHeader(displayName: string): string {
-  const cleanName = displayName.replace(/["\r\n]/g, '').replace(/\s+/g, ' ').trim() || 'Crenelle'
-  return `"${cleanName}" <${getSendingAddress()}>`
+  return `"${sanitizeDisplayName(displayName)}" <${getSendingAddress()}>`
+}
+
+const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000
+
+async function claimZohoIdempotencyKey(
+  supabase: ReturnType<typeof createAdminClient>,
+  key: string
+): Promise<boolean> {
+  try {
+    const cutoffIso = new Date(Date.now() - IDEMPOTENCY_TTL_MS).toISOString()
+    await supabase
+      .from('email_idempotency_keys')
+      .delete()
+      .eq('key', key)
+      .lt('created_at', cutoffIso)
+
+    const { error } = await supabase
+      .from('email_idempotency_keys')
+      .insert({ key, created_at: new Date().toISOString() })
+
+    if (!error) return true
+    if (error.code === '23505') return false
+
+    // Fail open on unexpected DB issues (e.g. unmigrated preview DB) rather than blocking ticket delivery
+    console.warn('[email] Idempotency claim error (failing open):', error.message)
+    return true
+  } catch (err) {
+    console.warn('[email] Idempotency claim exception (failing open):', err)
+    return true
+  }
+}
+
+async function releaseZohoIdempotencyKey(
+  supabase: ReturnType<typeof createAdminClient>,
+  key: string
+): Promise<void> {
+  try {
+    await supabase.from('email_idempotency_keys').delete().eq('key', key)
+  } catch (err) {
+    console.warn('[email] Failed to release idempotency key:', err)
+  }
+}
+
+interface DispatchEmailParams {
+  fromName: string
+  toEmail: string
+  toName?: string
+  replyToEmail?: string
+  replyToName?: string
+  subject: string
+  html: string
+  headers?: Record<string, string>
+  inlineQrBuffer?: Buffer
+  idempotencyKey?: string
+  clientReference?: string
+}
+
+async function dispatchProviderEmail(params: DispatchEmailParams): Promise<{
+  provider: EmailProvider
+  messageId: string | null
+  error?: string
+}> {
+  const provider = getEmailProvider()
+
+  if (provider === 'zoho_cpaas') {
+    const fromAddress = getConfiguredSendingAddress()
+    if (!fromAddress) {
+      return {
+        provider,
+        messageId: null,
+        error: 'EMAIL_FROM_ADDRESS is not configured for Zoho CPaaS.',
+      }
+    }
+
+    const cleanToName = params.toName?.replace(/[\r\n]/g, ' ').trim()
+    const cleanReplyTo = params.replyToEmail?.trim()
+    const cleanReplyName = params.replyToName ? sanitizeDisplayName(params.replyToName) : undefined
+
+    const { requestId, error } = await sendZohoEmail({
+      from: {
+        address: fromAddress,
+        name: sanitizeDisplayName(params.fromName),
+      },
+      to: [
+        {
+          email_address: {
+            address: params.toEmail,
+            ...(cleanToName ? { name: cleanToName } : {}),
+          },
+        },
+      ],
+      ...(cleanReplyTo
+        ? {
+            reply_to: [
+              {
+                address: cleanReplyTo,
+                ...(cleanReplyName ? { name: cleanReplyName } : {}),
+              },
+            ],
+          }
+        : {}),
+      subject: params.subject,
+      htmlbody: params.html,
+      ...(params.clientReference ? { client_reference: params.clientReference.slice(0, 100) } : {}),
+      ...(params.headers ? { mime_headers: params.headers } : {}),
+      ...(params.inlineQrBuffer
+        ? {
+            inline_images: [
+              {
+                cid: 'qrcode',
+                name: 'qrcode.png',
+                content: params.inlineQrBuffer.toString('base64'),
+                mime_type: 'image/png',
+              },
+            ],
+          }
+        : {}),
+    })
+
+    return { provider, messageId: requestId, error }
+  }
+
+  const { data: sendData, error: sendError } = await getResend().emails.send(
+    {
+      from: formatFromHeader(params.fromName),
+      ...(params.replyToEmail ? { replyTo: params.replyToEmail } : {}),
+      to: params.toEmail,
+      subject: params.subject,
+      html: params.html,
+      ...(params.headers ? { headers: params.headers } : {}),
+      ...(params.inlineQrBuffer
+        ? {
+            attachments: [
+              {
+                filename: 'qrcode.png',
+                content: params.inlineQrBuffer,
+                contentId: 'qrcode',
+              },
+            ],
+          }
+        : {}),
+    },
+    params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined
+  )
+
+  if (sendError) {
+    const errObj = sendError as unknown as { message?: string; name?: string }
+    const errMsg = sendError.message || errObj.name || JSON.stringify(sendError)
+    return { provider, messageId: null, error: errMsg }
+  }
+
+  return { provider, messageId: sendData?.id ?? null }
 }
 
 /** Organisation/organiser identity used to personalise the From header and Reply-To. */
@@ -396,61 +568,74 @@ export async function sendInvitationEmail({
   })
 
   const effectiveIdempotencyKey = idempotencyKey || `invitation-${invitationId}`
+  const provider = getEmailProvider()
+  let claimedZohoKey = false
 
   try {
-    const { data: sendData, error: sendError } = await getResend().emails.send(
-      {
-        from: formatFromHeader(organizer.name),
-        ...(organizer.email ? { replyTo: organizer.email } : {}),
-        to: actualRecipientEmail,
-        subject: `You're confirmed — ${event.name}`,
-        html,
-        headers: {
-          'X-Entity-Ref-ID': invitationId,
-        },
-        attachments: [
-          {
-            filename: 'qrcode.png',
-            content: qrBuffer,
-            contentId: 'qrcode',
-          },
-        ],
-      },
-      {
-        idempotencyKey: effectiveIdempotencyKey,
+    if (provider === 'zoho_cpaas') {
+      claimedZohoKey = await claimZohoIdempotencyKey(supabase, effectiveIdempotencyKey)
+      if (!claimedZohoKey) {
+        console.log(`[email] Skipping duplicate invitation send for key=${effectiveIdempotencyKey}`)
+        return { success: true, skipped: true }
       }
-    )
-
-    if (sendError) {
-      console.error('Resend error:', sendError)
-      return { error: sendError.message || 'Failed to send email' }
     }
 
-    // Log the email — store Resend message ID for webhook correlation.
-    // Use upsert to handle duplicate deliveries gracefully if Resend returns the same message ID.
-    if (sendData?.id) {
-      await supabase.from('email_logs').upsert(
-        {
-          event_id: eventId,
-          recipient_email: actualRecipientEmail,
-          email_type: 'invitation',
-          subject: `You're confirmed — ${event.name}`,
-          resend_email_id: sendData.id,
-        },
-        { onConflict: 'resend_email_id', ignoreDuplicates: true }
-      )
-    } else {
-      await supabase.from('email_logs').insert({
-        event_id: eventId,
-        recipient_email: actualRecipientEmail,
-        email_type: 'invitation',
-        subject: `You're confirmed — ${event.name}`,
-        resend_email_id: null,
-      })
+    const result = await dispatchProviderEmail({
+      fromName: organizer.name,
+      toEmail: actualRecipientEmail,
+      toName: actualRecipientName,
+      replyToEmail: organizer.email || undefined,
+      replyToName: organizer.name,
+      subject: `You're confirmed — ${event.name}`,
+      html,
+      headers: {
+        'X-Entity-Ref-ID': invitationId,
+      },
+      inlineQrBuffer: qrBuffer,
+      idempotencyKey: effectiveIdempotencyKey,
+      clientReference: effectiveIdempotencyKey,
+    })
+
+    if (result.error) {
+      if (claimedZohoKey) await releaseZohoIdempotencyKey(supabase, effectiveIdempotencyKey)
+      console.error(`${result.provider} error:`, result.error)
+      return { error: result.error || 'Failed to send email' }
+    }
+
+    // Log the email — store provider message ID for webhook correlation.
+    const logRow =
+      result.provider === 'zoho_cpaas'
+        ? {
+            event_id: eventId,
+            recipient_email: actualRecipientEmail,
+            email_type: 'invitation' as const,
+            subject: `You're confirmed — ${event.name}`,
+            provider: 'zoho_cpaas' as const,
+            zoho_request_id: result.messageId,
+            resend_email_id: null,
+          }
+        : {
+            event_id: eventId,
+            recipient_email: actualRecipientEmail,
+            email_type: 'invitation' as const,
+            subject: `You're confirmed — ${event.name}`,
+            provider: 'resend' as const,
+            resend_email_id: result.messageId,
+            zoho_request_id: null,
+          }
+
+    const conflictCol = result.provider === 'zoho_cpaas' ? 'zoho_request_id' : 'resend_email_id'
+    const { error: logError } = result.messageId
+      ? await supabase.from('email_logs').upsert(logRow, { onConflict: conflictCol, ignoreDuplicates: true })
+      : await supabase.from('email_logs').insert(logRow)
+
+    if (logError) {
+      console.error('[email] Failed to insert email_logs row:', logError)
     }
 
     return { success: true }
   } catch (e: unknown) {
+    if (claimedZohoKey) await releaseZohoIdempotencyKey(supabase, effectiveIdempotencyKey)
     const err = e as Error
     console.error('Email send error:', err)
     return { error: err.message || 'Failed to send email' }
@@ -559,10 +744,12 @@ export async function sendReminderEmailsDirect({
     recipient_email: string
     email_type: 'reminder'
     subject: string
+    provider: EmailProvider
     resend_email_id: string | null
+    zoho_request_id: string | null
   }> = []
 
-  // Process recipients in concurrent batches of 4 (staying safely under Resend's 5 req/sec limit
+  // Process recipients in concurrent batches of 4 (staying safely under provider rate limits
   // while cutting total execution time by ~4x and eliminating 3*N sequential DB queries).
   const BATCH_SIZE = 4
   for (let i = 0; i < filteredRecipients.length; i += BATCH_SIZE) {
@@ -634,35 +821,32 @@ export async function sendReminderEmailsDirect({
         })
 
         try {
-          const { data: sendData, error: sendError } = await getResend().emails.send({
-            from: formatFromHeader(organizer.name),
-            ...(organizer.email ? { replyTo: organizer.email } : {}),
-            to: recipient.email,
+          const result = await dispatchProviderEmail({
+            fromName: organizer.name,
+            toEmail: recipient.email,
+            toName: actualRecipientName,
+            replyToEmail: organizer.email || undefined,
+            replyToName: organizer.name,
             subject: `Reminder — ${event.name}`,
             html,
-            attachments: [
-              {
-                filename: 'qrcode.png',
-                content: qrBuffer,
-                contentId: 'qrcode',
-              },
-            ],
+            inlineQrBuffer: qrBuffer,
+            clientReference: recipient.invitationId ? `reminder-${recipient.invitationId}` : undefined,
           })
 
-          if (sendError) {
-            const errObj = sendError as unknown as { message?: string; name?: string }
-            const errMsg = sendError.message || errObj.name || JSON.stringify(sendError)
-            console.error(`Resend error for ${recipient.email}:`, JSON.stringify(sendError))
-            errors.push(`${recipient.email}: ${errMsg}`)
+          if (result.error) {
+            console.error(`${result.provider} error for ${recipient.email}:`, result.error)
+            errors.push(`${recipient.email}: ${result.error}`)
           } else {
             sent++
-            console.log(`[email] Reminder sent to ${recipient.email}, id=${sendData?.id}`)
+            console.log(`[email] Reminder sent via ${result.provider} to ${recipient.email}, id=${result.messageId}`)
             logsToInsert.push({
               event_id: eventId,
               recipient_email: recipient.email,
               email_type: 'reminder',
               subject: `Reminder — ${event.name}`,
-              resend_email_id: sendData?.id ?? null,
+              provider: result.provider,
+              resend_email_id: result.provider === 'resend' ? result.messageId : null,
+              zoho_request_id: result.provider === 'zoho_cpaas' ? result.messageId : null,
             })
           }
         } catch (e: unknown) {
@@ -680,7 +864,10 @@ export async function sendReminderEmailsDirect({
   }
 
   if (logsToInsert.length > 0) {
-    await supabase.from('email_logs').insert(logsToInsert)
+    const { error: logError } = await supabase.from('email_logs').insert(logsToInsert)
+    if (logError) {
+      console.error('[email] Failed to insert reminder email_logs:', logError)
+    }
   }
 
   return {
@@ -706,6 +893,7 @@ const roleDescriptions: Record<string, string> = {
  */
 export async function sendCoHostInviteEmail({
   inviteeEmail,
+  inviteeName,
   inviterName,
   inviterEmail,
   eventName,
@@ -814,17 +1002,20 @@ export async function sendCoHostInviteEmail({
 </html>`
 
   try {
-    const { error } = await getResend().emails.send({
-      from: formatFromHeader(inviterName ? `${inviterName} via Crenelle` : 'Crenelle'),
-      replyTo: inviterEmail,
-      to: inviteeEmail,
+    const result = await dispatchProviderEmail({
+      fromName: inviterName ? `${inviterName} via Crenelle` : 'Crenelle',
+      toEmail: inviteeEmail,
+      toName: inviteeName,
+      replyToEmail: inviterEmail,
+      replyToName: inviterName,
       subject: `You've been invited to co-host "${eventName}"`,
       html,
+      clientReference: `cohost-${eventId}`,
     })
-    if (error) {
-      console.error('[email] Failed to send co-host invite email:', JSON.stringify(error))
+    if (result.error) {
+      console.error(`[email] Failed to send co-host invite email via ${result.provider}:`, result.error)
     } else {
-      console.log(`[email] Co-host invite sent to ${inviteeEmail} for event ${eventId}`)
+      console.log(`[email] Co-host invite sent via ${result.provider} to ${inviteeEmail} for event ${eventId}`)
     }
   } catch (e) {
     console.error('[email] Exception sending co-host invite email:', e)

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { AlertOctagon, RefreshCw, LayoutDashboard, ChevronDown, ChevronUp } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
+import { COMPANY_LEGAL_NAME } from "@/lib/company";
 
 export default function Error({
   error,
@@ -137,7 +138,7 @@ export default function Error({
       {/* ── FOOTER ── */}
       <footer className="border-t border-border/40 py-6 px-6 md:px-12 z-10 bg-background/40 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} Crenelle Inc. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {COMPANY_LEGAL_NAME}. All rights reserved.</p>
           <div className="flex items-center gap-6 font-mono text-[11px] uppercase tracking-wider">
             <Link href="/" className="hover:text-foreground transition-colors">
               Home
