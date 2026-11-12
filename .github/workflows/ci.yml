@@ -48,6 +48,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
           SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
           RESEND_API_KEY: re_placeholder
+          ZOHO_CPAAS_API_KEY: zoho_placeholder
 
       - name: Build Application
         run: npm run build
@@ -56,4 +57,5 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
           SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
           RESEND_API_KEY: re_placeholder
+          ZOHO_CPAAS_API_KEY: zoho_placeholder
           NEXT_PUBLIC_APP_URL: http://localhost:3000

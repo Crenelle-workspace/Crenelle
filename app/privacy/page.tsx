@@ -200,8 +200,12 @@ export default function PrivacyPolicyPage() {
             "Payer name, email and amount. Card data goes to Paystack directly, not through us",
           ],
           [
-            "Resend — transactional email",
+            "Zoho CPaaS — transactional and event email",
             "Recipient name, email address, and email content including your pass",
+          ],
+          [
+            "Resend — authentication email",
+            "Account email address for signup confirmation and password reset messages",
           ],
           [
             "Meta Platforms (WhatsApp Cloud API) — pass delivery, where enabled",

@@ -219,7 +219,7 @@ export function TermsBody() {
         </LI>
         <LI>
           we are not liable for failures of third-party services including Paystack,
-          Resend, WhatsApp, or your venue&rsquo;s connectivity;
+          Zoho CPaaS, Resend, WhatsApp, or your venue&rsquo;s connectivity;
         </LI>
         <LI>
           our total aggregate liability arising out of or in connection with these
@@ -324,7 +324,7 @@ export function TermsBody() {
       <H3>17. Third-party services</H3>
       <P>
         Crenelle depends on third parties including Supabase, Vercel, Paystack,
-        Resend, Meta (WhatsApp), Sentry and Upstash. Their availability and their own
+        Zoho CPaaS, Resend, Meta (WhatsApp), Sentry and Upstash. Their availability and their own
         terms may affect the service. We are not responsible for their acts or
         omissions beyond our obligations under applicable data protection law.
       </P>
