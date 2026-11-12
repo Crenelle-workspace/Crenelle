@@ -2,6 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { Instagram, Linkedin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  COMPANY_LEGAL_NAME,
+  COMPANY_LOCATION,
+  COMPANY_SUPPORT_EMAIL,
+} from "@/lib/company";
 
 /**
  * Site footer.
@@ -20,7 +25,7 @@ import { cn } from "@/lib/utils";
  * footer renders on a page other than the landing page.
  */
 
-const CONTACT_EMAIL = "support@crenelle.org";
+const CONTACT_EMAIL = COMPANY_SUPPORT_EMAIL;
 
 // Digits only, international format without the leading "+", as wa.me requires.
 const WHATSAPP_NUMBER = "2349014724115";
@@ -128,6 +133,14 @@ export function SiteFooter({ className }: { className?: string }) {
               required.
             </p>
 
+            <p className="font-sans text-xs text-muted-foreground/80 leading-relaxed max-w-sm">
+              Operated by{" "}
+              <span className="text-foreground/90 font-medium">
+                {COMPANY_LEGAL_NAME}
+              </span>
+              , {COMPANY_LOCATION}.
+            </p>
+
             {socials.length > 0 && (
               <div className="flex items-center gap-2 pt-1">
                 {socials.map((s) => (
@@ -232,9 +245,12 @@ export function SiteFooter({ className }: { className?: string }) {
         </div>
 
         {/* ── Bottom bar ── */}
-        <div className="mt-14 pt-8 border-t border-border/40">
+        <div className="mt-14 pt-8 border-t border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/60">
-            © {year} Crenelle. All rights reserved.
+            © {year} {COMPANY_LEGAL_NAME}. All rights reserved.
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/50">
+            {COMPANY_LOCATION}
           </span>
         </div>
       </div>

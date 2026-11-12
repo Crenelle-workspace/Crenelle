@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import { RevenueStats } from '@/lib/supabase/revenue-stats'
+import { COMPANY_LEGAL_NAME } from '@/lib/company'
 
 export interface AdminRevenuePDFProps {
   stats: RevenueStats
@@ -439,7 +440,7 @@ export function AdminRevenueReport({ stats }: AdminRevenuePDFProps) {
 
         {/* Footer */}
         <View style={styles.footer} fixed>
-          <Text style={styles.footerBrand}>CRENELLE INC • CONFIDENTIAL FINANCIAL STATEMENT</Text>
+          <Text style={styles.footerBrand}>{`${COMPANY_LEGAL_NAME.toUpperCase()} • CONFIDENTIAL FINANCIAL STATEMENT`}</Text>
           <Text style={styles.footerPageNum} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
       </Page>

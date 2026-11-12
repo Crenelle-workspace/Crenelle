@@ -155,8 +155,10 @@ export interface EmailLog {
   email_type: 'invitation' | 'reminder'
   subject: string | null
   sent_at: string
-  // Tracking (populated by Resend webhooks)
+  provider: 'resend' | 'zoho_cpaas'
+  // Tracking (populated by provider webhooks)
   resend_email_id: string | null
+  zoho_request_id: string | null
   opened_count: number
   clicked_count: number
   first_opened_at: string | null

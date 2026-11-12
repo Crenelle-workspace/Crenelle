@@ -1,4 +1,9 @@
 import { H2, H3, P, UL, LI, Callout, A } from "@/components/legal/legal-page";
+import {
+  COMPANY_LEGAL_NAME,
+  COMPANY_LOCATION,
+  COMPANY_SUPPORT_EMAIL,
+} from "@/lib/company";
 
 /**
  * The body of the Terms & Conditions, with no page chrome.
@@ -12,7 +17,7 @@ import { H2, H3, P, UL, LI, Callout, A } from "@/components/legal/legal-page";
  */
 
 export const TERMS_LAST_UPDATED = "31 July 2026";
-export const TERMS_CONTACT = "support@crenelle.org";
+export const TERMS_CONTACT = COMPANY_SUPPORT_EMAIL;
 
 export function TermsBody() {
   return (
@@ -20,9 +25,9 @@ export function TermsBody() {
       <H2 id="parties">1. Who these terms are between</H2>
       <P>
         These terms form an agreement between you and{" "}
-        <strong className="text-foreground">Crenelle</strong>, operating from Lagos
-        State, Nigeria (&ldquo;Crenelle&rdquo;, &ldquo;we&rdquo;,
-        &ldquo;us&rdquo;).
+        <strong className="text-foreground">{COMPANY_LEGAL_NAME}</strong>,
+        operating the Crenelle platform from {COMPANY_LOCATION}{" "}
+        (&ldquo;Crenelle&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;).
       </P>
       <P>They apply to two groups:</P>
       <UL>
@@ -219,7 +224,7 @@ export function TermsBody() {
         </LI>
         <LI>
           we are not liable for failures of third-party services including Paystack,
-          Resend, WhatsApp, or your venue&rsquo;s connectivity;
+          Zoho CPaaS, Resend, WhatsApp, or your venue&rsquo;s connectivity;
         </LI>
         <LI>
           our total aggregate liability arising out of or in connection with these
@@ -324,7 +329,7 @@ export function TermsBody() {
       <H3>17. Third-party services</H3>
       <P>
         Crenelle depends on third parties including Supabase, Vercel, Paystack,
-        Resend, Meta (WhatsApp), Sentry and Upstash. Their availability and their own
+        Zoho CPaaS, Resend, Meta (WhatsApp), Sentry and Upstash. Their availability and their own
         terms may affect the service. We are not responsible for their acts or
         omissions beyond our obligations under applicable data protection law.
       </P>
@@ -378,9 +383,9 @@ export function TermsBody() {
 
       <H3>21. Contact</H3>
       <P>
-        Crenelle
+        {COMPANY_LEGAL_NAME}
         <br />
-        Lagos State, Nigeria
+        {COMPANY_LOCATION}
         <br />
         <A href={`mailto:${TERMS_CONTACT}`}>{TERMS_CONTACT}</A>
       </P>

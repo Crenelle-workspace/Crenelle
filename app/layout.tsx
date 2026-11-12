@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SentryUserProvider } from '@/components/sentry-user-provider'
 import { JsonLd } from '@/components/seo/json-ld'
+import { COMPANY_BRAND_NAME, COMPANY_LEGAL_NAME } from '@/lib/company'
 import './globals.css'
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://crenelle.org'
@@ -85,7 +86,8 @@ export const metadata: Metadata = {
 const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'Crenelle',
+  name: COMPANY_BRAND_NAME,
+  legalName: COMPANY_LEGAL_NAME,
   url: SITE_URL,
   logo: `${SITE_URL}/icon.png`,
   description:
